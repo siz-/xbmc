@@ -70,6 +70,8 @@ bool CRenderSystemGLES::InitRenderSystem()
   // Get the GLES version number
   m_RenderVersionMajor = 0;
   m_RenderVersionMinor = 0;
+  m_blending = 0;
+  m_activeTexture = GL_TEXTURE0;
 
   const char* ver = (const char*)glGetString(GL_VERSION);
   if (ver != 0)
@@ -110,7 +112,8 @@ bool CRenderSystemGLES::InitRenderSystem()
     m_renderCaps |= RENDER_CAPS_BGRA_APPLE;
   }
 
-
+  glGenBuffers(1, &m_vbovert);
+  glGenBuffers(1, &m_vboidx);
 
   m_bRenderCreated = true;
   
@@ -141,9 +144,7 @@ bool CRenderSystemGLES::ResetRenderSystem(int width, int height, bool fullScreen
   g_matrices.LoadIdentity();
   
   glBlendFunc(GL_SRC_ALPHA, GL_ONE);
-  glEnable(GL_BLEND);          // Turn Blending On
-  glDisable(GL_DEPTH_TEST);  
-    
+  SetBlending(false);
   return true;
 }
 
@@ -350,7 +351,7 @@ void CRenderSystemGLES::CaptureStateBlock()
   g_matrices.MatrixMode(MM_MODELVIEW);
   g_matrices.PushMatrix();
   glDisable(GL_SCISSOR_TEST); // fixes FBO corruption on Macs
-  glActiveTexture(GL_TEXTURE0);
+  SetActiveTexture(GL_TEXTURE0);
 //TODO - NOTE: Only for Screensavers & Visualisations
 //  glColor3f(1.0, 1.0, 1.0);
 }
@@ -366,8 +367,8 @@ void CRenderSystemGLES::ApplyStateBlock()
   g_matrices.PopMatrix();
   g_matrices.MatrixMode(MM_MODELVIEW);
   g_matrices.PopMatrix();
-  glActiveTexture(GL_TEXTURE0);
-  glEnable(GL_BLEND);
+  SetActiveTexture(GL_TEXTURE0);
+  SetBlending(true);
   glEnable(GL_SCISSOR_TEST);  
 }
 
@@ -571,6 +572,8 @@ void CRenderSystemGLES::InitialiseGUIShader()
 
 void CRenderSystemGLES::EnableGUIShader(ESHADERMETHOD method)
 {
+  if (method == m_method)
+    return;
   m_method = method;
   if (m_pGUIshader[m_method])
   {
@@ -629,6 +632,154 @@ GLint CRenderSystemGLES::GUIShaderGetUniCol()
     return m_pGUIshader[m_method]->GetUniColLoc();
 
   return -1;
+}
+
+void CRenderSystemGLES::SetBlending(bool blend)
+{
+  if (blend == m_blending)
+    return;
+
+  if (blend)
+    glEnable(GL_BLEND);
+  else
+    glDisable(GL_BLEND);
+  m_blending = blend;
+}
+
+void CRenderSystemGLES::SetActiveTexture(GLenum texture)
+{
+  if (texture == m_activeTexture)
+    return;
+
+  glActiveTexture(texture);
+  m_activeTexture = texture;
+}
+
+void CRenderSystemGLES::AddBatchRegion(BatchTexture &tex)
+{
+    m_batchRegions.push_back(tex);
+
+    m_packedVertices.reserve(m_packedVertices.size()+tex.vertices.size());
+    for (unsigned int i = 0; i < tex.vertices.size(); i++)
+      m_packedVertices.push_back(tex.vertices[i]);
+
+    //create index of triangles.
+    m_idx.reserve(m_idx.size()+(tex.vertices.size()*6));
+    for (unsigned int i=0; i < tex.vertices.size(); i+=4)
+    {
+      m_idx.push_back(i+0);
+      m_idx.push_back(i+1);
+      m_idx.push_back(i+2);
+      m_idx.push_back(i+2);
+      m_idx.push_back(i+3);
+      m_idx.push_back(i+0);
+    }
+}
+
+
+void CRenderSystemGLES::ClearRegions()
+{
+  m_batchRegions.clear();
+  m_packedVertices.clear();
+  m_idx.clear();
+}
+
+void CRenderSystemGLES::RenderRegions()
+{
+  glClear(GL_COLOR_BUFFER_BIT);
+
+  glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
+  SetActiveTexture(GL_TEXTURE0);
+  glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+
+  GLint posLoc  = GUIShaderGetPos();
+  GLint colLoc  = GUIShaderGetCol();
+  GLint unicolLoc = GUIShaderGetUniCol();
+  GLint tex0Loc = GUIShaderGetCoord0();
+  GLint tex1Loc = GUIShaderGetCoord1();
+
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_vboidx);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLushort)*m_idx.size(), &m_idx[0], GL_STREAM_DRAW);
+  glBindBuffer(GL_ARRAY_BUFFER, m_vbovert);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(PackedVertex)*m_packedVertices.size(), &m_packedVertices[0], GL_STREAM_DRAW );
+
+  glEnableVertexAttribArray(posLoc);
+  glEnableVertexAttribArray(tex0Loc);
+  if (colLoc >= 0)
+    glEnableVertexAttribArray(colLoc);
+  if (tex1Loc)
+    glEnableVertexAttribArray(tex0Loc);
+
+  int vbocount=0;
+
+  // Set these incase someone changed them without the helper functions.
+  // Using the helpers reduces the load somewhat, because otherwise redundant state-changes add up.
+  glEnable(GL_BLEND);
+  m_blending=true;
+  glActiveTexture(GL_TEXTURE0);
+  m_activeTexture = GL_TEXTURE0;
+  
+
+  EnableGUIShader(SM_TEXTURE);
+  unicolLoc = GUIShaderGetUniCol();
+  int vertpertexture=0;
+  int vertexcount=0;
+#define BUFFER_OFFSET(i) ((char *) (sizeof(PackedVertex)*vertexcount + (i)))
+  for (unsigned int i=0; i<m_batchRegions.size(); i++)
+  {
+    if (!m_batchRegions[i].vertices.size())
+      break;
+    if (m_batchRegions[i].type == 2)
+    {
+      EnableGUIShader(SM_FONTS);
+      SetActiveTexture(GL_TEXTURE0);
+      SetBlending(true);
+    }
+    else if (m_batchRegions[i].type == 3)
+    {
+      EnableGUIShader(SM_MULTI_BLENDCOLOR);
+      SetActiveTexture(GL_TEXTURE1);
+      if (m_batchRegions[i].hasAlpha)
+        SetBlending(true);
+      else
+        SetBlending(false);
+    }
+    else
+    {
+      EnableGUIShader(SM_TEXTURE);
+      SetActiveTexture(GL_TEXTURE0);
+      if (m_batchRegions[i].hasAlpha)
+        SetBlending(true);
+      else
+        SetBlending(false);
+    }
+    unicolLoc = GUIShaderGetUniCol();
+
+    glVertexAttribPointer(posLoc, 3, GL_FLOAT, GL_FALSE, sizeof(PackedVertex), BUFFER_OFFSET(offsetof(PackedVertex, x)));
+    if (colLoc >= 0)
+      glVertexAttribPointer(colLoc, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(PackedVertex), BUFFER_OFFSET(offsetof(PackedVertex, r)));
+    glVertexAttribPointer(tex0Loc, 2, GL_FLOAT, GL_FALSE, sizeof(PackedVertex), BUFFER_OFFSET(offsetof(PackedVertex, u1)));
+    if (tex1Loc >= 0)
+    glVertexAttribPointer(tex1Loc, 2, GL_FLOAT, GL_FALSE, sizeof(PackedVertex), BUFFER_OFFSET(offsetof(PackedVertex, u2)));
+
+    vertpertexture = m_batchRegions[i].vertices.size()*6 / 4;
+    glUniform4f(unicolLoc,m_batchRegions[i].vertices[0].r / 255.0, m_batchRegions[i].vertices[0].g / 255.0, m_batchRegions[i].vertices[0].b / 255.0, m_batchRegions[i].vertices[0].a / 255.0);
+    glBindTexture(GL_TEXTURE_2D, m_batchRegions[i].textureNum);
+    glDrawElements(GL_TRIANGLES, vertpertexture, GL_UNSIGNED_SHORT, (char *) NULL + sizeof(GLushort)*vbocount);
+    vbocount+=vertpertexture;
+    vertexcount+=m_batchRegions[i].vertices.size();
+  }
+  glDisableVertexAttribArray(posLoc);
+  if(colLoc >= 0)
+    glDisableVertexAttribArray(colLoc);
+  glDisableVertexAttribArray(tex0Loc);
+  if(tex1Loc >= 0)
+    glDisableVertexAttribArray(tex1Loc);
+
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+  DisableGUIShader();
 }
 
 #endif

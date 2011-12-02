@@ -32,9 +32,9 @@
 #include "TextureManager.h"
 #include "Geometry.h"
 #include "system.h" // HAS_GL, HAS_DX, etc
+#include "windowing/WindowingFactory.h"
 
 typedef uint32_t color_t;
-
 // image alignment for <aspect>keep</aspect>, <aspect>scale</aspect> or <aspect>center</aspect>
 #define ASPECT_ALIGN_CENTER  0
 #define ASPECT_ALIGN_LEFT    1
@@ -169,6 +169,9 @@ protected:
 
   CTextureArray m_diffuse;
   CTextureArray m_texture;
+
+  BatchTexture m_batchTexture;
+
 };
 
 

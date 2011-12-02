@@ -40,6 +40,29 @@ enum ESHADERMETHOD
   SM_ESHADERCOUNT
 };
 
+struct PackedVertex
+{
+  float x, y, z;
+#ifdef HAS_DX
+  unsigned char b, g, r, a;
+#else
+  unsigned char r, g, b, a;
+#endif
+  float u1, v1;
+  float u2, v2;
+};
+typedef std::vector<PackedVertex> PackedVertices;
+
+struct BatchTexture
+{
+  GLubyte textureNum;
+  GLubyte diffuseNum;
+  unsigned int type;
+  bool hasAlpha;
+  PackedVertices vertices;
+};
+typedef std::vector<BatchTexture> BatchTextures;
+
 class CRenderSystemGLES : public CRenderSystemBase
 {
 public:
@@ -79,6 +102,12 @@ public:
   void InitialiseGUIShader();
   void EnableGUIShader(ESHADERMETHOD method);
   void DisableGUIShader();
+  void SetBlending(bool blend);
+  void SetActiveTexture(GLenum texture);
+
+  void AddBatchRegion(BatchTexture &tex);
+  void RenderRegions();
+  void ClearRegions();
 
   GLint GUIShaderGetPos();
   GLint GUIShaderGetCol();
@@ -108,6 +137,15 @@ protected:
   GLfloat    m_view[16];
   GLfloat    m_projection[16];
   GLint      m_viewPort[4];
+  GLuint     m_vbovert;
+  GLuint     m_vboidx;
+  BatchTextures m_batchRegions;
+  PackedVertices m_packedVertices;
+
+  bool   m_blending;
+  GLenum m_activeTexture;
+
+  std::vector<GLushort> m_idx;
 };
 
 #endif // RENDER_SYSTEM_H

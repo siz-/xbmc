@@ -526,6 +526,7 @@ void CGUIWindowManager::RenderPass()
   if (pWindow)
   {
     pWindow->ClearBackground();
+    g_Windowing.ClearRegions();
     pWindow->DoRender();
   }
 
@@ -585,6 +586,8 @@ bool CGUIWindowManager::Render()
     for (CDirtyRegionList::const_iterator i = dirtyRegions.begin(); i != dirtyRegions.end(); i++)
       CGUITexture::DrawQuad(*i, 0x4c00ff00);
   }
+  if (hasRendered)
+    g_Windowing.RenderRegions();
 
   m_tracker.CleanMarkedRegions();
 

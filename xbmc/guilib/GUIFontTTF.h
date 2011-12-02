@@ -29,6 +29,7 @@
  */
 
 // forward definition
+#include "windowing/WindowingFactory.h"
 class CBaseTexture;
 
 struct FT_FaceRec_;
@@ -161,7 +162,7 @@ protected:
   static int justification_word_weight;
 
   CStdString m_strFileName;
-
+  BatchTexture m_batchTexture;
 private:
   int m_referenceCount;
 };

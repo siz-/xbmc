@@ -54,8 +54,12 @@ CGUIFontTTFGL::~CGUIFontTTFGL(void)
 
 void CGUIFontTTFGL::Begin()
 {
-  if (m_nestedBeginCount == 0)
-  {
+  if (m_nestedBeginCount != 0)
+    return;
+
+  m_nestedBeginCount++;
+  // Keep track of the nested begin/end calls.
+
     if (!m_bTextureLoaded)
     {
       // Have OpenGL generate a texture object handle for us
@@ -76,6 +80,7 @@ void CGUIFontTTFGL::Begin()
 
       VerifyGLState();
       m_bTextureLoaded = true;
+      return;
     }
 
     // Turn Blending On
@@ -103,9 +108,7 @@ void CGUIFontTTFGL::Begin()
 #endif
 
     m_vertex_count = 0;
-  }
-  // Keep track of the nested begin/end calls.
-  m_nestedBeginCount++;
+    m_batchTexture.vertices.clear();
 }
 
 void CGUIFontTTFGL::End()
@@ -115,6 +118,10 @@ void CGUIFontTTFGL::End()
 
   if (--m_nestedBeginCount > 0)
     return;
+  if(m_batchTexture.vertices.size())
+    g_Windowing.AddBatchRegion(m_batchTexture);
+  m_batchTexture.vertices.clear();
+  return;
 
 #ifdef HAS_GL
   glPushClientAttrib(GL_CLIENT_VERTEX_ARRAY_BIT);

@@ -719,6 +719,38 @@ void CGUIFontTTFBase::RenderCharacter(float posX, float posY, const Character *c
     v[i].a = GET_A(color);
   }
 
+  PackedVertex charvertex[4];
+
+  for(int i=0;i < 4;i++)
+  {
+    charvertex[i].x = x[i];
+    charvertex[i].y = y[i];
+    charvertex[i].z = z[i];
+    charvertex[i].r = (GLubyte)GET_R(color);
+    charvertex[i].g = (GLubyte)GET_G(color);
+    charvertex[i].b = (GLubyte)GET_B(color);
+    charvertex[i].a = (GLubyte)GET_A(color);
+  }
+
+  charvertex[0].u1 = tl;
+  charvertex[0].v1 = tt;
+
+  charvertex[1].u1 = tr;
+  charvertex[1].v1 = tt;
+
+  charvertex[2].u1 = tr;
+  charvertex[2].v1 = tb;
+
+  charvertex[3].u1 = tl;
+  charvertex[3].v1 = tb;
+
+  m_batchTexture.textureNum=m_nTexture;
+  m_batchTexture.type = 2;
+  m_batchTexture.vertices.push_back(charvertex[0]);
+  m_batchTexture.vertices.push_back(charvertex[1]);
+  m_batchTexture.vertices.push_back(charvertex[2]);
+  m_batchTexture.vertices.push_back(charvertex[3]);
+
 #if defined(HAS_GL) || defined(HAS_DX)
   for(int i = 0; i < 4; i++)
   {
