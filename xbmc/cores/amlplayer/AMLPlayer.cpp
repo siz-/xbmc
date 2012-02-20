@@ -36,6 +36,7 @@
 #include "settings/Settings.h"
 #include "threads/SingleLock.h"
 #include "windowing/WindowingFactory.h"
+#include "windowing/vendor/VendorAmlogic.h"
 #include "utils/log.h"
 #include "utils/TimeUtils.h"
 #include "utils/URIUtils.h"
@@ -45,6 +46,7 @@
 extern "C"
 {
 #include <player.h>
+#include <player_set_sys.h>
 #include <amports/aformat.h>
 #include <amports/vformat.h>
 }
@@ -74,36 +76,6 @@ struct AMLPlayerStreamInfo
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////
-static int set_video_axis(int x, int y, int width, int height)
-{
-  int fd;
-  const char *path = "/sys/class/video/axis" ;
-  char  bcmd[32];
-  fd = open(path, O_CREAT | O_RDWR | O_TRUNC, 0644);
-  if (fd >= 0) {
-    sprintf(bcmd, "%d %d %d %d", x, y, width, height);
-    write(fd, bcmd, strlen(bcmd));
-    close(fd);
-    return 0;
-  }
-  return -1;
-}
-
-static int set_sysfs_int(const char *path, int val)
-{
-  int fd;
-  int bytes;
-  char  bcmd[16];
-  fd = open(path, O_CREAT | O_RDWR | O_TRUNC, 0644);
-  if (fd >= 0) {
-    sprintf(bcmd, "%d", val);
-    bytes = write(fd, bcmd, strlen(bcmd));
-    close(fd);
-    return 0;
-  }
-  return -1;
-}
-
 static int media_info_dump(media_info_t* minfo)
 {
   int i = 0;
@@ -970,7 +942,7 @@ void CAMLPlayer::SetVideoRect(const CRect &SrcRect, const CRect &DestRect)
   printf("CAMLPlayer::SetVideoRect:m_dst_rect(%s)\n", rectangle.c_str());
   // some odd scaling going on, we do not quite get what we expect
   //set_video_axis(m_dst_rect.x1, m_dst_rect.y1, m_dst_rect.Width(), m_dst_rect.Height());
-  set_video_axis(0, 0, 0, 0);
+  //set_video_axis(0, 0, 0, 0);
 
   // we only get called once gui has changed to something
   // that would show video playback, so show it.
@@ -1390,13 +1362,17 @@ void CAMLPlayer::Process()
     m_pid = -1;
   }
 
-  
   // we are done, hide the mainvideo layer.
   ShowMainVideo(false);
   m_ready.Set();
 
   ClearStreamInfos();
-  
+
+  // grrr, something is hiding fb0 on exit.
+  CVendorAmlogic amlogic;
+  amlogic.ShowWindow(true);
+
+
   printf("CAMLPlayer::Process exit\n");
 }
 
