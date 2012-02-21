@@ -161,7 +161,7 @@ bool CVendorAmlogic::SetDisplayResolution(const char *resolution)
   CStdString modestr;
 
   modestr = resolution;
-
+/*
   set_sysfs_str("/sys/class/display/mode", modestr.c_str());
 
   if (modestr.Equals("480p"))
@@ -178,7 +178,7 @@ bool CVendorAmlogic::SetDisplayResolution(const char *resolution)
     SetFreeScale(DISP_MODE_1080I);
   else if (modestr.Equals("1080p"))
     SetFreeScale(DISP_MODE_1080P);
-
+*/
   return true;
 }
 
