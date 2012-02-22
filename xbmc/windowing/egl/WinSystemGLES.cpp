@@ -47,17 +47,6 @@ CWinSystemGLES::~CWinSystemGLES()
 bool CWinSystemGLES::InitWindowSystem()
 {
   printf("CWinSystemGLES::InitWindowSystem\n");
-  m_fb_width  = 1280;
-  m_fb_height = 720;
-  m_fb_bpp    = 8;
-
-  CLog::Log(LOGDEBUG, "Video mode: %dx%d with %d bits per pixel.",
-    m_fb_width, m_fb_height, m_fb_bpp);
-
-  CVendorAmlogic amlogic;
-  m_window  = (fbdev_window*)amlogic.CreateNativeWindow(m_fb_width, m_fb_height, m_fb_bpp);
-  m_display = EGL_DEFAULT_DISPLAY;
-
   if (!CWinSystemBase::InitWindowSystem())
     return false;
 
@@ -87,8 +76,16 @@ bool CWinSystemGLES::CreateNewWindow(const CStdString& name, bool fullScreen, RE
   else if (res.iScreenWidth == 720  && res.iScreenHeight == 480)
     amlogic.SetDisplayResolution("480p");
 
+  m_fb_bpp    = 8;
+  m_fb_width  = m_nWidth;
+  m_fb_height = m_nHeight;
+  m_window  = (fbdev_window*)amlogic.CreateNativeWindow(m_fb_width, m_fb_height, m_fb_bpp);
+  m_display = EGL_DEFAULT_DISPLAY;
   if (!m_eglBinding->CreateWindow((EGLNativeDisplayType)m_display, (EGLNativeWindowType)m_window))
     return false;
+
+  CLog::Log(LOGDEBUG, "CWinSystemGLES::CreateNewWindow: %dx%d with %d bits per pixel.",
+    m_fb_width, m_fb_height, m_fb_bpp);
 
   m_bWindowCreated = true;
   Show();
@@ -102,7 +99,6 @@ bool CWinSystemGLES::DestroyWindow()
   Hide();
 
   m_eglBinding->DestroyWindow();
-
   if (m_window)
   {
     CVendorAmlogic amlogic;
@@ -134,6 +130,7 @@ bool CWinSystemGLES::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool b
   CreateNewWindow("", fullScreen, res, NULL);
 
   CRenderSystemGLES::ResetRenderSystem(res.iWidth, res.iHeight, true, 0);
+  SetVSyncImpl(m_iVSyncMode);
 
   return true;
 }
@@ -185,7 +182,7 @@ void CWinSystemGLES::UpdateResolutions()
       int gui_width  = width;
       int gui_height = height;
       float gui_refresh = refresh;
-      if (gui_width == 1920 && gui_height == 1080)
+      if (gui_width == 1920 && gui_height == 1080 && amlogic.Has720pRenderLimits())
       {
         // we can not render GUI fast enough in 1080p.
         // So we will render GUI at 720p and scale that to 1080p display.

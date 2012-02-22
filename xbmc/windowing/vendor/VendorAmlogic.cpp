@@ -42,69 +42,6 @@ extern "C"
 #define  DISP_MODE_PATH "/sys/class/amhdmitx/amhdmitx0/disp_mode"
 #define  AXIS_PATH "/sys/class/display/axis"
 
-/*
-static int get_sysfs_str(const char *path, char *valstr, int size)
-{
-  int fd = open(path, O_RDONLY);
-  if (fd >= 0)
-  {
-    read(fd, valstr, size - 1);
-    valstr[strlen(valstr)] = '\0';
-    close(fd);
-    return 0;
-  }
-
-  printf("get_sysfs_str:fail\n");
-  return -1;
-}
-
-static int set_sysfs_str(const char *path, const char *val)
-{
-  int fd = open(path, O_CREAT | O_RDWR | O_TRUNC, 0644);
-  if (fd >= 0)
-  {
-    write(fd, val, strlen(val));
-    close(fd);
-    return 0;
-  }
-
-  printf("set_sysfs_str:fail\n");
-  return -1;
-}
-
-static int set_sysfs_int(const char *path, int val)
-{
-  int fd = open(path, O_CREAT | O_RDWR | O_TRUNC, 0644);
-  if (fd >= 0)
-  {
-    char bcmd[16];
-    sprintf(bcmd, "%d", val);
-    write(fd, bcmd, strlen(bcmd));
-    close(fd);
-    return 0;
-  }
-
-  printf("set_sysfs_int:fail\n");
-  return -1;
-}
-
-static int get_sysfs_int(const char *path)
-{
-  int val = 0;
-  int fd = open(path, O_RDONLY);
-  if (fd >= 0)
-  {
-    char bcmd[16];
-    read(fd, bcmd, sizeof(bcmd));
-    val = strtol(bcmd, NULL, 16);
-    close(fd);
-  }
-
-  printf("get_sysfs_int:fail\n");
-  return val;
-}
-*/
-
 ////////////////////////////////////////////////////////////////////////////////////////////
 CVendorAmlogic::CVendorAmlogic()
 {
@@ -161,9 +98,9 @@ bool CVendorAmlogic::SetDisplayResolution(const char *resolution)
   CStdString modestr;
 
   modestr = resolution;
-/*
-  set_sysfs_str("/sys/class/display/mode", modestr.c_str());
 
+  set_sysfs_str("/sys/class/display/mode", modestr.c_str());
+/*
   if (modestr.Equals("480p"))
     SetFreeScale(DISP_MODE_480I);
   else if (modestr.Equals("480p"))
@@ -180,6 +117,11 @@ bool CVendorAmlogic::SetDisplayResolution(const char *resolution)
     SetFreeScale(DISP_MODE_1080P);
 */
   return true;
+}
+
+bool CVendorAmlogic::Has720pRenderLimits()
+{
+  return false;
 }
 
 bool CVendorAmlogic::ProbeDisplayResolutions(std::vector<CStdString> &resolutions)

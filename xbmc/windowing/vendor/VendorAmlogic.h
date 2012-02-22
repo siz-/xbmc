@@ -37,6 +37,7 @@ public:
   void DestroyNativeWindow(EGLNativeWindowType native_window);
   int  GetDisplayResolutionMode();
   bool SetDisplayResolution(const char* resolution);
+  bool Has720pRenderLimits();
   bool ProbeDisplayResolutions(std::vector<CStdString> &resolutions);
   void ShowWindow(bool show);
   int  SetFreeScale(int mode);
