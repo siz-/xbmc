@@ -33,16 +33,15 @@ public:
   CVendorAmlogic();
   ~CVendorAmlogic();
 
-  void* CreateNativeWindow(int width, int height, int bpp);
-  void DestroyNativeWindow(EGLNativeWindowType native_window);
+  void* InitWindowSystem(int width, int height, int bpp);
+  void DestroyWindowSystem(EGLNativeWindowType native_window);
   int  GetDisplayResolutionMode();
   bool SetDisplayResolution(const char* resolution);
-  bool Has720pRenderLimits();
+  bool ClampToGUIDisplayLimits(int &width, int &height);
   bool ProbeDisplayResolutions(std::vector<CStdString> &resolutions);
-  void ShowWindow(bool show);
-  int  SetFreeScale(int mode);
-  int  EnableFreeScale(int mode);
-  int  DisableFreeScale(int mode);
+  bool ShowWindow(bool show);
+  void EnableFreeScale();
+  void DisableFreeScale();
 
 };
 

@@ -62,9 +62,6 @@ protected:
   void                  *m_display;
   fbdev_window          *m_window;
   CWinBindingEGL        *m_eglBinding;
-  int                   m_fb_width;
-  int                   m_fb_height;
-  int                   m_fb_bpp;
 };
 
 XBMC_GLOBAL_REF(CWinSystemGLES,g_Windowing);

@@ -46,7 +46,10 @@ CWinSystemGLES::~CWinSystemGLES()
 
 bool CWinSystemGLES::InitWindowSystem()
 {
-  printf("CWinSystemGLES::InitWindowSystem\n");
+  CVendorAmlogic platform;
+  m_window  = (fbdev_window*)platform.InitWindowSystem(1920, 1080, 8);
+  m_display = EGL_DEFAULT_DISPLAY;
+
   if (!CWinSystemBase::InitWindowSystem())
     return false;
 
@@ -55,37 +58,37 @@ bool CWinSystemGLES::InitWindowSystem()
 
 bool CWinSystemGLES::DestroyWindowSystem()
 {
-  printf("CWinSystemGLES::DestroyWindowSystem\n");
+  if (m_window)
+  {
+    CVendorAmlogic platform;
+    platform.DestroyWindowSystem(m_window);
+    m_window = NULL;
+  }
+
   return true;
 }
 
 bool CWinSystemGLES::CreateNewWindow(const CStdString& name, bool fullScreen, RESOLUTION_INFO& res, PHANDLE_EVENT_FUNC userFunction)
 {
-  printf("CWinSystemGLES::CreateNewWindow\n");
   m_nWidth  = res.iWidth;
   m_nHeight = res.iHeight;
   m_bFullScreen = fullScreen;
 
-  CVendorAmlogic amlogic;
+  CVendorAmlogic platform;
   if (res.iScreenWidth == 1920 && res.iScreenHeight == 1080 && (res.dwFlags & D3DPRESENTFLAG_PROGRESSIVE))
-    amlogic.SetDisplayResolution("1080p");
+    platform.SetDisplayResolution("1080p");
   else if (res.iScreenWidth == 1920 && res.iScreenHeight == 1080)
-    amlogic.SetDisplayResolution("1080i");
+    platform.SetDisplayResolution("1080i");
   else if (res.iScreenWidth == 1280 && res.iScreenHeight == 720)
-    amlogic.SetDisplayResolution("720p");
+    platform.SetDisplayResolution("720p");
   else if (res.iScreenWidth == 720  && res.iScreenHeight == 480)
-    amlogic.SetDisplayResolution("480p");
+    platform.SetDisplayResolution("480p");
 
-  m_fb_bpp    = 8;
-  m_fb_width  = m_nWidth;
-  m_fb_height = m_nHeight;
-  m_window  = (fbdev_window*)amlogic.CreateNativeWindow(m_fb_width, m_fb_height, m_fb_bpp);
-  m_display = EGL_DEFAULT_DISPLAY;
   if (!m_eglBinding->CreateWindow((EGLNativeDisplayType)m_display, (EGLNativeWindowType)m_window))
     return false;
 
   CLog::Log(LOGDEBUG, "CWinSystemGLES::CreateNewWindow: %dx%d with %d bits per pixel.",
-    m_fb_width, m_fb_height, m_fb_bpp);
+    res.iScreenWidth, res.iScreenHeight, 8);
 
   m_bWindowCreated = true;
   Show();
@@ -95,17 +98,9 @@ bool CWinSystemGLES::CreateNewWindow(const CStdString& name, bool fullScreen, RE
 
 bool CWinSystemGLES::DestroyWindow()
 {
-  printf("CWinSystemGLES::DestroyWindow\n");
   Hide();
 
-  m_eglBinding->DestroyWindow();
-  if (m_window)
-  {
-    CVendorAmlogic amlogic;
-    amlogic.DestroyNativeWindow(m_window);
-    m_window = NULL;
-  }
-
+  m_eglBinding->ReleaseSurface();
   m_bWindowCreated = false;
 
   return true;
@@ -113,14 +108,12 @@ bool CWinSystemGLES::DestroyWindow()
 
 bool CWinSystemGLES::ResizeWindow(int newWidth, int newHeight, int newLeft, int newTop)
 {
-  printf("CWinSystemGLES::ResizeWindow\n");
   CRenderSystemGLES::ResetRenderSystem(newWidth, newHeight, true, 0);
   return true;
 }
 
 bool CWinSystemGLES::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool blankOtherDisplays)
 {
-  printf("CWinSystemGLES::SetFullScreen\n");
   CLog::Log(LOGDEBUG, "CWinSystemDFB::SetFullScreen");
   m_nWidth  = res.iWidth;
   m_nHeight = res.iHeight;
@@ -137,15 +130,10 @@ bool CWinSystemGLES::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool b
 
 void CWinSystemGLES::UpdateResolutions()
 {
-  printf("CWinSystemGLES::UpdateResolutions\n");
-
   std::vector<CStdString> resolutions;
 
-  CVendorAmlogic amlogic;
-  amlogic.ProbeDisplayResolutions(resolutions);
-
-  for (size_t i = 0; i < resolutions.size(); i++)
-    printf("CWinSystemGLES::UpdateResolutions:%s\n", resolutions[i].c_str());
+  CVendorAmlogic platform;
+  platform.ProbeDisplayResolutions(resolutions);
 
   bool got_display_rez = false;
   RESOLUTION Res720p60 = RES_INVALID;
@@ -182,13 +170,7 @@ void CWinSystemGLES::UpdateResolutions()
       int gui_width  = width;
       int gui_height = height;
       float gui_refresh = refresh;
-      if (gui_width == 1920 && gui_height == 1080 && amlogic.Has720pRenderLimits())
-      {
-        // we can not render GUI fast enough in 1080p.
-        // So we will render GUI at 720p and scale that to 1080p display.
-        gui_width  = 1280;
-        gui_height = 720;
-      }
+      platform.ClampToGUIDisplayLimits(gui_width, gui_height);
 
       g_settings.m_ResInfo[res_index].iScreen       = 0;
       g_settings.m_ResInfo[res_index].bFullScreen   = true;
@@ -214,15 +196,15 @@ void CWinSystemGLES::UpdateResolutions()
 
       res_index = (RESOLUTION)((int)res_index + 1);
     }
-    // swap desktop index for 720p if available
-    if (Res720p60 != RES_INVALID)
-    {
-      CLog::Log(LOGINFO, "Found 720p at %d, setting to RES_DESKTOP at %d", (int)Res720p60, (int)RES_DESKTOP);
+  }
+  // swap desktop index for 720p if available
+  if (Res720p60 != RES_INVALID)
+  {
+    CLog::Log(LOGINFO, "Found 720p at %d, setting to RES_DESKTOP at %d", (int)Res720p60, (int)RES_DESKTOP);
 
-      RESOLUTION_INFO desktop = g_settings.m_ResInfo[RES_DESKTOP];
-      g_settings.m_ResInfo[RES_DESKTOP] = g_settings.m_ResInfo[Res720p60];
-      g_settings.m_ResInfo[Res720p60] = desktop;
-    }
+    RESOLUTION_INFO desktop = g_settings.m_ResInfo[RES_DESKTOP];
+    g_settings.m_ResInfo[RES_DESKTOP] = g_settings.m_ResInfo[Res720p60];
+    g_settings.m_ResInfo[Res720p60] = desktop;
   }
 }
 
@@ -270,16 +252,14 @@ bool CWinSystemGLES::Restore()
 
 bool CWinSystemGLES::Hide()
 {
-  CVendorAmlogic amlogic;
-  amlogic.ShowWindow(false);
-  return true;
+  CVendorAmlogic platform;
+  return platform.ShowWindow(false);
 }
 
 bool CWinSystemGLES::Show(bool raise)
 {
-  CVendorAmlogic amlogic;
-  amlogic.ShowWindow(true);
-  return true;
+  CVendorAmlogic platform;
+  return platform.ShowWindow(true);
 }
 
 #endif
