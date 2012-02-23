@@ -80,6 +80,6 @@
     <description lang="sl">projectM je glasbeni vizualizator. Nič ni boljšega v svetu Unixa. Veličina ProjectM izhaja iz garanja skupnosti. Uporabniki, kot si lahko ustvarite prednastavitve, ki povezujejo glasbo z neverjetno vizualizacijo. Poskusi!&#10;projectM Vizualizacija je LGPL'ed reimplementacija od Milkdrop v okviru OpenGL. Za delovanje projectM je potrebna grafična kartica s 3D pospeševanjem in vašo najljubšo glasbo.</description>
     <description lang="sv">projectM är en fantastisk musikvisualisering. Det finns inget bättre i Unixvärlden. projectM's storhet kommer från gemenskapens hårda jobb. Användare som du kan skapa förval som förenar musiken med otroliga visualiseringar. Prova det!&#10;projectM visualisering är en LGPL-implementation av Milkdrop i OpenGL&#10;Alla projectM kräver ett grafikkort med 3D-acceleration och din favoritmusik.</description>
     <description lang="zh">projectM是一个音乐可视化效果。它是Unix世界中最好的。它的伟大来自于社区的辛苦工作。使用者可以创建预设参数把音乐和难以置信的可视化效果连接起来。试试吧！&#10;projectM可视化效果是用OpenGL按照LGPL协议对Milkdrop的重新实现&#10;projectM所要求的仅是一块有3D加速功能的显卡和你喜爱的音乐。</description>
-    <platform>linux osx wingl</platform>
+    <platform>linuxgl osx wingl</platform>
   </extension>
 </addon>
