@@ -925,25 +925,36 @@ void CAMLPlayer::SetVideoRect(const CRect &SrcRect, const CRect &DestRect)
     return;
   }
 
-  CRect gui;
+  CRect gui, display, dst_rect;
   RESOLUTION res = g_graphicsContext.GetVideoResolution();
   gui.SetRect(0, 0, g_settings.m_ResInfo[res].iWidth, g_settings.m_ResInfo[res].iHeight);
-  if (!gui.PtInRect(CPoint(m_dst_rect.x1, m_dst_rect.y1)))
+  display.SetRect(0, 0, g_settings.m_ResInfo[res].iScreenWidth, g_settings.m_ResInfo[res].iScreenHeight);
+  dst_rect = m_dst_rect;
+  if (gui != display)
+  {
+    float xscale = display.Width()  / gui.Width();
+    float yscale = display.Height() / gui.Height();
+    dst_rect.x1 *= xscale;
+    dst_rect.x2 *= xscale;
+    dst_rect.y1 *= yscale;
+    dst_rect.y2 *= yscale;
+  }
+  // destination rectangle cannot be outside display bounds
+  if (!display.PtInRect(CPoint(dst_rect.x1, dst_rect.y1)))
     return;
-  if (!gui.PtInRect(CPoint(m_dst_rect.x2, m_dst_rect.y2)))
+  if (!display.PtInRect(CPoint(dst_rect.x2, dst_rect.y2)))
     return;
 
   ShowMainVideo(false);
-
+  int coordinates[4] = {(int)dst_rect.x1, (int)dst_rect.y1, (int)dst_rect.x2, (int)dst_rect.y2};
+  set_video_axis(coordinates);
+/*
   CStdString rectangle;
   rectangle.Format("%i,%i,%i,%i",
-    (int)m_dst_rect.x1, (int)m_dst_rect.y1,
-    (int)m_dst_rect.Width(), (int)m_dst_rect.Height());
-  printf("CAMLPlayer::SetVideoRect:m_dst_rect(%s)\n", rectangle.c_str());
-  // some odd scaling going on, we do not quite get what we expect
-  //set_video_axis(m_dst_rect.x1, m_dst_rect.y1, m_dst_rect.Width(), m_dst_rect.Height());
-  //set_video_axis(0, 0, 0, 0);
-
+    (int)dst_rect.x1, (int)dst_rect.y1,
+    (int)dst_rect.Width(), (int)dst_rect.Height());
+  printf("CAMLPlayer::SetVideoRect:dst_rect(%s)\n", rectangle.c_str());
+*/
   // we only get called once gui has changed to something
   // that would show video playback, so show it.
   ShowMainVideo(true);
@@ -1432,7 +1443,7 @@ int CAMLPlayer::UpdatePlayerInfo(int pid, player_info_t *info)
     CSingleLock lock(amlplayer->m_aml_state_csection);
     if (amlplayer->m_aml_state.back() != info->status)
     {
-      printf("update_player_info: %s, old state %s\n", player_status2str(info->status), player_status2str(info->last_sta));
+      //printf("update_player_info: %s, old state %s\n", player_status2str(info->status), player_status2str(info->last_sta));
       amlplayer->m_aml_state.push_back(info->status);
     }
   }
