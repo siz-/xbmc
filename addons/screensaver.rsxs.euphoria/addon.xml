@@ -83,7 +83,7 @@
     <description lang="sl">Težko bi si zamislili bolj psihadeličen ohranjevalnik zaslona. Stranski učinki daljše uporabe vključujejo slabost, glavobol in bruhanje.</description>
     <description lang="sv">Detta är ungefär så psykedelisk som en skärmsläckare kan bli. mogumbo trodde att hans Plasma Saver var toppen på skalan, men denna gör dig ännu mer illamående. Det är nog bäst att du letar upp en påse för flygsjuka innan du sätter dig ned och stirrar på denna för länge.</description>
     <description lang="zh">这大概是最具迷幻效果的屏幕保护程序了。mogumbo以为他的Plasma屏保已经是数一数二了，但这个更令人作犯晕。如果你要长时间盯视它最好先准备一个晕机袋。</description>
-    <platform>linux osx</platform>
+    <platform>linuxgl osx</platform>
   </extension>
 </addon>
 
