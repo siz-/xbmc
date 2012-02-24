@@ -347,15 +347,6 @@ void CAMLSubTitleThread::Process(void)
             sub_type  = (sub_buffer[5] << 16)  | (sub_buffer[6] << 8)   | sub_buffer[7];
             // sub_pts are in ffmpeg timebase, not ms timebase, convert it.
             sub_pts = (sub_buffer[12] << 24) | (sub_buffer[13] << 16) | (sub_buffer[14] << 8) | sub_buffer[15];
-            subtitle->bgntime = sub_pts/ 90;
-            subtitle->endtime = subtitle->bgntime + 4000;
-
-            // skip over header, subtitles begin at sub_buffer[20]
-            subtitle->string = &sub_buffer[20];
-            free(sub_buffer);
-            // quirks
-            subtitle->string.Replace("&apos;","\'");
-            m_subtitle_strings.push_back(subtitle);
 
             /* TODO: handle other subtitle codec types
             // subtitle codecs
@@ -370,15 +361,70 @@ void CAMLSubTitleThread::Process(void)
             CODEC_ID_SRT,
             CODEC_ID_MICRODVD,
             */
-            //printf("CAMLSubTitleThread::Process: "
-            //  "sub_type(0x%x), size(%d), bgntime(%lld), endtime(%lld), string(%s)\n",
-            //  sub_type, sub_size-20, subtitle->bgntime, subtitle->endtime, subtitle->string.c_str());
-
-            // fixup existing endtimes so they do not exceed bgntime of previous subtitle
-            for (size_t i = 0; i < m_subtitle_strings.size() - 1; i++)
+            switch(sub_type)
             {
-              if (m_subtitle_strings[i]->endtime > m_subtitle_strings[i+1]->bgntime)
-                m_subtitle_strings[i]->endtime = m_subtitle_strings[i+1]->bgntime;
+              default:
+                printf("CAMLSubTitleThread::Process: fixme :) "
+                  "sub_type(0x%x), size(%d), bgntime(%lld), endtime(%lld), string(%s)\n",
+                  sub_type, sub_size-20, subtitle->bgntime, subtitle->endtime, &sub_buffer[20]);
+                break;
+              case CODEC_ID_TEXT:
+                subtitle->bgntime = sub_pts/ 90;
+                subtitle->endtime = subtitle->bgntime + 4000;
+                subtitle->string  = &sub_buffer[20];
+                break;
+              case CODEC_ID_SSA:
+                if (strncmp((const char*)&sub_buffer[20], "Dialogue:", 9) == 0)
+                {
+                  int  vars_found, hour1, min1, sec1, hunsec1, hour2, min2, sec2, hunsec2, nothing;
+                  char line3[sub_size];
+                  char *line = &sub_buffer[20];
+
+                  memset(line3, 0x00, sub_size);
+                  vars_found = sscanf(line, "Dialogue: Marked=%d,%d:%d:%d.%d,%d:%d:%d.%d,%[^\n\r]",
+                    &nothing, &hour1, &min1, &sec1, &hunsec1, &hour2, &min2, &sec2, &hunsec2, line3);
+                  if (vars_found < 10)
+                    vars_found = sscanf(line, "Dialogue: %d,%d:%d:%d.%d,%d:%d:%d.%d,%[^\n\r]",
+                      &nothing, &hour1, &min1, &sec1, &hunsec1, &hour2, &min2, &sec2, &hunsec2, line3);
+
+                  if (vars_found > 9)
+                  {
+                    char *tmp, *line2 = strchr(line3, ',');
+                    // use 32 for the case that the amount of commas increase with newer SSA versions
+                    for (int comma = 4; comma < 32; comma++)
+                    {
+                      tmp = strchr(line2 + 1, ',');
+                      if (!tmp)
+                        break;
+                      if (*(++tmp) == ' ')
+                        break;
+                      // a space after a comma means we are already in a sentence
+                      line2 = tmp;
+                    }
+                    // eliminate the trailing comma
+                    if (*line2 == ',')
+                      line2++;
+
+                    subtitle->bgntime = 10 * (360000 * hour1 + 6000 * min1 + 100 * sec1 + hunsec1);
+                    subtitle->endtime = 10 * (360000 * hour2 + 6000 * min2 + 100 * sec2 + hunsec2);
+                    subtitle->string  = line2;
+                  }
+                }
+                break;
+            }
+            free(sub_buffer);
+            
+            if (subtitle->string.length())
+            {
+              // quirks
+              subtitle->string.Replace("&apos;","\'");
+              m_subtitle_strings.push_back(subtitle);
+              // fixup existing endtimes so they do not exceed bgntime of previous subtitle
+              for (size_t i = 0; i < m_subtitle_strings.size() - 1; i++)
+              {
+                if (m_subtitle_strings[i]->endtime > m_subtitle_strings[i+1]->bgntime)
+                  m_subtitle_strings[i]->endtime = m_subtitle_strings[i+1]->bgntime;
+              }
             }
           }
         }
