@@ -1089,6 +1089,7 @@ void CAMLPlayer::SeekTime(__int64 seek_ms)
   {
     player_timesearch(m_pid, seek_ms/1000.0);
     WaitForSearchOK(5000);
+    WaitForPlaying(5000);
   }
 }
 
