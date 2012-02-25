@@ -404,10 +404,25 @@ void CAMLSubTitleThread::Process(void)
                     // eliminate the trailing comma
                     if (*line2 == ',')
                       line2++;
-
                     subtitle->bgntime = 10 * (360000 * hour1 + 6000 * min1 + 100 * sec1 + hunsec1);
                     subtitle->endtime = 10 * (360000 * hour2 + 6000 * min2 + 100 * sec2 + hunsec2);
                     subtitle->string  = line2;
+                    // convert tags to what we understand
+                    if (subtitle->string.Replace("{\\i1}","[I]"))
+                      subtitle->string.Replace("{\\i0}","[/I]");
+                    if (subtitle->string.Replace("{\\b1}","[B]"))
+                      subtitle->string.Replace("{\\b0}","[/B]");
+                    // remove anything other tags
+                    for (std::string::const_iterator it = subtitle->string.begin(); it != subtitle->string.end(); ++it)
+                    {
+                      size_t beg = subtitle->string.find("{\\");
+                      if (beg != std::string::npos)
+                      {
+                        size_t end = subtitle->string.find("}", beg);
+                        if (end != std::string::npos)
+                          subtitle->string.erase(beg, end-beg+1);
+                      }
+                    }
                   }
                 }
                 break;
