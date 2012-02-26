@@ -96,6 +96,7 @@ bool CDVDStreamInfo::Equal(const CDVDStreamInfo& right, bool withextradata)
   ||  profile  != right.profile
   ||  ptsinvalid != right.ptsinvalid
   ||  timebase != right.timebase
+  ||  forced_aspect != right.forced_aspect
   ||  vfr      != right.vfr) return false;
 
   // AUDIO
@@ -151,6 +152,7 @@ void CDVDStreamInfo::Assign(const CDVDStreamInfo& right, bool withextradata)
   profile  = right.profile;
   ptsinvalid = right.ptsinvalid;
   timebase = right.timebase;
+  forced_aspect = right.forced_aspect;
 
   // AUDIO
   channels      = right.channels;
@@ -200,6 +202,7 @@ void CDVDStreamInfo::Assign(const CDemuxStream& right, bool withextradata)
     profile   = stream->iProfile;
     ptsinvalid = stream->bPTSInvalid;
     timebase  = stream->fTimebase;
+    forced_aspect = stream->bForcedAspect;
   }
   else if(  right.type == STREAM_SUBTITLE )
   {

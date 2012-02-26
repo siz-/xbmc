@@ -77,6 +77,7 @@ public:
   int profile; // encoder profile of the stream reported by the decoder. used to qualify hw decoders.
   bool ptsinvalid;  // pts cannot be trusted (avi's).
   float timebase;
+  bool forced_aspect; // aspect is forced from container
 
   // AUDIO
   int channels;

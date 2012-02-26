@@ -157,6 +157,7 @@ public:
     iProfile = 0;
     bPTSInvalid = false;
     fTimebase = 0.0;
+    bForcedAspect = false;
     type = STREAM_VIDEO;
   }
 
@@ -171,6 +172,7 @@ public:
   int iProfile; // encoder profile of the stream reported by the decoder. used to qualify hw decoders.
   bool bPTSInvalid; // pts cannot be trusted (avi's).
   float fTimebase;
+  bool bForcedAspect; // aspect is forced from container
 };
 
 class CDemuxStreamAudio : public CDemuxStream
