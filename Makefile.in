@@ -72,6 +72,7 @@ DIRECTORY_ARCHIVES=$(DVDPLAYER_ARCHIVES) \
                    xbmc/powermanagement/powermanagement.a \
                    xbmc/programs/programs.a \
                    xbmc/rendering/rendering.a \
+                   xbmc/security/security.a \
                    xbmc/settings/settings.a \
                    xbmc/storage/storage.a \
                    xbmc/threads/threads.a \

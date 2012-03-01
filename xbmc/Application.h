@@ -62,6 +62,8 @@ namespace MEDIA_DETECT
 #include "windowing/XBMC_events.h"
 #include "threads/Thread.h"
 
+#include "security/KeyringManager.h"
+
 class CKaraokeLyricsManager;
 class CInertialScrollingHandler;
 class CApplicationMessenger;
@@ -391,6 +393,8 @@ protected:
 #ifdef HAS_EVENT_SERVER
   std::map<std::string, std::map<int, float> > m_lastAxisMap;
 #endif
+
+  CKeyringManager m_keyringManager;
 
 };
 
