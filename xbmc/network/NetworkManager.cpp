@@ -29,6 +29,7 @@
 #include "libscrobbler/librefmscrobbler.h"
 #include "linux/ConnmanNetworkManager.h"
 #include "linux/PosixNetworkManager.h"
+#include "windows/WinNetworkManager.h"
 #include "utils/log.h"
 #include "utils/RssReader.h"
 
@@ -55,6 +56,11 @@ void CNetworkManager::Initialize()
 #ifdef TARGET_POSIX
   if (m_instance == NULL)
     m_instance = new CPosixNetworkManager();
+#endif
+
+#ifdef TARGET_WINDOWS
+  if (m_instance == NULL)
+    m_instance = new CWinNetworkManager();
 #endif
 
   if (m_instance == NULL)
