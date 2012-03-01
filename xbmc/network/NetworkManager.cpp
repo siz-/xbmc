@@ -28,6 +28,7 @@
 #include "libscrobbler/lastfmscrobbler.h"
 #include "libscrobbler/librefmscrobbler.h"
 #include "linux/ConnmanNetworkManager.h"
+#include "linux/PosixNetworkManager.h"
 #include "utils/log.h"
 #include "utils/RssReader.h"
 
@@ -49,6 +50,11 @@ void CNetworkManager::Initialize()
 #ifdef HAS_DBUS
   if (CConnmanNetworkManager::HasConnman())
     m_instance = new CConnmanNetworkManager();
+#endif
+
+#ifdef TARGET_POSIX
+  if (m_instance == NULL)
+    m_instance = new CPosixNetworkManager();
 #endif
 
   if (m_instance == NULL)
