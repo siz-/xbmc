@@ -5484,6 +5484,11 @@ CNetworkManager& CApplication::getNetworkManager()
   return m_network;
 }
 
+CKeyringManager& CApplication::getKeyringManager()
+{
+  return m_keyringManager;
+}
+
 #ifdef HAS_PERFORMANCE_SAMPLE
 CPerformanceStats &CApplication::GetPerformanceStats()
 {
