@@ -31,7 +31,8 @@ using namespace std;
 
 CConnmanNetworkManager::CConnmanNetworkManager()
 {
-  CDBusMessage message("org.moblin.connman", "/", "org.moblin.connman.Manager", "GetProperties");
+  // should use CONNMAN_SERVICE here (in connman/dbus.h)
+  CDBusMessage message("net.connman", "/", "net.connman.Manager", "GetProperties");
   CDBusReplyPtr reply = message.SendSystem();
   m_properties = reply->GetNextArgument();
 
@@ -45,7 +46,7 @@ CConnmanNetworkManager::CConnmanNetworkManager()
   {
     dbus_connection_set_exit_on_disconnect(m_connection, false);
 
-    dbus_bus_add_match(m_connection, "type='signal',interface='org.moblin.connman.Manager'", &m_error);
+    dbus_bus_add_match(m_connection, "type='signal',interface='net.connman.Manager'", &m_error);
     dbus_connection_flush(m_connection);
     if (dbus_error_is_set(&m_error))
     {
@@ -95,23 +96,23 @@ bool CConnmanNetworkManager::PumpNetworkEvents(INetworkEventsCallback *callback)
     {
       CDBusReplyPtr reply = CDBusReplyPtr(new CDBusReply(msg));
 
-      if (dbus_message_is_signal(msg, "org.moblin.connman.Manager", "PropertyChanged"))
+      if (dbus_message_is_signal(msg, "net.connman.Manager", "PropertyChanged"))
       {
         CVariant key = reply->GetNextArgument();
         m_properties[key.asString()] = reply->GetNextArgument();
 
         UpdateNetworkManager();
 
-        if (strcmp(key.asString(), "Services") == 0)
+        if (strcmp(key.asString().c_str(), "Services") == 0)
           callback->OnConnectionListChange(m_connections);
 
         result = true;
       }
-      else if (dbus_message_is_signal(msg, "org.moblin.connman.Manager", "StateChanged"))
+      else if (dbus_message_is_signal(msg, "net.connman.Manager", "StateChanged"))
       {
         CVariant stateString = reply->GetNextArgument();
         result = true;
-        callback->OnConnectionStateChange(CConnmanConnection::ParseConnectionState(stateString.asString()));
+        callback->OnConnectionStateChange(CConnmanConnection::ParseConnectionState(stateString.asString().c_str()));
       }
       else
         CLog::Log(LOGINFO, "ConnmanNetworkManager: Recieved an unknown signal %s", dbus_message_get_member(msg));
@@ -134,7 +135,7 @@ bool CConnmanNetworkManager::PumpNetworkEvents(INetworkEventsCallback *callback)
 
 bool CConnmanNetworkManager::HasConnman()
 {
-  CDBusMessage message("org.moblin.connman", "/", "org.moblin.connman.Manager", "GetProperties");
+  CDBusMessage message("net.connman", "/", "net.connman.Manager", "GetProperties");
 
   DBusError error;
   dbus_error_init (&error);
@@ -159,10 +160,10 @@ void CConnmanNetworkManager::UpdateNetworkManager()
 
   for (unsigned int i = 0; i < services.size(); i++)
   {
-    if (strcmp(services[i].asString(), "") == 0)
+    if (strcmp(services[i].asString().c_str(), "") == 0)
       continue;
 
-    IConnection *connection = new CConnmanConnection(services[i].asString());
+    IConnection *connection = new CConnmanConnection(services[i].asString().c_str());
     m_connections.push_back(CConnectionPtr(connection));
   }
 }

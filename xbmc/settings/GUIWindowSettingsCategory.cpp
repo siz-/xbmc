@@ -408,6 +408,12 @@ void CGUIWindowSettingsCategory::CreateSettings()
       control->SetDelayed();
       continue;
     }
+    else if (strSetting.Equals("network.connected"))
+    {
+      bool visible = g_application.getNetworkManager().CanManageConnections();
+      //((CGUIControl *)GetControl(GetSetting("network.sep1")->GetID()))->SetVisible(visible);
+      //((CGUIControl *)GetControl(GetSetting("network.connected")->GetID()))->SetVisible(visible);
+    }
     else if (strSetting.Equals("subtitles.font") || strSetting.Equals("karaoke.font") )
     {
       AddSetting(pSetting, group->GetWidth(), iControlID);
@@ -1226,6 +1232,11 @@ void CGUIWindowSettingsCategory::OnSettingChanged(CBaseSettingControl *pSettingC
   {
     ValidatePortNumber(pSettingControl, "8080", "8080", false);
   }
+  else if (strSetting.Equals("network.connected"))
+  {
+    vector<CStdString> params;
+    g_application.getApplicationMessenger().ActivateWindow(WINDOW_DIALOG_ACCESS_POINTS, params, false);
+  }
   else if (strSetting.Equals("videoplayer.calibrate") || strSetting.Equals("videoscreen.guicalibration"))
   { // activate the video calibration screen
     g_windowManager.ActivateWindow(WINDOW_SCREEN_CALIBRATION);
@@ -1616,6 +1627,28 @@ void CGUIWindowSettingsCategory::OnSettingChanged(CBaseSettingControl *pSettingC
     {
       // We asked for the master password and saved the new one!
       // Nothing todo here
+    }
+  }
+  else if (strSetting.Equals("network.connected"))
+  {
+    CGUIButtonControl *pControl = (CGUIButtonControl *)GetControl(GetSetting(strSetting)->GetID());
+
+    bool visible = g_application.getNetworkManager().CanManageConnections();
+    pControl->SetVisible(visible);
+    ((CGUIControl *)GetControl(GetSetting("network.sep1")->GetID()))->SetVisible(visible);
+
+    pControl->SetLabel(g_application.getNetworkManager().GetDefaultConnectionName());
+    switch (g_application.getNetworkManager().GetDefaultConnectionState())
+    {
+      case NETWORK_CONNECTION_STATE_CONNECTED:
+        pControl->SetLabel2(g_localizeStrings.Get(13296));
+        break;
+      case NETWORK_CONNECTION_STATE_CONNECTING:
+        pControl->SetLabel2(g_localizeStrings.Get(33203));
+        break;
+      default:
+        pControl->SetLabel2(g_localizeStrings.Get(33202));
+        break;
     }
   }
 #ifdef _LINUX

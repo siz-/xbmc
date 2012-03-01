@@ -180,22 +180,10 @@ int CConsoleUPowerSyscall::BatteryLevel()
 void CConsoleUPowerSyscall::EnumeratePowerSources()
 {
   CDBusMessage message("org.freedesktop.UPower", "/org/freedesktop/UPower", "org.freedesktop.UPower", "EnumerateDevices");
-  DBusMessage *reply = message.SendSystem();
-  if (reply)
-  {
-    char** source  = NULL;
-    int    length = 0;
-
-    if (dbus_message_get_args (reply, NULL, DBUS_TYPE_ARRAY, DBUS_TYPE_OBJECT_PATH, &source, &length, DBUS_TYPE_INVALID))
-    {
-      for (int i = 0; i < length; i++)
-      {
-        m_powerSources.push_back(CUPowerSource(source[i]));
-      }
-
-      dbus_free_string_array(source);
-    }
-  }
+  CDBusReplyPtr reply = message.SendSystem();
+  CVariant objectPaths = reply->GetNextArgument();
+  for (size_t i = 0; i < objectPaths.size(); i++)
+    m_powerSources.push_back(CUPowerSource(objectPaths[i].asString().c_str()));
 }
 
 bool CConsoleUPowerSyscall::HasDeviceConsoleKit()

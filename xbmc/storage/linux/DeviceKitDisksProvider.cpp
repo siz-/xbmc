@@ -392,7 +392,7 @@ std::vector<CStdString> CDeviceKitDisksProvider::EnumerateDisks()
   CDBusReplyPtr reply = message.SendSystem();
   CVariant objectPaths = reply->GetNextArgument();
 
-  for (int i = 0; i < objectPaths.size(); i++)
+  for (size_t i = 0; i < objectPaths.size(); i++)
     devices.push_back(objectPaths[i].asString());
 
   return devices;

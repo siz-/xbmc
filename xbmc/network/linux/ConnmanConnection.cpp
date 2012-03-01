@@ -30,7 +30,8 @@ CConnmanConnection::CConnmanConnection(const char *serviceObject)
 {
   m_serviceObject = serviceObject;
 
-  CDBusMessage message("org.moblin.connman", serviceObject, "org.moblin.connman.Service", "GetProperties");
+  // should use CONNMAN_SERVICE here (in connman/dbus.h)
+  CDBusMessage message("net.connman", serviceObject, "net.connman.Service", "GetProperties");
   CDBusReplyPtr reply = message.SendSystem();
   m_properties = reply->GetNextArgument();
 
@@ -45,7 +46,7 @@ CConnmanConnection::CConnmanConnection(const char *serviceObject)
   {
     dbus_connection_set_exit_on_disconnect(m_connection, false);
 
-    dbus_bus_add_match(m_connection, "type='signal',interface='org.moblin.connman.Service'", &m_error);
+    dbus_bus_add_match(m_connection, "type='signal',interface='net.connman.Service'", &m_error);
     dbus_connection_flush(m_connection);
     if (dbus_error_is_set(&m_error))
     {
@@ -79,7 +80,7 @@ bool CConnmanConnection::Connect(IPassphraseStorage *storage, const CIPConfig &i
     if (!storage->GetPassphrase(m_serviceObject, passphrase))
       return false;
 
-    CDBusMessage message("org.moblin.connman", m_serviceObject.c_str(), "org.moblin.connman.Service", "SetProperties");
+    CDBusMessage message("net.connman", m_serviceObject.c_str(), "net.connman.Service", "SetProperties");
     message.AppendArgument("Passphrase");
     message.AppendArgument(passphrase.c_str());
 
@@ -91,7 +92,8 @@ bool CConnmanConnection::Connect(IPassphraseStorage *storage, const CIPConfig &i
     }
   }
 
-  CDBusMessage message("org.moblin.connman", m_serviceObject.c_str(), "org.moblin.connman.Service", "Connect");
+  CLog::Log(LOGDEBUG, "CConnmanConnection::Connect:m_serviceObject(%s)", m_serviceObject.c_str());
+  CDBusMessage message("net.connman", m_serviceObject.c_str(), "net.connman.Service", "Connect");
   return message.SendAsyncSystem();
 }
 
@@ -158,7 +160,7 @@ bool CConnmanConnection::PumpNetworkEvents()
     {
       CDBusReplyPtr reply = CDBusReplyPtr(new CDBusReply(msg));
 
-      if (dbus_message_is_signal(msg, "org.moblin.connman.Service", "PropertyChanged"))
+      if (dbus_message_is_signal(msg, "net.connman.Service", "PropertyChanged"))
       {
         CVariant key = reply->GetNextArgument();
         m_properties[key.asString()] = reply->GetNextArgument();
@@ -194,13 +196,20 @@ ConnectionState CConnmanConnection::ParseConnectionState(const char *stateString
 
 void CConnmanConnection::UpdateConnection()
 {
+  CLog::Log(LOGDEBUG, "CConnmanConnection::UpdateConnection:Name(%s)",  m_properties["Name"].asString().c_str());
+  CLog::Log(LOGDEBUG, "CConnmanConnection::UpdateConnection:State(%s)", m_properties["State"].asString().c_str());
+  CLog::Log(LOGDEBUG, "CConnmanConnection::UpdateConnection:Type(%s)",  m_properties["Type"].asString().c_str());
+  CLog::Log(LOGDEBUG, "CConnmanConnection::UpdateConnection:Security(%s)",  m_properties["Security"].asString().c_str());
+  CLog::Log(LOGDEBUG, "CConnmanConnection::UpdateConnection:LoginRequired(%s)",  m_properties["LoginRequired"].asString().c_str());
+  CLog::Log(LOGDEBUG, "CConnmanConnection::UpdateConnection:PassphraseRequired(%s)",  m_properties["PassphraseRequired"].asString().c_str());
+
   m_name = m_properties["Name"].asString();
 
-  m_state = ParseConnectionState(m_properties["State"].asString());
+  m_state = ParseConnectionState(m_properties["State"].asString().c_str());
 
-  if (strcmp(m_properties["Type"].asString(), "ethernet") == 0)
+  if (strcmp(m_properties["Type"].asString().c_str(), "ethernet") == 0)
     m_type = NETWORK_CONNECTION_TYPE_WIRED;
-  else if (strcmp(m_properties["Type"].asString(), "wifi") == 0)
+  else if (strcmp(m_properties["Type"].asString().c_str(), "wifi") == 0)
     m_type = NETWORK_CONNECTION_TYPE_WIFI;
   else
     m_type = NETWORK_CONNECTION_TYPE_UNKNOWN;
@@ -215,22 +224,28 @@ void CConnmanConnection::UpdateConnection()
     m_strength = m_properties["Strength"].asInteger();
     m_speed = m_properties["Ethernet"]["Speed"].asInteger();
 
-    if (strcmp(m_properties["Security"].asString(), "none") == 0)
-      m_encryption = NETWORK_CONNECTION_ENCRYPTION_NONE;
-    else if (strcmp(m_properties["Security"].asString(), "wep") == 0)
-      m_encryption = NETWORK_CONNECTION_ENCRYPTION_WEP;
-    else if (strcmp(m_properties["Security"].asString(), "wpa") == 0)
-      m_encryption = NETWORK_CONNECTION_ENCRYPTION_WPA;
-    else if (strcmp(m_properties["Security"].asString(), "psk") == 0)
-      m_encryption = NETWORK_CONNECTION_ENCRYPTION_WPA;
-    else if (strcmp(m_properties["Security"].asString(), "rsn") == 0)
-      m_encryption = NETWORK_CONNECTION_ENCRYPTION_WPA;
-    else if (strcmp(m_properties["Security"].asString(), "ieee8021x") == 0)
-      m_encryption = NETWORK_CONNECTION_ENCRYPTION_IEEE8021x;
-    else
+    m_encryption = NETWORK_CONNECTION_ENCRYPTION_NONE;
+    if (strcmp(m_properties["LoginRequired"].asString().c_str(), "true") == 0)
     {
-      CLog::Log(LOGWARNING, "Connman: unkown connection encryption %s", m_properties["Security"].asString());
-      m_encryption = NETWORK_CONNECTION_ENCRYPTION_UNKNOWN;
+      if (m_properties["Security"].asString().empty())
+        m_encryption = NETWORK_CONNECTION_ENCRYPTION_NONE;
+      else if (strcmp(m_properties["Security"].asString().c_str(), "none") == 0)
+        m_encryption = NETWORK_CONNECTION_ENCRYPTION_NONE;
+      if (strcmp(m_properties["Security"].asString().c_str(), "wep") == 0)
+        m_encryption = NETWORK_CONNECTION_ENCRYPTION_WEP;
+      else if (strcmp(m_properties["Security"].asString().c_str(), "wpa") == 0)
+        m_encryption = NETWORK_CONNECTION_ENCRYPTION_WPA;
+      else if (strcmp(m_properties["Security"].asString().c_str(), "psk") == 0)
+        m_encryption = NETWORK_CONNECTION_ENCRYPTION_WPA;
+      else if (strcmp(m_properties["Security"].asString().c_str(), "rsn") == 0)
+        m_encryption = NETWORK_CONNECTION_ENCRYPTION_WPA;
+      else if (strcmp(m_properties["Security"].asString().c_str(), "ieee8021x") == 0)
+        m_encryption = NETWORK_CONNECTION_ENCRYPTION_IEEE8021x;
+      else
+      {
+        CLog::Log(LOGWARNING, "Connman: unknown connection encryption %s", m_properties["Security"].asString().c_str());
+        m_encryption = NETWORK_CONNECTION_ENCRYPTION_UNKNOWN;
+      }
     }
   }
   else

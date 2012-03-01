@@ -25,6 +25,7 @@
 #include "ApplicationMessenger.h"
 #include "dialogs/GUIDialogKaiToast.h"
 #include "guilib/LocalizeStrings.h"
+#include "guilib/GUIWindowManager.h"
 #include "libscrobbler/lastfmscrobbler.h"
 #include "libscrobbler/librefmscrobbler.h"
 #include "linux/ConnmanNetworkManager.h"
@@ -32,8 +33,6 @@
 #include "windows/WinNetworkManager.h"
 #include "utils/log.h"
 #include "utils/RssReader.h"
-
-using namespace std;
 
 CNetworkManager::CNetworkManager()
 {
@@ -75,29 +74,44 @@ void CNetworkManager::PumpNetworkEvents()
   m_instance->PumpNetworkEvents(this);
 }
 
-string CNetworkManager::GetDefaultConnectionName()
+std::string CNetworkManager::GetDefaultConnectionName()
 {
-  return m_defaultConnection->GetName();
+  if (m_defaultConnection)
+    return m_defaultConnection->GetName();
+  else
+    return std::string("opps");
 }
 
-string CNetworkManager::GetDefaultConnectionIP()
+std::string CNetworkManager::GetDefaultConnectionIP()
 {
-  return m_defaultConnection->GetIP();
+  if (m_defaultConnection)
+    return m_defaultConnection->GetIP();
+  else
+    return std::string("opps");
 }
 
 std::string CNetworkManager::GetDefaultConnectionNetmask()
 {
-  return m_defaultConnection->GetNetmask();
+  if (m_defaultConnection)
+    return m_defaultConnection->GetNetmask();
+  else
+    return std::string("opps");
 }
 
 std::string CNetworkManager::GetDefaultConnectionMacAddress()
 {
-  return m_defaultConnection->GetMacAddress();
+  if (m_defaultConnection)
+    return m_defaultConnection->GetMacAddress();
+  else
+    return std::string("opps");
 }
 
 std::string CNetworkManager::GetDefaultConnectionGateway()
 {
-  return m_defaultConnection->GetGateway();
+  if (m_defaultConnection)
+    return m_defaultConnection->GetGateway();
+  else
+    return std::string("opps");
 }
 
 ConnectionState CNetworkManager::GetDefaultConnectionState()
@@ -144,8 +158,11 @@ void CNetworkManager::OnConnectionChange(CConnectionPtr connection)
   if (connection->GetConnectionState() == NETWORK_CONNECTION_STATE_CONNECTED)
     m_defaultConnection = connection;
 
-  CAction action(ACTION_CONNECTIONS_REFRESH );
-  g_application.getApplicationMessenger().SendAction(action, WINDOW_DIALOG_ACCESS_POINTS);
+  if (g_windowManager.GetWindow(WINDOW_DIALOG_ACCESS_POINTS))
+  {
+    CAction action(ACTION_CONNECTIONS_REFRESH );
+    g_application.getApplicationMessenger().SendAction(action, WINDOW_DIALOG_ACCESS_POINTS);
+  }
 }
 
 void CNetworkManager::OnConnectionListChange(ConnectionList list)
@@ -162,8 +179,11 @@ void CNetworkManager::OnConnectionListChange(ConnectionList list)
     }
   }
 
-  CAction action(ACTION_CONNECTIONS_REFRESH );
-  g_application.getApplicationMessenger().SendAction(action, WINDOW_DIALOG_ACCESS_POINTS);
+  if (g_windowManager.GetWindow(WINDOW_DIALOG_ACCESS_POINTS))
+  {
+    CAction action(ACTION_CONNECTIONS_REFRESH );
+    g_application.getApplicationMessenger().SendAction(action, WINDOW_DIALOG_ACCESS_POINTS);
+  }
 }
 
 void CNetworkManager::StartServices()
