@@ -46,7 +46,10 @@ CNetworkManager::~CNetworkManager()
 
 void CNetworkManager::Initialize()
 {
-  // Here should platform specific go
+#ifdef HAS_DBUS
+  if (CConnmanNetworkManager::HasConnman())
+    m_instance = new CConnmanNetworkManager();
+#endif
 
   if (m_instance == NULL)
     m_instance = new CNullNetworkManager();
