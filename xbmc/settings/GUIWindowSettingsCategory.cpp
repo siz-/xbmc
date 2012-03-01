@@ -60,7 +60,6 @@
 #include "addons/AddonManager.h"
 #include "addons/AddonInstaller.h"
 #include "storage/MediaManager.h"
-#include "network/Network.h"
 #include "guilib/GUIControlGroupList.h"
 #include "guilib/GUIWindowManager.h"
 #include "guilib/GUIFontManager.h"
@@ -506,11 +505,6 @@ void CGUIWindowSettingsCategory::CreateSettings()
       FillInRegions(pSetting);
       continue;
     }
-    else if (strSetting.Equals("network.interface"))
-    {
-      FillInNetworkInterfaces(pSetting, group->GetWidth(), iControlID);
-      continue;
-    }
     else if (strSetting.Equals("audiooutput.audiodevice"))
     {
       AddSetting(pSetting, group->GetWidth(), iControlID);
@@ -525,9 +519,6 @@ void CGUIWindowSettingsCategory::CreateSettings()
     }
     AddSetting(pSetting, group->GetWidth(), iControlID);
   }
-
-  if (m_vecSections[m_iSection]->m_strCategory == "network")
-     NetworkInterfaceChanged();
 
   // update our settings (turns controls on/off as appropriate)
   UpdateSettings();
@@ -750,74 +741,12 @@ void CGUIWindowSettingsCategory::UpdateSettings()
       }      
     }  
 #endif//HAS_AIRPLAY
-    else if (strSetting.Equals("network.ipaddress") || strSetting.Equals("network.subnet") || strSetting.Equals("network.gateway") || strSetting.Equals("network.dns"))
-    {
-#ifdef _LINUX
-      bool enabled = (geteuid() == 0);
-#else
-      bool enabled = false;
-#endif
-      CGUISpinControlEx* pControl1 = (CGUISpinControlEx *)GetControl(GetSetting("network.assignment")->GetID());
-      if (pControl1)
-         enabled = (pControl1->GetValue() == NETWORK_STATIC);
-
-       CGUIControl *pControl = (CGUIControl *)GetControl(pSettingControl->GetID());
-       if (pControl) pControl->SetEnabled(enabled);
-    }
-    else if (strSetting.Equals("network.assignment"))
-    {
-      CGUISpinControlEx* pControl1 = (CGUISpinControlEx *)GetControl(GetSetting("network.assignment")->GetID());
-#ifdef HAS_LINUX_NETWORK
-      if (pControl1)
-         pControl1->SetEnabled(geteuid() == 0);
-#endif
-    }
-    else if (strSetting.Equals("network.essid") || strSetting.Equals("network.enc") || strSetting.Equals("network.key"))
-    {
-      // Get network information
-      CGUISpinControlEx *ifaceControl = (CGUISpinControlEx *)GetControl(GetSetting("network.interface")->GetID());
-      CStdString ifaceName = ifaceControl->GetLabel();
-      CNetworkInterface* iface = g_application.getNetwork().GetInterfaceByName(ifaceName);
-      bool bIsWireless = iface->IsWireless();
-
-#ifdef HAS_LINUX_NETWORK
-      bool enabled = bIsWireless && (geteuid() == 0);
-#else
-      bool enabled = bIsWireless;
-#endif
-      CGUISpinControlEx* pControl1 = (CGUISpinControlEx *)GetControl(GetSetting("network.assignment")->GetID());
-      if (pControl1)
-         enabled &= (pControl1->GetValue() != NETWORK_DISABLED);
-
-      if (strSetting.Equals("network.key"))
-      {
-         pControl1 = (CGUISpinControlEx *)GetControl(GetSetting("network.enc")->GetID());
-         if (pControl1) enabled &= (pControl1->GetValue() != ENC_NONE);
-      }
-
-       CGUIControl *pControl = (CGUIControl *)GetControl(pSettingControl->GetID());
-       if (pControl) pControl->SetEnabled(enabled);
-    }
     else if (strSetting.Equals("network.httpproxyserver")   || strSetting.Equals("network.httpproxyport") ||
              strSetting.Equals("network.httpproxyusername") || strSetting.Equals("network.httpproxypassword"))
     {
       CGUIControl *pControl = (CGUIControl *)GetControl(pSettingControl->GetID());
       if (pControl) pControl->SetEnabled(g_guiSettings.GetBool("network.usehttpproxy"));
     }
-#ifdef HAS_LINUX_NETWORK
-    else if (strSetting.Equals("network.key"))
-    {
-      CGUIControl *pControl = (CGUIControl *)GetControl(pSettingControl->GetID());
-      CGUISpinControlEx* pControl1 = (CGUISpinControlEx *)GetControl(GetSetting("network.enc")->GetID());
-      if (pControl && pControl1)
-         pControl->SetEnabled(!pControl1->IsDisabled() && pControl1->GetValue() > 0);
-    }
-    else if (strSetting.Equals("network.save"))
-    {
-      CGUIButtonControl *pControl = (CGUIButtonControl *)GetControl(pSettingControl->GetID());
-      pControl->SetEnabled(geteuid() == 0);
-    }
-#endif
     else if (strSetting.Equals("scrobbler.lastfmusername") || strSetting.Equals("scrobbler.lastfmpass"))
     {
       CGUIButtonControl *pControl = (CGUIButtonControl *)GetControl(pSettingControl->GetID());
@@ -1293,19 +1222,6 @@ void CGUIWindowSettingsCategory::OnSettingChanged(CBaseSettingControl *pSettingC
       g_application.StopAirplayServer(true);//will stop the server before internal    
 #endif//HAS_AIRPLAY      
   }
-  else if (strSetting.Equals("network.ipaddress"))
-  {
-    if (g_guiSettings.GetInt("network.assignment") == NETWORK_STATIC)
-    {
-      CStdString strDefault = g_guiSettings.GetString("network.ipaddress").Left(g_guiSettings.GetString("network.ipaddress").ReverseFind('.'))+".1";
-      if (g_guiSettings.GetString("network.gateway").Equals("0.0.0.0"))
-        g_guiSettings.SetString("network.gateway",strDefault);
-      if (g_guiSettings.GetString("network.dns").Equals("0.0.0.0"))
-        g_guiSettings.SetString("network.dns",strDefault);
-
-    }
-  }
-
   else if (strSetting.Equals("network.httpproxyport"))
   {
     ValidatePortNumber(pSettingControl, "8080", "8080", false);
@@ -1702,85 +1618,6 @@ void CGUIWindowSettingsCategory::OnSettingChanged(CBaseSettingControl *pSettingC
       // Nothing todo here
     }
   }
-  else if (strSetting.Equals("network.interface"))
-  {
-     NetworkInterfaceChanged();
-  }
-#ifdef HAS_LINUX_NETWORK
-  else if (strSetting.Equals("network.save"))
-  {
-     NetworkAssignment iAssignment;
-     CStdString sIPAddress;
-     CStdString sNetworkMask;
-     CStdString sDefaultGateway;
-     CStdString sWirelessNetwork;
-     CStdString sWirelessKey;
-     CStdString sDns;
-     EncMode iWirelessEnc;
-     CStdString ifaceName;
-
-     CGUISpinControlEx *ifaceControl = (CGUISpinControlEx *)GetControl(GetSetting("network.interface")->GetID());
-     ifaceName = ifaceControl->GetLabel();
-     CNetworkInterface* iface = g_application.getNetwork().GetInterfaceByName(ifaceName);
-
-     // Update controls with information
-     CGUISpinControlEx* pControl1 = (CGUISpinControlEx *)GetControl(GetSetting("network.assignment")->GetID());
-     if (pControl1) iAssignment = (NetworkAssignment) pControl1->GetValue();
-     CGUIButtonControl* pControl2 = (CGUIButtonControl *)GetControl(GetSetting("network.ipaddress")->GetID());
-     if (pControl2) sIPAddress = pControl2->GetLabel2();
-     pControl2 = (CGUIButtonControl *)GetControl(GetSetting("network.subnet")->GetID());
-     if (pControl2) sNetworkMask = pControl2->GetLabel2();
-     pControl2 = (CGUIButtonControl *)GetControl(GetSetting("network.gateway")->GetID());
-     if (pControl2) sDefaultGateway = pControl2->GetLabel2();
-     pControl2 = (CGUIButtonControl *)GetControl(GetSetting("network.dns")->GetID());
-     if (pControl2) sDns = pControl2->GetLabel2();
-     pControl1 = (CGUISpinControlEx *)GetControl(GetSetting("network.enc")->GetID());
-     if (pControl1) iWirelessEnc = (EncMode) pControl1->GetValue();
-     pControl2 = (CGUIButtonControl *)GetControl(GetSetting("network.essid")->GetID());
-     if (pControl2) sWirelessNetwork = pControl2->GetLabel2();
-     pControl2 = (CGUIButtonControl *)GetControl(GetSetting("network.key")->GetID());
-     if (pControl2) sWirelessKey = pControl2->GetLabel2();
-
-     CGUIDialogProgress* pDlgProgress = (CGUIDialogProgress*)g_windowManager.GetWindow(WINDOW_DIALOG_PROGRESS);
-     pDlgProgress->SetLine(0, "");
-     pDlgProgress->SetLine(1, g_localizeStrings.Get(784));
-     pDlgProgress->SetLine(2, "");
-     pDlgProgress->StartModal();
-     pDlgProgress->Progress();
-
-     std::vector<CStdString> nameServers;
-     nameServers.push_back(sDns);
-     g_application.getNetwork().SetNameServers(nameServers);
-     iface->SetSettings(iAssignment, sIPAddress, sNetworkMask, sDefaultGateway, sWirelessNetwork, sWirelessKey, iWirelessEnc);
-
-     pDlgProgress->Close();
-
-     if (iAssignment == NETWORK_DISABLED)
-        CGUIDialogOK::ShowAndGetInput(0, 788, 0, 0);
-     else if (iface->IsConnected())
-        CGUIDialogOK::ShowAndGetInput(0, 785, 0, 0);
-     else
-        CGUIDialogOK::ShowAndGetInput(0, 786, 0, 0);
-  }
-  else if (strSetting.Equals("network.essid"))
-  {
-    CGUIDialogAccessPoints *dialog = (CGUIDialogAccessPoints *)g_windowManager.GetWindow(WINDOW_DIALOG_ACCESS_POINTS);
-    if (dialog)
-    {
-       CGUISpinControlEx *pControl = (CGUISpinControlEx *)GetControl(GetSetting("network.interface")->GetID());
-       dialog->SetInterfaceName(pControl->GetLabel());
-       dialog->DoModal();
-
-       if (dialog->WasItemSelected())
-       {
-          CGUIButtonControl* pControl2 = (CGUIButtonControl *)GetControl(GetSetting("network.essid")->GetID());
-          if (pControl2) pControl2->SetLabel2(dialog->GetSelectedAccessPointEssId());
-          pControl = (CGUISpinControlEx *)GetControl(GetSetting("network.enc")->GetID());
-          if (pControl) pControl->SetValue(dialog->GetSelectedAccessPointEncMode());
-       }
-    }
-  }
-#endif
 #ifdef _LINUX
   else if (strSetting.Equals("locale.timezonecountry"))
   {
@@ -2625,28 +2462,6 @@ void CGUIWindowSettingsCategory::FillInSortMethods(CSetting *pSetting, int windo
   delete state;
 }
 
-void CGUIWindowSettingsCategory::FillInNetworkInterfaces(CSetting *pSetting, float groupWidth, int &iControlID)
-{
-  CGUISpinControlEx *pControl = (CGUISpinControlEx *)AddSetting(pSetting, groupWidth, iControlID);
-  pControl->Clear();
-
-  // query list of interfaces
-  vector<CStdString> vecInterfaces;
-  std::vector<CNetworkInterface*>& ifaces = g_application.getNetwork().GetInterfaceList();
-  std::vector<CNetworkInterface*>::const_iterator iter = ifaces.begin();
-  while (iter != ifaces.end())
-  {
-    CNetworkInterface* iface = *iter;
-    vecInterfaces.push_back(iface->GetName());
-    ++iter;
-  }
-  sort(vecInterfaces.begin(), vecInterfaces.end(), sortstringbyname());
-
-  int iInterface = 0;
-  for (unsigned int i = 0; i < vecInterfaces.size(); ++i)
-    pControl->AddLabel(vecInterfaces[i], iInterface++);
-}
-
 void CGUIWindowSettingsCategory::FillInAudioDevices(CSetting* pSetting, bool Passthrough)
 {
 #if defined(__APPLE__)
@@ -2773,64 +2588,6 @@ void CGUIWindowSettingsCategory::FillInAudioDevices(CSetting* pSetting, bool Pas
   else
     pControl->SetValue(selectedValue);
 #endif
-}
-
-void CGUIWindowSettingsCategory::NetworkInterfaceChanged(void)
-{
-  return;
-
-   NetworkAssignment iAssignment;
-   CStdString sIPAddress;
-   CStdString sNetworkMask;
-   CStdString sDefaultGateway;
-   CStdString sWirelessNetwork;
-   CStdString sWirelessKey;
-   EncMode iWirelessEnc;
-   bool bIsWireless;
-   CStdString ifaceName;
-
-   // Get network information
-   CGUISpinControlEx *ifaceControl = (CGUISpinControlEx *)GetControl(GetSetting("network.interface")->GetID());
-   ifaceName = ifaceControl->GetLabel();
-   CNetworkInterface* iface = g_application.getNetwork().GetInterfaceByName(ifaceName);
-   iface->GetSettings(iAssignment, sIPAddress, sNetworkMask, sDefaultGateway, sWirelessNetwork, sWirelessKey, iWirelessEnc);
-   bIsWireless = iface->IsWireless();
-
-   CStdString dns;
-   std::vector<CStdString> dnss = g_application.getNetwork().GetNameServers();
-   if (dnss.size() >= 1)
-      dns = dnss[0];
-
-   // Update controls with information
-   CGUISpinControlEx* pControl1 = (CGUISpinControlEx *)GetControl(GetSetting("network.assignment")->GetID());
-   if (pControl1) pControl1->SetValue(iAssignment);
-   GetSetting("network.dns")->GetSetting()->FromString(dns);
-   if (iAssignment == NETWORK_STATIC || iAssignment == NETWORK_DISABLED)
-   {
-     GetSetting("network.ipaddress")->GetSetting()->FromString(sIPAddress);
-     GetSetting("network.subnet")->GetSetting()->FromString(sNetworkMask);
-     GetSetting("network.gateway")->GetSetting()->FromString(sDefaultGateway);
-   }
-   else
-   {
-     GetSetting("network.ipaddress")->GetSetting()->FromString(iface->GetCurrentIPAddress());
-     GetSetting("network.subnet")->GetSetting()->FromString(iface->GetCurrentNetmask());
-     GetSetting("network.gateway")->GetSetting()->FromString(iface->GetCurrentDefaultGateway());
-   }
-
-   pControl1 = (CGUISpinControlEx *)GetControl(GetSetting("network.enc")->GetID());
-   if (pControl1) pControl1->SetValue(iWirelessEnc);
-
-   if (bIsWireless)
-   {
-      GetSetting("network.essid")->GetSetting()->FromString(sWirelessNetwork);
-      GetSetting("network.key")->GetSetting()->FromString(sWirelessKey);
-   }
-   else
-   {
-      GetSetting("network.essid")->GetSetting()->FromString("");
-      GetSetting("network.key")->GetSetting()->FromString("");
-   }
 }
 
 void CGUIWindowSettingsCategory::ValidatePortNumber(CBaseSettingControl* pSettingControl, const CStdString& userPort, const CStdString& privPort, bool listening/*=true*/)

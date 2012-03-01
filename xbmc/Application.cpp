@@ -126,7 +126,6 @@
 #endif
 #include "guilib/AudioContext.h"
 #include "guilib/GUIFontTTF.h"
-#include "network/Network.h"
 #include "storage/IoSupport.h"
 #include "network/Zeroconf.h"
 #include "network/ZeroconfBrowser.h"
@@ -245,9 +244,7 @@
 #include "pictures/GUIDialogPictureInfo.h"
 #include "addons/GUIDialogAddonSettings.h"
 #include "addons/GUIDialogAddonInfo.h"
-#ifdef HAS_LINUX_NETWORK
 #include "network/GUIDialogAccessPoints.h"
-#endif
 #include "video/dialogs/GUIDialogFullScreenInfo.h"
 #include "video/dialogs/GUIDialogTeletext.h"
 #include "dialogs/GUIDialogSlider.h"
@@ -572,7 +569,7 @@ bool CApplication::Create()
 
   CStdString executable = CUtil::ResolveExecutablePath();
   CLog::Log(LOGNOTICE, "The executable running is: %s", executable.c_str());
-  CLog::Log(LOGNOTICE, "Local hostname: %s", m_network.GetHostName().c_str());
+  CLog::Log(LOGNOTICE, "Local hostname: %s", m_network.GetDefaultConnectionName().c_str());
   CLog::Log(LOGNOTICE, "Log File is located: %sxbmc.log", g_settings.m_logFolder.c_str());
   CLog::Log(LOGNOTICE, "-----------------------------------------------------------------------");
 
@@ -805,6 +802,7 @@ bool CApplication::Create()
   CUtil::InitRandomSeed();
 
   g_mediaManager.Initialize();
+  m_network.Initialize();
 
   m_lastFrameTime = XbmcThreads::SystemClockMillis();
   m_lastRenderTime = m_lastFrameTime;
@@ -1137,9 +1135,7 @@ bool CApplication::Initialize()
   g_windowManager.Add(new CGUIDialogPictureInfo);      // window id = 139
   g_windowManager.Add(new CGUIDialogAddonInfo);
   g_windowManager.Add(new CGUIDialogAddonSettings);      // window id = 140
-#ifdef HAS_LINUX_NETWORK
   g_windowManager.Add(new CGUIDialogAccessPoints);      // window id = 141
-#endif
 
   g_windowManager.Add(new CGUIDialogLockSettings); // window id = 131
 
@@ -1264,7 +1260,7 @@ bool CApplication::Initialize()
 bool CApplication::StartWebServer()
 {
 #ifdef HAS_WEB_SERVER
-  if (g_guiSettings.GetBool("services.webserver") && m_network.IsAvailable())
+  if (g_guiSettings.GetBool("services.webserver"))
   {
     int webPort = atoi(g_guiSettings.GetString("services.webserverport"));
     CLog::Log(LOGNOTICE, "Webserver: Starting...");
@@ -1336,15 +1332,9 @@ void CApplication::StartAirplayServer()
     {
       CAirPlayServer::SetCredentials(usePassword, password);
       std::map<std::string, std::string> txt;
-      CNetworkInterface* iface = g_application.getNetwork().GetFirstConnectedInterface();
-      if (iface)
-      {
-        txt["deviceid"] = iface->GetMacAddress();
-      }
-      else
-      {
+      txt["deviceid"] = m_network.GetDefaultConnectionMacAddress;
+      if (txt["deviceid"].empty())
         txt["deviceid"] = "FF:FF:FF:FF:FF:F2";
-      }
       txt["features"] = "0x77";
       txt["model"] = "AppleTV2,1";
       txt["srcvers"] = AIRPLAY_SERVER_VERSION_STR;
@@ -1598,7 +1588,7 @@ void CApplication::StartServices()
 
 void CApplication::StopServices()
 {
-  m_network.NetworkMessage(CNetwork::SERVICES_DOWN, 0);
+  m_network.StopServices();
 
 #if !defined(_WIN32) && defined(HAS_DVD_DRIVE)
   CLog::Log(LOGNOTICE, "stop dvd detect media");
@@ -4813,6 +4803,8 @@ void CApplication::ProcessSlow()
 {
   g_powerManager.ProcessEvents();
 
+  m_network.PumpNetworkEvents();
+
 #if defined(__APPLE__) &&  !defined(__arm__)
   // There is an issue on OS X that several system services ask the cursor to become visible
   // during their startup routines.  Given that we can't control this, we hack it in by
@@ -5487,23 +5479,11 @@ bool CApplication::IsPresentFrame()
   return ret;
 }
 
-#if defined(HAS_LINUX_NETWORK)
-CNetworkLinux& CApplication::getNetwork()
-{
-  return m_network;
-}
-#elif defined(HAS_WIN32_NETWORK)
-CNetworkWin32& CApplication::getNetwork()
-{
-  return m_network;
-}
-#else
-CNetwork& CApplication::getNetwork()
+CNetworkManager& CApplication::getNetworkManager()
 {
   return m_network;
 }
 
-#endif
 #ifdef HAS_PERFORMANCE_SAMPLE
 CPerformanceStats &CApplication::GetPerformanceStats()
 {

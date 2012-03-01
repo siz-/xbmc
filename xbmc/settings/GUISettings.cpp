@@ -763,42 +763,14 @@ void CGUISettings::Initialize()
 #endif
 
   CSettingsCategory* net = AddCategory(6, "network", 798);
-  if (g_application.IsStandAlone())
-  {
-#ifndef __APPLE__
-    AddString(NULL, "network.interface",775,"", SPIN_CONTROL_TEXT);
-
-    map<int, int> networkAssignments;
-    networkAssignments.insert(make_pair(716, NETWORK_DHCP));
-    networkAssignments.insert(make_pair(717, NETWORK_STATIC));
-    networkAssignments.insert(make_pair(787, NETWORK_DISABLED));
-    AddInt(NULL, "network.assignment", 715, NETWORK_DHCP, networkAssignments, SPIN_CONTROL_TEXT);
-    AddString(NULL, "network.ipaddress", 719, "0.0.0.0", EDIT_CONTROL_IP_INPUT);
-    AddString(NULL, "network.subnet", 720, "255.255.255.0", EDIT_CONTROL_IP_INPUT);
-    AddString(NULL, "network.gateway", 721, "0.0.0.0", EDIT_CONTROL_IP_INPUT);
-    AddString(NULL, "network.dns", 722, "0.0.0.0", EDIT_CONTROL_IP_INPUT);
-    AddString(NULL, "network.dnssuffix", 22002, "", EDIT_CONTROL_INPUT, true);
-    AddString(NULL, "network.essid", 776, "0.0.0.0", BUTTON_CONTROL_STANDARD);
-
-    map<int, int> networkEncapsulations;
-    networkEncapsulations.insert(make_pair(780, ENC_NONE));
-    networkEncapsulations.insert(make_pair(781, ENC_WEP));
-    networkEncapsulations.insert(make_pair(782, ENC_WPA));
-    networkEncapsulations.insert(make_pair(783, ENC_WPA2));
-    AddInt(NULL, "network.enc", 778, ENC_NONE, networkEncapsulations, SPIN_CONTROL_TEXT);
-    AddString(NULL, "network.key", 777, "0.0.0.0", EDIT_CONTROL_INPUT);
-#ifndef _WIN32
-    AddString(NULL, "network.save", 779, "", BUTTON_CONTROL_STANDARD);
-#endif
-    AddSeparator(NULL, "network.sep1");
-#endif
-  }
   AddBool(net, "network.usehttpproxy", 708, false);
   AddString(net, "network.httpproxyserver", 706, "", EDIT_CONTROL_INPUT);
   AddString(net, "network.httpproxyport", 730, "8080", EDIT_CONTROL_NUMBER_INPUT, false, 707);
   AddString(net, "network.httpproxyusername", 1048, "", EDIT_CONTROL_INPUT);
   AddString(net, "network.httpproxypassword", 733, "", EDIT_CONTROL_HIDDEN_INPUT,true,733);
   AddInt(net, "network.bandwidth", 14041, 0, 0, 512, 100*1024, SPIN_CONTROL_INT_PLUS, MASK_KBPS, TEXT_OFF);
+  AddSeparator(net, "network.sep1");
+  AddString(net, "network.connected", 705, "", BUTTON_CONTROL_STANDARD);
 
   // appearance settings
   AddGroup(7, 480);

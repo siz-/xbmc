@@ -52,7 +52,6 @@ public:
   CStdString videoEncoder;
   CStdString cpuFrequency;
   CStdString kernelVersion;
-  CStdString macAddress;
   CStdString batteryLevel;
 };
 
@@ -70,7 +69,6 @@ private:
   double GetCPUFrequency();
   CStdString GetSystemUpTime(bool bTotalUptime);
   CStdString GetCPUFreqInfo();
-  CStdString GetMACAddress();
   CStdString GetVideoEncoder();
   CStdString GetBatteryLevel();
 

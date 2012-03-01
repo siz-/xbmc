@@ -2336,6 +2336,10 @@
   
   <string id="33200">Detected New Connection</string>
 
+  <string id="33200">Available connections</string>
+  <string id="33201">Disconnected</string>
+  <string id="33202">Connecting</string>
+
   <!-- translators: no need to add these to your language files -->
   <string id="34000">Lame</string>
   <string id="34001">Vorbis</string>

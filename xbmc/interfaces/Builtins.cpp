@@ -1182,7 +1182,7 @@ int CBuiltins::Execute(const CStdString& execString)
 
     ADDON::CAddonMgr::Get().StopServices(true);
 
-    g_application.getNetwork().NetworkMessage(CNetwork::SERVICES_DOWN,1);
+    g_application.getNetworkManager().StopServices();
     g_settings.LoadMasterForLogin();
     g_passwordManager.bMasterUser = false;
     g_windowManager.ActivateWindow(WINDOW_LOGIN_SCREEN);
@@ -1456,10 +1456,12 @@ int CBuiltins::Execute(const CStdString& execString)
     if (window)
       window->SetProperty(params[0],"");
   }
+/*
   else if (execute.Equals("wakeonlan"))
   {
     g_application.getNetwork().WakeOnLan((char*)params[0].c_str());
   }
+*/
   else if (execute.Equals("addon.default.opensettings") && params.size() == 1)
   {
     AddonPtr addon;

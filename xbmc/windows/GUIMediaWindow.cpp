@@ -30,7 +30,6 @@
 #include "filesystem/MultiPathDirectory.h"
 #include "GUIPassword.h"
 #include "Application.h"
-#include "network/Network.h"
 #include "utils/RegExp.h"
 #include "PartyModeManager.h"
 #include "dialogs/GUIDialogMediaSource.h"
@@ -1021,7 +1020,7 @@ bool CGUIMediaWindow::HaveDiscOrConnection(const CStdString& strPath, int iDrive
   else if (iDriveType==CMediaSource::SOURCE_TYPE_REMOTE)
   {
     // TODO: Handle not connected to a remote share
-    if ( !g_application.getNetwork().IsConnected() )
+    if ( !g_application.getNetworkManager().IsConnected() )
     {
       CGUIDialogOK::ShowAndGetInput(220, 221, 0, 0);
       return false;
@@ -1485,7 +1484,7 @@ const CFileItemList& CGUIMediaWindow::CurrentDirectory() const
 
 bool CGUIMediaWindow::WaitForNetwork() const
 {
-  if (g_application.getNetwork().IsAvailable())
+  if (g_application.getNetworkManager().IsAvailable())
     return true;
 
   CGUIDialogProgress *progress = (CGUIDialogProgress *)g_windowManager.GetWindow(WINDOW_DIALOG_PROGRESS);
@@ -1497,7 +1496,7 @@ bool CGUIMediaWindow::WaitForNetwork() const
   progress->SetLine(1, url.GetWithoutUserDetails());
   progress->ShowProgressBar(false);
   progress->StartModal();
-  while (!g_application.getNetwork().IsAvailable())
+  while (!g_application.getNetworkManager().IsAvailable())
   {
     progress->Progress();
     if (progress->IsCanceled())

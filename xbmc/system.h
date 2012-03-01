@@ -133,7 +133,6 @@
     #define HAS_SDL_WIN_EVENTS
   #endif
   #define HAS_ZEROCONF
-  #define HAS_LINUX_NETWORK
 #endif
 
 /*****************
@@ -161,7 +160,6 @@
 #define HAS_SDL_AUDIO
 #define HAS_SDL_WIN_EVENTS
 #endif
-#define HAS_LINUX_NETWORK
 #define HAS_LIRC
 #ifdef HAVE_LIBPULSE
 #define HAS_PULSEAUDIO
@@ -192,7 +190,6 @@
 #define HAS_EGL
 #define HAS_GLES 2
 #define HAS_XBMC_MUTEX
-#define HAS_LINUX_NETWORK
 #define HAS_LINUX_EVENTS
 #define HAS_LIRC
 #endif
