@@ -1,5 +1,6 @@
+#pragma once
 /*
- *      Copyright (C) 2005-2011 Team XBMC
+ *      Copyright (C) 2005-2012 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -19,9 +20,7 @@
  *
  */
 
-#ifndef WINDOW_BINDING_EGL_H
-#define WINDOW_BINDING_EGL_H
-
+#include <vector>
 #include "utils/StringUtils.h"
 
 #include <EGL/egl.h>
@@ -29,24 +28,24 @@
 #include <EGL/eglext.h>
 #endif
 
-class CWinBindingEGL
+class CWinEGLPlatformGeneric
 {
 public:
-  CWinBindingEGL();
-  ~CWinBindingEGL();
+  CWinEGLPlatformGeneric();
+  virtual ~CWinEGLPlatformGeneric();
 
-  bool  CreateWindow(EGLNativeDisplayType nativeDisplay, EGLNativeWindowType nativeWindow);
-  bool  DestroyWindow();
-  bool  ReleaseSurface();
-  void  SwapBuffers();
-  bool  SetVSync(bool enable);
-  bool  IsExtSupported(const char* extension);
-
-  EGLNativeWindowType   GetNativeWindow();
-  EGLNativeDisplayType  GetNativeDisplay();
-  EGLDisplay            GetDisplay();
-  EGLSurface            GetSurface();
-  EGLContext            GetContext();
+  virtual EGLNativeWindowType InitWindowSystem(int width, int height, int bpp);
+  virtual void DestroyWindowSystem(EGLNativeWindowType native_window);
+  virtual bool SetDisplayResolution(int width, int height, float refresh, bool interlace);
+  virtual bool ClampToGUIDisplayLimits(int &width, int &height);
+  virtual bool ProbeDisplayResolutions(std::vector<CStdString> &resolutions);
+  virtual bool CreateWindow(EGLNativeDisplayType nativeDisplay, EGLNativeWindowType nativeWindow);
+  virtual bool DestroyWindow();
+  virtual bool ShowWindow(bool show);
+  virtual bool ReleaseSurface();
+  virtual void SwapBuffers();
+  virtual bool SetVSync(bool enable);
+  virtual bool IsExtSupported(const char* extension);
 
 protected:
   EGLNativeWindowType   m_nativeWindow;
@@ -57,6 +56,3 @@ protected:
   EGLContext            m_context;
   CStdString            m_eglext;
 };
-
-#endif // WINDOW_BINDING_EGL_H
-

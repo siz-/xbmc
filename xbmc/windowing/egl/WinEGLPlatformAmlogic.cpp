@@ -27,7 +27,7 @@
 #include <linux/fb.h>
 #include <sys/ioctl.h>
 
-#include "VendorAmlogic.h"
+#include "WinEGLPlatformAmlogic.h"
 extern "C"
 {
 #include <player.h>
@@ -35,15 +35,7 @@ extern "C"
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////
-CVendorAmlogic::CVendorAmlogic()
-{
-}
-
-CVendorAmlogic::~CVendorAmlogic()
-{
-}
-
-void* CVendorAmlogic::InitWindowSystem(int width, int height, int bpp)
+EGLNativeWindowType CWinEGLPlatformAmlogic::InitWindowSystem(int width, int height, int bpp)
 {
   fbdev_window *native_window;
   native_window = (fbdev_window*)calloc(1, sizeof(fbdev_window));
@@ -55,58 +47,30 @@ void* CVendorAmlogic::InitWindowSystem(int width, int height, int bpp)
   native_window->width  = width;
   native_window->height = height;
 
-  return (void*)native_window;
+  return (EGLNativeWindowType)native_window;
 }
 
-void CVendorAmlogic::DestroyWindowSystem(EGLNativeWindowType native_window)
+void CWinEGLPlatformAmlogic::DestroyWindowSystem(EGLNativeWindowType native_window)
 {
   free(native_window);
   DisableFreeScale();
 }
 
-int CVendorAmlogic::GetDisplayResolutionMode()
+bool CWinEGLPlatformAmlogic::SetDisplayResolution(int width, int height, float refresh, bool interlace)
 {
-  int mode = DISP_MODE_720P;
-  CStdString modestr;
-  char display_mode[256] = {0};
-
-  get_sysfs_str("/sys/class/display/mode", display_mode, 255);
-  modestr = display_mode;
-  if (modestr.Equals("480i"))
-    mode = DISP_MODE_480I;  
-  else if (modestr.Equals("480p"))
-    mode = DISP_MODE_480P;  
-  else if (modestr.Equals("576i"))
-    mode = DISP_MODE_576I;  
-  else if (modestr.Equals("576p"))
-    mode = DISP_MODE_576P;  
-  else if (modestr.Equals("720p"))
-    mode = DISP_MODE_720P;  
-  else if (modestr.Equals("1080i"))
-    mode = DISP_MODE_1080I;  
-  else if (modestr.Equals("1080p"))
-    mode = DISP_MODE_1080P;  
-
-  return mode;
-}
-
-bool CVendorAmlogic::SetDisplayResolution(const char *resolution)
-{
-  CStdString modestr;
-  modestr = resolution;
-
-  // switch display resolution
-  set_sysfs_str("/sys/class/display/mode", modestr.c_str());
-
-  // setup gui freescale depending on display resolution
-  DisableFreeScale();
-  if (modestr.Equals("1080i") || modestr.Equals("1080p"))
-    EnableFreeScale();
+  if (width == 1920 && height == 1080 && !interlace)
+    SetDisplayResolution("1080p");
+  else if (width == 1920 && height == 1080)
+    SetDisplayResolution("1080i");
+  else if (width == 1280 && height == 720)
+    SetDisplayResolution("720p");
+  else if (width == 720  && height == 480)
+    SetDisplayResolution("480p");
 
   return true;
 }
 
-bool CVendorAmlogic::ClampToGUIDisplayLimits(int &width, int &height)
+bool CWinEGLPlatformAmlogic::ClampToGUIDisplayLimits(int &width, int &height)
 {
   bool rtn = false;
   if (width == 1920 && height == 1080)
@@ -120,7 +84,7 @@ bool CVendorAmlogic::ClampToGUIDisplayLimits(int &width, int &height)
   return rtn;
 }
 
-bool CVendorAmlogic::ProbeDisplayResolutions(std::vector<CStdString> &resolutions)
+bool CWinEGLPlatformAmlogic::ProbeDisplayResolutions(std::vector<CStdString> &resolutions)
 {
   int fd = open("/sys/class/amhdmitx/amhdmitx0/disp_cap", O_RDONLY);
   if (fd >= 0)
@@ -157,7 +121,7 @@ bool CVendorAmlogic::ProbeDisplayResolutions(std::vector<CStdString> &resolution
   return false;
 }
 
-bool CVendorAmlogic::ShowWindow(bool show)
+bool CWinEGLPlatformAmlogic::ShowWindow(bool show)
 {
   if (show)
     set_sysfs_int("/sys/class/graphics/fb0/blank", 0);
@@ -166,7 +130,49 @@ bool CVendorAmlogic::ShowWindow(bool show)
   return true;
 }
 
-void CVendorAmlogic::EnableFreeScale()
+int CWinEGLPlatformAmlogic::GetDisplayResolutionMode()
+{
+  int mode = DISP_MODE_720P;
+  CStdString modestr;
+  char display_mode[256] = {0};
+
+  get_sysfs_str("/sys/class/display/mode", display_mode, 255);
+  modestr = display_mode;
+  if (modestr.Equals("480i"))
+    mode = DISP_MODE_480I;  
+  else if (modestr.Equals("480p"))
+    mode = DISP_MODE_480P;  
+  else if (modestr.Equals("576i"))
+    mode = DISP_MODE_576I;  
+  else if (modestr.Equals("576p"))
+    mode = DISP_MODE_576P;  
+  else if (modestr.Equals("720p"))
+    mode = DISP_MODE_720P;  
+  else if (modestr.Equals("1080i"))
+    mode = DISP_MODE_1080I;  
+  else if (modestr.Equals("1080p"))
+    mode = DISP_MODE_1080P;  
+
+  return mode;
+}
+
+bool CWinEGLPlatformAmlogic::SetDisplayResolution(const char *resolution)
+{
+  CStdString modestr;
+  modestr = resolution;
+
+  // switch display resolution
+  set_sysfs_str("/sys/class/display/mode", modestr.c_str());
+
+  // setup gui freescale depending on display resolution
+  DisableFreeScale();
+  if (modestr.Equals("1080i") || modestr.Equals("1080p"))
+    EnableFreeScale();
+
+  return true;
+}
+
+void CWinEGLPlatformAmlogic::EnableFreeScale()
 {
   // remove default OSD and video path (default_osd default)
   set_sysfs_str("/sys/class/vfm/map", "rm all");
@@ -209,7 +215,7 @@ void CVendorAmlogic::EnableFreeScale()
   set_sysfs_str("/sys/class/ppmgr/ppscaler_rect", "0 0 1279 719 1");
 }
 
-void CVendorAmlogic::DisableFreeScale()
+void CWinEGLPlatformAmlogic::DisableFreeScale()
 {
   // turn off frame buffer freescale
   set_sysfs_int("/sys/class/graphics/fb0/free_scale", 0);

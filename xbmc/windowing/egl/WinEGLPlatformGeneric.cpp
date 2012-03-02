@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2012 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -23,47 +23,55 @@
 
 #ifdef HAS_EGL
 
-#include "WinBindingEGL.h"
+#include "WinEGLPlatformGeneric.h"
 #include "utils/log.h"
 
 #include <string>
 
-CWinBindingEGL::CWinBindingEGL()
+CWinEGLPlatformGeneric::CWinEGLPlatformGeneric()
 {
   m_surface = EGL_NO_SURFACE;
   m_context = EGL_NO_CONTEXT;
   m_display = EGL_NO_DISPLAY;
 }
 
-CWinBindingEGL::~CWinBindingEGL()
+CWinEGLPlatformGeneric::~CWinEGLPlatformGeneric()
 {
   DestroyWindow();
 }
 
-bool CWinBindingEGL::ReleaseSurface()
+EGLNativeWindowType CWinEGLPlatformGeneric::InitWindowSystem(int width, int height, int bpp)
 {
-  EGLBoolean eglStatus;
+  // most egl platforms can handle EGLNativeWindowType == 0
+  return 0;
+}
 
-  if (m_surface == EGL_NO_SURFACE)
-  {
-    return true;
-  }
+void CWinEGLPlatformGeneric::DestroyWindowSystem(EGLNativeWindowType native_window)
+{
+}
 
-  eglMakeCurrent(m_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+bool CWinEGLPlatformGeneric::SetDisplayResolution(int width, int height, float refresh, bool interlace)
+{
+  return false;
+}
 
-  eglStatus = eglDestroySurface(m_display, m_surface);
-  if (!eglStatus)
-  {
-    CLog::Log(LOGERROR, "Error destroying EGL surface");
-    return false;
-  }
-
-  m_surface = EGL_NO_SURFACE;
-
+bool CWinEGLPlatformGeneric::ClampToGUIDisplayLimits(int &width, int &height)
+{
+  // most egl platforms cannot render 1080p
+  // default to 720p
+  width  = 1280;
+  height = 720;
   return true;
 }
 
-bool CWinBindingEGL::CreateWindow(EGLNativeDisplayType nativeDisplay, EGLNativeWindowType nativeWindow)
+bool CWinEGLPlatformGeneric::ProbeDisplayResolutions(std::vector<CStdString> &resolutions)
+{
+  resolutions.clear();
+  resolutions.push_back("1280x720p60Hz");
+  return true;
+}
+
+bool CWinEGLPlatformGeneric::CreateWindow(EGLNativeDisplayType nativeDisplay, EGLNativeWindowType nativeWindow)
 {
   EGLBoolean eglStatus;
   EGLint     configCount;
@@ -86,16 +94,16 @@ bool CWinBindingEGL::CreateWindow(EGLNativeDisplayType nativeDisplay, EGLNativeW
   } 
   
   EGLint configAttrs[] = {
-        EGL_RED_SIZE,        8,
-        EGL_GREEN_SIZE,      8,
-        EGL_BLUE_SIZE,       8,
-        EGL_DEPTH_SIZE,     16,
-        EGL_STENCIL_SIZE,    0,
-        EGL_SAMPLE_BUFFERS,  0,
-        EGL_SAMPLES,         0,
-        EGL_SURFACE_TYPE,    EGL_WINDOW_BIT,
-        EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
-        EGL_NONE
+    EGL_RED_SIZE,        8,
+    EGL_GREEN_SIZE,      8,
+    EGL_BLUE_SIZE,       8,
+    EGL_DEPTH_SIZE,     16,
+    EGL_STENCIL_SIZE,    0,
+    EGL_SAMPLE_BUFFERS,  0,
+    EGL_SAMPLES,         0,
+    EGL_SURFACE_TYPE,    EGL_WINDOW_BIT,
+    EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+    EGL_NONE
   };
 
   // Find out how many configurations suit our needs  
@@ -201,7 +209,7 @@ bool CWinBindingEGL::CreateWindow(EGLNativeDisplayType nativeDisplay, EGLNativeW
   return true;
 }
 
-bool CWinBindingEGL::DestroyWindow()
+bool CWinEGLPlatformGeneric::DestroyWindow()
 {
   EGLBoolean eglStatus;
 
@@ -248,19 +256,47 @@ bool CWinBindingEGL::DestroyWindow()
   return true;
 }
 
-void CWinBindingEGL::SwapBuffers()
+bool CWinEGLPlatformGeneric::ShowWindow(bool show)
+{
+  return true;
+}
+
+bool CWinEGLPlatformGeneric::ReleaseSurface()
+{
+  EGLBoolean eglStatus;
+
+  if (m_surface == EGL_NO_SURFACE)
+  {
+    return true;
+  }
+
+  eglMakeCurrent(m_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+
+  eglStatus = eglDestroySurface(m_display, m_surface);
+  if (!eglStatus)
+  {
+    CLog::Log(LOGERROR, "Error destroying EGL surface");
+    return false;
+  }
+
+  m_surface = EGL_NO_SURFACE;
+
+  return true;
+}
+
+void CWinEGLPlatformGeneric::SwapBuffers()
 {
   eglSwapBuffers(m_display, m_surface);
 }
 
-bool CWinBindingEGL::SetVSync(bool enable)
+bool CWinEGLPlatformGeneric::SetVSync(bool enable)
 {
   // depending how buffers are setup, eglSwapInterval
   // might fail so let caller decide if this is an error.
   return eglSwapInterval(m_display, enable ? 1 : 0);
 }
 
-bool CWinBindingEGL::IsExtSupported(const char* extension)
+bool CWinEGLPlatformGeneric::IsExtSupported(const char* extension)
 {
   CStdString name;
 
@@ -270,30 +306,4 @@ bool CWinBindingEGL::IsExtSupported(const char* extension)
 
   return m_eglext.find(name) != std::string::npos;
 }
-
-EGLNativeWindowType CWinBindingEGL::GetNativeWindow()
-{
-  return m_nativeWindow;
-}
-
-EGLNativeDisplayType CWinBindingEGL::GetNativeDisplay()
-{
-  return m_nativeDisplay;
-}
-
-EGLDisplay CWinBindingEGL::GetDisplay()
-{
-  return m_display;
-}
-
-EGLSurface CWinBindingEGL::GetSurface()
-{
-  return m_surface;
-}
-
-EGLContext CWinBindingEGL::GetContext()
-{
-  return m_context;
-}
-
 #endif

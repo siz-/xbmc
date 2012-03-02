@@ -1,7 +1,8 @@
-INCLUDES=-I. -I../.. -I../../linux
+INCLUDES=-I.
 
-SRCS=WinBindingEGL.cpp \
-     WinSystemGLES.cpp \
+SRCS = WinSystemGLES.cpp
+SRCS+= WinEGLPlatformGeneric.cpp
+SRCS+= WinEGLPlatformAmlogic.cpp
      
 LIB=windowing_egl.a
 

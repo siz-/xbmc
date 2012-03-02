@@ -92,7 +92,6 @@ endif
 ifeq (@USE_OPENGLES@,1)
 DIRECTORY_ARCHIVES += xbmc/rendering/gles/rendering_gles.a
 DIRECTORY_ARCHIVES += xbmc/windowing/egl/windowing_egl.a
-DIRECTORY_ARCHIVES += xbmc/windowing/vendor/windowing_vendor.a
 endif
 
 ifeq ($(findstring osx,@ARCH@),osx)

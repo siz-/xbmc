@@ -1,3 +1,4 @@
+#pragma once
 /*
  *      Copyright (C) 2012 Team XBMC
  *      http://www.xbmc.org
@@ -19,31 +20,25 @@
  *
  */
 
-#if defined(TARGET_AMLOGIC)
-#ifndef WINDOW_VENDOR_AMLOGIC_H
-#define WINDOW_VENDOR_AMLOGIC_H
+#ifdef HAS_EGL
 
-#include <vector>
-#include <EGL/egl.h>
-#include "utils/StringUtils.h"
+#include "system.h"
 
-class CVendorAmlogic
-{
-public:
-  CVendorAmlogic();
-  ~CVendorAmlogic();
+#if   defined(TARGET_ANDROID)
+  #include "xbmc/windowing/egl/CWinEGLPlatformAndroid.h"
+  class CWinEGLPlatformAndroid;
+  #define CWinEGLPlatform CWinEGLPlatformAndroid
 
-  void* InitWindowSystem(int width, int height, int bpp);
-  void DestroyWindowSystem(EGLNativeWindowType native_window);
-  int  GetDisplayResolutionMode();
-  bool SetDisplayResolution(const char* resolution);
-  bool ClampToGUIDisplayLimits(int &width, int &height);
-  bool ProbeDisplayResolutions(std::vector<CStdString> &resolutions);
-  bool ShowWindow(bool show);
-  void EnableFreeScale();
-  void DisableFreeScale();
+#elif defined(TARGET_AMLOGIC)
+  #include "xbmc/windowing/egl/WinEGLPlatformAmlogic.h"
+  class CWinEGLPlatformAmlogic;
+  #define CWinEGLPlatform CWinEGLPlatformAmlogic
 
-};
+#else
+  #include "xbmc/windowing/egl/WinEGLPlatformGeneric.h"
+  class CWinEGLPlatformGeneric;
+  #define CWinEGLPlatform CWinEGLPlatformGeneric
 
 #endif
+
 #endif

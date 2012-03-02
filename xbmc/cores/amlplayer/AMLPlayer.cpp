@@ -36,7 +36,7 @@
 #include "settings/Settings.h"
 #include "threads/SingleLock.h"
 #include "windowing/WindowingFactory.h"
-#include "windowing/vendor/VendorAmlogic.h"
+#include "windowing/egl/WinEGLPlatform.h"
 #include "utils/log.h"
 #include "utils/TimeUtils.h"
 #include "utils/URIUtils.h"
@@ -1442,8 +1442,8 @@ void CAMLPlayer::Process()
   ClearStreamInfos();
 
   // grrr, something is hiding fb0 on exit.
-  CVendorAmlogic amlogic;
-  amlogic.ShowWindow(true);
+  CWinEGLPlatformAmlogic amlplatform;
+  amlplatform.ShowWindow(true);
 
 
   printf("CAMLPlayer::Process exit\n");

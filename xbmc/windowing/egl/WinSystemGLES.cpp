@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2011 Team XBMC
+ *      Copyright (C) 2011-2012 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -27,27 +27,24 @@
 #include "settings/Settings.h"
 #include "guilib/Texture.h"
 #include "utils/log.h"
-#include "windowing/vendor/VendorAmlogic.h"
-#include "WinBindingEGL.h"
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 CWinSystemGLES::CWinSystemGLES() : CWinSystemBase()
 {
   m_window = NULL;
-  m_eglBinding = new CWinBindingEGL();
+  m_eglplatform = new CWinEGLPlatform();
   m_eWindowSystem = WINDOW_SYSTEM_EGL;
 }
 
 CWinSystemGLES::~CWinSystemGLES()
 {
   DestroyWindowSystem();
-  delete m_eglBinding;
+  delete m_eglplatform;
 }
 
 bool CWinSystemGLES::InitWindowSystem()
 {
-  CVendorAmlogic platform;
-  m_window  = (fbdev_window*)platform.InitWindowSystem(1920, 1080, 8);
+  m_window = m_eglplatform->InitWindowSystem(1920, 1080, 8);
   m_display = EGL_DEFAULT_DISPLAY;
 
   if (!CWinSystemBase::InitWindowSystem())
@@ -59,11 +56,8 @@ bool CWinSystemGLES::InitWindowSystem()
 bool CWinSystemGLES::DestroyWindowSystem()
 {
   if (m_window)
-  {
-    CVendorAmlogic platform;
-    platform.DestroyWindowSystem(m_window);
-    m_window = NULL;
-  }
+    m_eglplatform->DestroyWindowSystem(m_window);
+  m_window = NULL;
 
   return true;
 }
@@ -74,17 +68,10 @@ bool CWinSystemGLES::CreateNewWindow(const CStdString& name, bool fullScreen, RE
   m_nHeight = res.iHeight;
   m_bFullScreen = fullScreen;
 
-  CVendorAmlogic platform;
-  if (res.iScreenWidth == 1920 && res.iScreenHeight == 1080 && (res.dwFlags & D3DPRESENTFLAG_PROGRESSIVE))
-    platform.SetDisplayResolution("1080p");
-  else if (res.iScreenWidth == 1920 && res.iScreenHeight == 1080)
-    platform.SetDisplayResolution("1080i");
-  else if (res.iScreenWidth == 1280 && res.iScreenHeight == 720)
-    platform.SetDisplayResolution("720p");
-  else if (res.iScreenWidth == 720  && res.iScreenHeight == 480)
-    platform.SetDisplayResolution("480p");
+  m_eglplatform->SetDisplayResolution(res.iScreenWidth, res.iScreenHeight,
+    res.fRefreshRate, res.dwFlags & D3DPRESENTFLAG_INTERLACED);
 
-  if (!m_eglBinding->CreateWindow((EGLNativeDisplayType)m_display, (EGLNativeWindowType)m_window))
+  if (!m_eglplatform->CreateWindow((EGLNativeDisplayType)m_display, (EGLNativeWindowType)m_window))
     return false;
 
   CLog::Log(LOGDEBUG, "CWinSystemGLES::CreateNewWindow: %dx%d with %d bits per pixel.",
@@ -100,7 +87,7 @@ bool CWinSystemGLES::DestroyWindow()
 {
   Hide();
 
-  m_eglBinding->ReleaseSurface();
+  m_eglplatform->ReleaseSurface();
   m_bWindowCreated = false;
 
   return true;
@@ -119,7 +106,7 @@ bool CWinSystemGLES::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool b
   m_nHeight = res.iHeight;
   m_bFullScreen = fullScreen;
 
-  m_eglBinding->ReleaseSurface();
+  m_eglplatform->ReleaseSurface();
   CreateNewWindow("", fullScreen, res, NULL);
 
   CRenderSystemGLES::ResetRenderSystem(res.iWidth, res.iHeight, true, 0);
@@ -132,8 +119,7 @@ void CWinSystemGLES::UpdateResolutions()
 {
   std::vector<CStdString> resolutions;
 
-  CVendorAmlogic platform;
-  platform.ProbeDisplayResolutions(resolutions);
+  m_eglplatform->ProbeDisplayResolutions(resolutions);
 
   bool got_display_rez = false;
   RESOLUTION Res720p60 = RES_INVALID;
@@ -141,8 +127,6 @@ void CWinSystemGLES::UpdateResolutions()
 
   for (size_t i = 0; i < resolutions.size(); i++)
   {
-    // we expect this type of output from popen
-    // printf("CWinSystemGLES::UpdateResolutions = %s", line);
     //   1280x720p50Hz
     //   1280x720p60Hz
     //   1920x1080i50Hz
@@ -170,7 +154,7 @@ void CWinSystemGLES::UpdateResolutions()
       int gui_width  = width;
       int gui_height = height;
       float gui_refresh = refresh;
-      platform.ClampToGUIDisplayLimits(gui_width, gui_height);
+      m_eglplatform->ClampToGUIDisplayLimits(gui_width, gui_height);
 
       g_settings.m_ResInfo[res_index].iScreen       = 0;
       g_settings.m_ResInfo[res_index].bFullScreen   = true;
@@ -213,20 +197,19 @@ bool CWinSystemGLES::IsExtSupported(const char* extension)
   if(strncmp(extension, "EGL_", 4) != 0)
     return CRenderSystemGLES::IsExtSupported(extension);
 
-  return m_eglBinding->IsExtSupported(extension);
+  return m_eglplatform->IsExtSupported(extension);
 }
 
 bool CWinSystemGLES::PresentRenderImpl(const CDirtyRegionList &dirty)
 {
-  m_eglBinding->SwapBuffers();
-
+  m_eglplatform->SwapBuffers();
   return true;
 }
 
 void CWinSystemGLES::SetVSyncImpl(bool enable)
 {
   m_iVSyncMode = enable ? 10 : 0;
-  if (m_eglBinding->SetVSync(enable) == FALSE)
+  if (m_eglplatform->SetVSync(enable) == FALSE)
     CLog::Log(LOGERROR, "CWinSystemDFB::SetVSyncImpl: Could not set egl vsync");
 }
 
@@ -252,14 +235,12 @@ bool CWinSystemGLES::Restore()
 
 bool CWinSystemGLES::Hide()
 {
-  CVendorAmlogic platform;
-  return platform.ShowWindow(false);
+  return m_eglplatform->ShowWindow(false);
 }
 
 bool CWinSystemGLES::Show(bool raise)
 {
-  CVendorAmlogic platform;
-  return platform.ShowWindow(true);
+  return m_eglplatform->ShowWindow(true);
 }
 
 #endif

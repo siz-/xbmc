@@ -1,10 +1,7 @@
-#ifndef WINDOW_SYSTEM_EGLGLES_H
-#define WINDOW_SYSTEM_EGLGLES_H
-
 #pragma once
 
 /*
- *      Copyright (C) 2011 Team XBMC
+ *      Copyright (C) 2011-2012 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -25,12 +22,9 @@
  */
 
 #include "rendering/gles/RenderSystemGLES.h"
-#include "utils/GlobalsHandling.h"
 #include "windowing/WinSystem.h"
-
-class CWinBindingEGL;
-
-typedef struct fbdev_window fbdev_window;
+#include "windowing/egl/WinEGLPlatform.h"
+#include "utils/GlobalsHandling.h"
 
 class CWinSystemGLES : public CWinSystemBase, public CRenderSystemGLES
 {
@@ -59,12 +53,10 @@ public:
 protected:
   virtual bool  PresentRenderImpl(const CDirtyRegionList &dirty);
   virtual void  SetVSyncImpl(bool enable);
-  void                  *m_display;
-  fbdev_window          *m_window;
-  CWinBindingEGL        *m_eglBinding;
+  void                *m_display;
+  EGLNativeWindowType m_window;
+  CWinEGLPlatform     *m_eglplatform;
 };
 
 XBMC_GLOBAL_REF(CWinSystemGLES,g_Windowing);
 #define g_Windowing XBMC_GLOBAL_USE(CWinSystemGLES)
-
-#endif // WINDOW_SYSTEM_EGLGLES_H

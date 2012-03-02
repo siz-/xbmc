@@ -190,7 +190,6 @@
 
   #define HAS_EGL
   #define HAS_GLES 2
-  #define HAS_XBMC_MUTEX
   #define HAS_LINUX_EVENTS
   #define HAS_LIRC
 #endif
