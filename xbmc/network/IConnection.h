@@ -52,9 +52,9 @@ enum EncryptionType
 
 enum IPConfigMethod
 {
-  IP_CONFIG_DISABLED,
+  IP_CONFIG_DHCP,
   IP_CONFIG_STATIC,
-  IP_CONFIG_DHCP
+  IP_CONFIG_DISABLED
 };
 
 class CIPConfig
@@ -122,7 +122,7 @@ public:
    \return The state the connection is currently in.
    \sa ConnectionState
    */
-  virtual ConnectionState GetConnectionState() const = 0;
+  virtual ConnectionState GetState() const = 0;
 
   /*!
    \brief Get the name of the connection
@@ -194,7 +194,15 @@ public:
    \return The connection type
    \sa ConnectionType
    */
-  virtual ConnectionType GetConnectionType() const = 0;
+  virtual ConnectionType GetType() const = 0;
+
+  /*!
+   \brief Get the connection type
+
+   \return The connection method
+   \sa IPConfigMethod
+   */
+  virtual IPConfigMethod GetMethod() const = 0;
 };
 
 typedef boost::shared_ptr<IConnection> CConnectionPtr;

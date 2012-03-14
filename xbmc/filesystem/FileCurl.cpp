@@ -653,14 +653,14 @@ void CFileCurl::ParseAndCorrectUrl(CURL &url2)
   else if( strProtocol.Equals("http")
        ||  strProtocol.Equals("https"))
   {
-    if (g_guiSettings.GetBool("network.usehttpproxy") && m_proxy.IsEmpty())
+    if (g_guiSettings.GetBool("httpproxy.usehttpproxy") && m_proxy.IsEmpty())
     {
-      m_proxy = "http://" + g_guiSettings.GetString("network.httpproxyserver");
-      m_proxy += ":" + g_guiSettings.GetString("network.httpproxyport");
-      if (g_guiSettings.GetString("network.httpproxyusername").length() > 0 && m_proxyuserpass.IsEmpty())
+      m_proxy = "http://" + g_guiSettings.GetString("httpproxy.httpproxyserver");
+      m_proxy += ":" + g_guiSettings.GetString("httpproxy.httpproxyport");
+      if (g_guiSettings.GetString("httpproxy.httpproxyusername").length() > 0 && m_proxyuserpass.IsEmpty())
       {
-        m_proxyuserpass = g_guiSettings.GetString("network.httpproxyusername");
-        m_proxyuserpass += ":" + g_guiSettings.GetString("network.httpproxypassword");
+        m_proxyuserpass = g_guiSettings.GetString("httpproxy.httpproxyusername");
+        m_proxyuserpass += ":" + g_guiSettings.GetString("httpproxy.httpproxypassword");
       }
       CLog::Log(LOGDEBUG, "Using proxy %s", m_proxy.c_str());
     }

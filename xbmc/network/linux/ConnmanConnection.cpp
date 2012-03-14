@@ -97,7 +97,7 @@ bool CConnmanConnection::Connect(IPassphraseStorage *storage, CIPConfig &ipconfi
   return message.SendAsyncSystem();
 }
 
-ConnectionState CConnmanConnection::GetConnectionState() const
+ConnectionState CConnmanConnection::GetState() const
 {
   return m_state;
 }
@@ -142,9 +142,19 @@ unsigned int CConnmanConnection::GetConnectionSpeed() const
   return m_speed;
 }
 
-ConnectionType CConnmanConnection::GetConnectionType() const
+ConnectionType CConnmanConnection::GetType() const
 {
   return m_type;
+}
+
+IPConfigMethod CConnmanConnection::GetMethod() const
+{
+  if (m_method.find("dhcp") != std::string::npos)
+    return IP_CONFIG_DHCP;
+  else if (m_method.find("manual") != std::string::npos)
+    return IP_CONFIG_STATIC;
+  else
+    return IP_CONFIG_DISABLED;
 }
 
 bool CConnmanConnection::PumpNetworkEvents()
@@ -211,6 +221,7 @@ void CConnmanConnection::UpdateConnection()
   m_netmask = m_properties["IPv4"]["Netmask"].asString();
   m_macaddress = m_properties["Ethernet"]["Address"].asString();
   m_gateway = m_properties["IPv4"]["Gateway"].asString();
+  m_method  = m_properties["IPv4"]["Method"].asString();
 
   if (m_type == NETWORK_CONNECTION_TYPE_WIFI)
   {

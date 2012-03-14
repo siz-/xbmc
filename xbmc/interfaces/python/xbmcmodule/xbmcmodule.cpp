@@ -398,7 +398,7 @@ namespace PYXBMC
 
   PyObject* XBMC_GetIPAddress(PyObject *self, PyObject *args)
   {
-    return PyString_FromString(g_application.getNetworkManager().GetDefaultConnectionIP().c_str());
+    return PyString_FromString(g_application.getNetworkManager().GetDefaultConnectionAddress().c_str());
   }
 
   // getDVDState() method

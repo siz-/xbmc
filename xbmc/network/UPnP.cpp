@@ -1756,7 +1756,7 @@ CUPnPRenderer::GetMetadata(NPT_String& meta)
         CStdString thumb = g_infoManager.GetImage(MUSICPLAYER_COVER, -1); //TODO: Only audio for now
 
         NPT_String ip;
-        ip = g_application.getNetworkManager().GetDefaultConnectionIP().c_str();
+        ip = g_application.getNetworkManager().GetDefaultConnectionAddress().c_str();
         // build url, use the internal device http server to serv the image
         NPT_HttpUrlQuery query;
         query.AddField("path", thumb.c_str());
@@ -2093,7 +2093,7 @@ CUPnP::CUPnP() :
     m_UPnP = new PLT_UPnP(1900, !broadcast);
 
     // keep main IP around
-    m_IP = g_application.getNetworkManager().GetDefaultConnectionIP().c_str();
+    m_IP = g_application.getNetworkManager().GetDefaultConnectionAddress().c_str();
     NPT_List<NPT_IpAddress> list;
     if (NPT_SUCCEEDED(PLT_UPnPMessageHelper::GetIPAddresses(list))) {
         m_IP = (*(list.GetFirstItem())).ToString();

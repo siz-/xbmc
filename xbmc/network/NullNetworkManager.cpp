@@ -26,7 +26,7 @@ bool CNullConnection::Connect(IPassphraseStorage *storage, CIPConfig &ipconfig)
   return false;
 }
 
-ConnectionState CNullConnection::GetConnectionState() const
+ConnectionState CNullConnection::GetState() const
 {
   return NETWORK_CONNECTION_STATE_CONNECTED;
 }

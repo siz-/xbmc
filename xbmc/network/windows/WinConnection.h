@@ -33,7 +33,7 @@ public:
 
   virtual bool Connect(IPassphraseStorage *storage, CIPConfig &ipconfig);
   virtual bool Disconnect() { return true; };
-  virtual ConnectionState GetConnectionState() const;
+  virtual ConnectionState GetState() const;
 
   virtual std::string GetName() const;
 
@@ -46,7 +46,8 @@ public:
   virtual EncryptionType GetEncryption() const;
   virtual unsigned int GetConnectionSpeed() const;
 
-  virtual ConnectionType GetConnectionType() const;
+  virtual ConnectionType GetType() const;
+  virtual IPConfigMethod GetMethod() const;
 private:
   IP_ADAPTER_INFO m_adapter;
 };

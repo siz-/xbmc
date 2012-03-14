@@ -28,7 +28,7 @@ public:
   virtual ~CNullConnection() { }
 
   virtual bool Connect(IPassphraseStorage *storage, CIPConfig &ipconfig) { return false; }
-  virtual ConnectionState GetConnectionState() const  { return NETWORK_CONNECTION_STATE_CONNECTED; }
+  virtual ConnectionState GetState() const            { return NETWORK_CONNECTION_STATE_CONNECTED; }
 
   virtual std::string GetName() const                 { return "Unkown connection"; }
 
@@ -41,7 +41,8 @@ public:
 
   virtual EncryptionType GetEncryption() const        { return NETWORK_CONNECTION_ENCRYPTION_NONE; }
   virtual unsigned int GetConnectionSpeed() const     { return 100; }
-  virtual ConnectionType GetConnectionType() const    { return NETWORK_CONNECTION_TYPE_WIRED; }
+  virtual ConnectionType GetType() const              { return NETWORK_CONNECTION_TYPE_UNKNOWN; }
+  virtual IPConfigMethod GetMethod() const            { return IP_CONFIG_DISABLED; }
 };
 
 class CNullNetworkManager : public INetworkManager

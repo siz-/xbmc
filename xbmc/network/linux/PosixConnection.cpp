@@ -131,7 +131,10 @@ CPosixConnection::CPosixConnection(int socket, const char *interfaceName)
 {
   m_socket = socket;
   m_connectionName = interfaceName;
+  m_method = IP_CONFIG_DISABLED;
 
+  std::string::size_type start;
+  std::string::size_type end;
   if (m_connectionName.find("wired") != std::string::npos)
   {
     m_essid = "Wired";
@@ -140,8 +143,9 @@ CPosixConnection::CPosixConnection(int socket, const char *interfaceName)
   }
   else if (m_connectionName.find("wifi") != std::string::npos)
   {
-    std::string::size_type start = m_connectionName.find("_") + 1;
-    std::string::size_type end   = m_connectionName.find("_", start + 1);
+    start = m_connectionName.find("_") + 1;
+    start = m_connectionName.find("_", start) + 1;
+    end   = m_connectionName.find("_", start);
     m_essid = m_connectionName.substr(start, end - start);
     m_interface = "wlan0";
     m_type = NETWORK_CONNECTION_TYPE_WIFI;
@@ -161,8 +165,18 @@ CPosixConnection::CPosixConnection(int socket, const char *interfaceName)
     m_type = NETWORK_CONNECTION_TYPE_UNKNOWN;
     m_encryption = NETWORK_CONNECTION_ENCRYPTION_UNKNOWN;
   }
+  // reformat as simple connection name so we can use it for passphrase seeds.
+  start = m_connectionName.find("_") + 1;
+  end   = m_connectionName.find("_", start) + 1;
+  m_address = m_connectionName.substr(start, end - start);
+  if (m_type == NETWORK_CONNECTION_TYPE_WIRED)
+    m_connectionName = "wired_" + m_essid + "_" + m_address;
+  else if ( m_type == NETWORK_CONNECTION_TYPE_WIFI)
+    m_connectionName = "wifi_"  + m_essid + "_" + m_address;
 
-  m_state = GetConnectionState();
+  printf("CPosixConnection, m_essid(%s), m_address(%s)\n", m_essid.c_str(), m_address.c_str());
+
+  m_state = GetState();
 }
 
 CPosixConnection::~CPosixConnection()
@@ -196,13 +210,15 @@ bool CPosixConnection::Connect(IPassphraseStorage *storage, CIPConfig &ipconfig)
     ipconfig.m_passphrase = passphrase;
     SetSettings(ipconfig);
 
+    m_method = ipconfig.m_method;
+
     return true;
   }
 
   return false;
 }
 
-ConnectionState CPosixConnection::GetConnectionState() const
+ConnectionState CPosixConnection::GetState() const
 {
   int zero = 0;
   struct ifreq ifr;
@@ -261,7 +277,7 @@ ConnectionState CPosixConnection::GetConnectionState() const
   if (default_gateway.size() <= 0)
     return NETWORK_CONNECTION_STATE_DISCONNECTED;
 
-  //printf("CPosixConnection::GetConnectionState, %s: we are up\n", m_connectionName.c_str());
+  //printf("CPosixConnection::GetState, %s: we are up\n", m_connectionName.c_str());
 
   // passing the above tests means we are connected.
   return NETWORK_CONNECTION_STATE_CONNECTED;
@@ -380,16 +396,21 @@ unsigned int CPosixConnection::GetConnectionSpeed() const
   return speed;
 }
 
-ConnectionType CPosixConnection::GetConnectionType() const
+ConnectionType CPosixConnection::GetType() const
 {
   return m_type;
+}
+
+IPConfigMethod CPosixConnection::GetMethod() const
+{
+  return m_method;
 }
 
 bool CPosixConnection::PumpNetworkEvents()
 {
   bool state_changed = false;
 
-  ConnectionState state = GetConnectionState();
+  ConnectionState state = GetState();
   if (m_state != state)
   {
     //printf("CPosixConnection::PumpNetworkEvents, m_connectionName(%s), m_state(%d) -> state(%d)\n",
@@ -491,6 +512,7 @@ void CPosixConnection::SetSettings(const CIPConfig &ipconfig)
 {
   //printf("CPosixConnection::SetSettings %s, method(%d)\n",
   //  m_connectionName.c_str(), ipconfig.m_method);
+
   FILE *fr = fopen("/etc/network/interfaces", "r");
   if (!fr)
   {

@@ -121,7 +121,7 @@ bool CPosixNetworkManager::PumpNetworkEvents(INetworkEventsCallback *callback)
     if (((CPosixConnection*)m_connections[i].get())->PumpNetworkEvents())
     {
       //some connection state changed (connected or disconnected)
-      if (((CPosixConnection*)m_connections[i].get())->GetConnectionState() == NETWORK_CONNECTION_STATE_CONNECTED)
+      if (((CPosixConnection*)m_connections[i].get())->GetState() == NETWORK_CONNECTION_STATE_CONNECTED)
       {
         // callback to CNetworkManager to setup the
         // m_defaultConnection and update GUI state if showing.
@@ -170,7 +170,6 @@ void CPosixNetworkManager::UpdateNetworkManager()
     // read word until :
     n = strcspn(interfaceName, ": \t");
     interfaceName[n] = 0;
-    printf("CPosixNetworkManager::GetConnections %s \n", interfaceName);
 
     // make sure the device has ethernet encapsulation
     struct ifreq ifr;
@@ -195,7 +194,7 @@ void CPosixNetworkManager::UpdateNetworkManager()
               ifr.ifr_hwaddr.sa_data[5]);
           }
           m_connections.push_back(CConnectionPtr(new CPosixConnection(m_socket, access_point)));
-          printf("CPosixNetworkManager::GetConnections access_point(%s) \n", access_point);
+          //printf("CPosixNetworkManager::GetConnections access_point(%s) \n", access_point);
         }
       }
       else if (strstr(interfaceName, "wlan0"))
@@ -346,7 +345,6 @@ bool CPosixNetworkManager::UpdateWifiConnections()
         // this is the 1st cmp we get, so we have to play games
         // and push back our parsed results on the next one, but
         // we need to save the bssid so we push the right one.
-        printf("SIOCGIWAP\n");
         char cur_bssid[256] = {0};
         // macAddress is big-endian, write in byte chunks
         sprintf(cur_bssid, "%02X:%02X:%02X:%02X:%02X:%02X",
@@ -366,7 +364,7 @@ bool CPosixNetworkManager::UpdateWifiConnections()
         {
           std::string essID(essid);
           std::string bssID(bssid);
-          const std::string access_point = "wifi_" + essID + "_" + bssID + "_" + encryption;
+          const std::string access_point = "wifi_" + bssID + "_" + essID + "_" + encryption;
           m_connections.push_back(CConnectionPtr(new CPosixConnection(m_socket, access_point.c_str())));
           //printf("CPosixNetworkManager::GetWifiConnections add access_point(%s), quality(%d), signalLevel(%d)\n",
           //  access_point.c_str(), quality, signalLevel);

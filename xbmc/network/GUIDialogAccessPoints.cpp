@@ -88,14 +88,14 @@ void CGUIDialogAccessPoints::UpdateConnectionList()
   {
     CFileItemPtr item(new CFileItem(connections[i]->GetName()));
 
-    if (connections[i]->GetConnectionType() == NETWORK_CONNECTION_TYPE_WIFI)
+    if (connections[i]->GetType() == NETWORK_CONNECTION_TYPE_WIFI)
     {
       item->SetProperty("signal", (int)(connections[i]->GetStrength() / 20));
       item->SetProperty("encryption", EncryptionToString(connections[i]->GetEncryption()));
     }
 
-    item->SetProperty("type", ConnectionTypeToString(connections[i]->GetConnectionType()));
-    item->SetProperty("state", ConnectionStateToString(connections[i]->GetConnectionState()));
+    item->SetProperty("type", ConnectionTypeToString(connections[i]->GetType()));
+    item->SetProperty("state", ConnectionStateToString(connections[i]->GetState()));
  
     m_connectionsFileList->Add(item);
   }

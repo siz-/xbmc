@@ -33,7 +33,7 @@ public:
   virtual ~CConnmanConnection();
 
   virtual bool Connect(IPassphraseStorage *storage, CIPConfig &ipconfig);
-  virtual ConnectionState GetConnectionState() const;
+  virtual ConnectionState GetState() const;
 
   virtual std::string GetName() const;
 
@@ -46,7 +46,8 @@ public:
   virtual EncryptionType GetEncryption() const;
   virtual unsigned int GetConnectionSpeed() const;
 
-  virtual ConnectionType GetConnectionType() const;
+  virtual ConnectionType GetType() const;
+  virtual IPConfigMethod GetMethod() const;
 
   bool PumpNetworkEvents();
 
@@ -61,6 +62,7 @@ private:
   std::string m_netmask;
   std::string m_macaddress;
   std::string m_gateway;
+  std::string m_method;
 
   std::string m_serviceObject;
 
@@ -68,8 +70,8 @@ private:
   unsigned int m_speed;
 
   ConnectionState m_state;
-  EncryptionType m_encryption;
-  ConnectionType m_type;
+  EncryptionType  m_encryption;
+  ConnectionType  m_type;
 
   DBusConnection *m_connection;
   DBusError m_error;

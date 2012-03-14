@@ -761,15 +761,27 @@ void CGUISettings::Initialize()
 
   // network settings
   AddGroup(6, 705);
-  CSettingsCategory* net = AddCategory(6, "network", 798);
-  AddBool(net, "network.usehttpproxy", 708, false);
-  AddString(net, "network.httpproxyserver", 706, "", EDIT_CONTROL_INPUT);
-  AddString(net, "network.httpproxyport", 730, "8080", EDIT_CONTROL_NUMBER_INPUT, false, 707);
-  AddString(net, "network.httpproxyusername", 1048, "", EDIT_CONTROL_INPUT);
-  AddString(net, "network.httpproxypassword", 733, "", EDIT_CONTROL_HIDDEN_INPUT,true,733);
-  AddInt(net, "network.bandwidth", 14041, 0, 0, 512, 100*1024, SPIN_CONTROL_INT_PLUS, MASK_KBPS, TEXT_OFF);
-  AddSeparator(net, "network.sep1");
-  AddString(net, "network.connected", 705, "", BUTTON_CONTROL_STANDARD);
+  //
+  CSettingsCategory* net = AddCategory(6, "network", 705);
+  AddString(net,    "network.connection",            714, "",              BUTTON_CONTROL_STANDARD);
+  map<int, int> networkMethod;
+  networkMethod.insert(make_pair(                    716, IP_CONFIG_DHCP));
+  networkMethod.insert(make_pair(                    717, IP_CONFIG_STATIC));
+  AddInt(   net,    "network.method",                715, IP_CONFIG_DHCP, networkMethod, SPIN_CONTROL_TEXT);
+  AddString(net,    "network.ipaddress",             719, "0.0.0.0",       EDIT_CONTROL_IP_INPUT);
+  AddString(net,    "network.netmask",               720, "255.255.255.0", EDIT_CONTROL_IP_INPUT);
+  AddString(net,    "network.gateway",               721, "0.0.0.0",       EDIT_CONTROL_IP_INPUT);
+  AddString(net,    "network.nameserver",            722, "0.0.0.0",       EDIT_CONTROL_IP_INPUT);
+  // add hidden passphrase so we can save/restore it
+  AddString(NULL,   "network.passphrase",            777, "",              EDIT_CONTROL_INPUT);
+  //
+  CSettingsCategory* proxy = AddCategory(6, "httpproxy", 713);
+  AddBool(proxy,    "httpproxy.usehttpproxy",        708, false);
+  AddString(proxy,  "httpproxy.httpproxyserver",     706, "",              EDIT_CONTROL_INPUT);
+  AddString(proxy,  "httpproxy.httpproxyport",       730, "8080",          EDIT_CONTROL_NUMBER_INPUT, false, 707);
+  AddString(proxy,  "httpproxy.httpproxyusername",   1048, "",             EDIT_CONTROL_INPUT);
+  AddString(proxy,  "httpproxy.httpproxypassword",   733,  "",             EDIT_CONTROL_HIDDEN_INPUT,true,733);
+  AddInt(proxy,     "httpproxy.bandwidth",           14041, 0, 0, 512, 100*1024, SPIN_CONTROL_INT_PLUS, MASK_KBPS, TEXT_OFF);
 
   // appearance settings
   AddGroup(7, 480);

@@ -63,6 +63,8 @@ protected:
 
   void FillInAudioDevices(CSetting* pSetting, bool Passthrough = false);
 
+  void FillInNetworkConnection();
+
   virtual void SetupControls();
   CGUIControl* AddIntBasedSpinControl(CSetting *pSetting, float groupWidth, int &iControlID);
   void CreateSettings();

@@ -37,7 +37,7 @@ bool CWinConnection::Connect(IPassphraseStorage *storage, CIPConfig &ipconfig)
   return false;
 }
 
-ConnectionState CWinConnection::GetConnectionState() const
+ConnectionState CWinConnection::GetState() const
 {
   CStdString strIP = m_adapter.IpAddressList.IpAddress.String;
 
@@ -88,8 +88,13 @@ unsigned int CWinConnection::GetConnectionSpeed() const
   return 100;
 }
 
-ConnectionType CWinConnection::GetConnectionType() const
+ConnectionType CWinConnection::GetType() const
 {
   return NETWORK_CONNECTION_TYPE_WIRED;
+}
+
+IPConfigMethod CWinConnection::GetMethod() const
+{
+  return IP_CONFIG_DHCP;
 }
 #endif

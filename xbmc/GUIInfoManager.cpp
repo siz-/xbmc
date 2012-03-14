@@ -1524,7 +1524,7 @@ CStdString CGUIInfoManager::GetLabel(int info, int contextWindow)
 #endif
   case NETWORK_IP_ADDRESS:
     {
-      return g_application.getNetworkManager().GetDefaultConnectionIP();
+      return g_application.getNetworkManager().GetDefaultConnectionAddress();
     }
     break;
   case NETWORK_SUBNET_MASK:

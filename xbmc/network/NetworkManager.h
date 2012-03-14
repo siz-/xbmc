@@ -33,10 +33,12 @@ public:
   void PumpNetworkEvents();
 
   std::string GetDefaultConnectionName();
-  std::string GetDefaultConnectionIP();
+  std::string GetDefaultConnectionAddress();
   std::string GetDefaultConnectionNetmask();
   std::string GetDefaultConnectionMacAddress();
   std::string GetDefaultConnectionGateway();
+  ConnectionType GetDefaultConnectionType();
+  IPConfigMethod GetDefaultConnectionMethod();
 
   ConnectionState GetDefaultConnectionState();
   bool IsConnected();
@@ -58,7 +60,7 @@ private:
   const char *ConnectionStateToString(ConnectionState state);
 
   INetworkManager *m_instance;
-  CConnectionPtr m_defaultConnection;
-  ConnectionList m_connections;
-  ConnectionState m_state;
+  CConnectionPtr   m_defaultConnection;
+  ConnectionList   m_connections;
+  ConnectionState  m_state;
 };

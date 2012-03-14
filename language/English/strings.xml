@@ -618,6 +618,7 @@
   <string id="712">Invalid port specified. Value must be between 1 and 65535.</string>
   <string id="713">HTTP proxy</string>
 
+  <string id="714">Network Connection</string>
   <string id="715">- Assignment</string>
   <string id="716">Automatic (DHCP)</string>
   <string id="717">Manual (Static)</string>

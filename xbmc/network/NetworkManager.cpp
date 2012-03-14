@@ -82,7 +82,23 @@ std::string CNetworkManager::GetDefaultConnectionName()
     return std::string("opps");
 }
 
-std::string CNetworkManager::GetDefaultConnectionIP()
+ConnectionType CNetworkManager::GetDefaultConnectionType()
+{
+  if (m_defaultConnection)
+    return m_defaultConnection->GetType();
+  else
+    return NETWORK_CONNECTION_TYPE_UNKNOWN;
+}
+
+IPConfigMethod CNetworkManager::GetDefaultConnectionMethod()
+{
+  if (m_defaultConnection)
+    return m_defaultConnection->GetMethod();
+  else
+    return IP_CONFIG_DISABLED;
+}
+
+std::string CNetworkManager::GetDefaultConnectionAddress()
 {
   if (m_defaultConnection)
     return m_defaultConnection->GetAddress();
@@ -155,7 +171,7 @@ void CNetworkManager::OnConnectionStateChange(ConnectionState state)
 
 void CNetworkManager::OnConnectionChange(CConnectionPtr connection)
 {
-  if (connection->GetConnectionState() == NETWORK_CONNECTION_STATE_CONNECTED)
+  if (connection->GetState() == NETWORK_CONNECTION_STATE_CONNECTED)
     m_defaultConnection = connection;
 
   if (g_windowManager.GetWindow(WINDOW_DIALOG_ACCESS_POINTS))
@@ -171,7 +187,7 @@ void CNetworkManager::OnConnectionListChange(ConnectionList list)
 
   for (unsigned int i = 0; i < m_connections.size(); i++)
   {
-    if (m_connections[i]->GetConnectionState() == NETWORK_CONNECTION_STATE_CONNECTED)
+    if (m_connections[i]->GetState() == NETWORK_CONNECTION_STATE_CONNECTED)
     {
       m_defaultConnection = m_connections[i];
       OnConnectionStateChange(NETWORK_CONNECTION_STATE_CONNECTED);

@@ -33,7 +33,7 @@ public:
   virtual ~CPosixConnection();
 
   virtual bool Connect(IPassphraseStorage *storage, CIPConfig &ipconfig);
-  virtual ConnectionState GetConnectionState() const;
+  virtual ConnectionState GetState() const;
 
   virtual std::string GetName() const;
 
@@ -46,7 +46,8 @@ public:
   virtual EncryptionType GetEncryption() const;
   virtual unsigned int GetConnectionSpeed() const;
 
-  virtual ConnectionType GetConnectionType() const;
+  virtual ConnectionType GetType() const;
+  virtual IPConfigMethod GetMethod() const;
 
   bool PumpNetworkEvents();
 private:
@@ -66,5 +67,6 @@ private:
 
   ConnectionType  m_type;
   ConnectionState m_state;
+  IPConfigMethod  m_method;
   EncryptionType  m_encryption;
 };

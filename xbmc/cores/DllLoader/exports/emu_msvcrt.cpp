@@ -182,20 +182,20 @@ extern "C" void __stdcall init_emu_environ()
 extern "C" void __stdcall update_emu_environ()
 {
   // Use a proxy, if the GUI was configured as such
-  if (g_guiSettings.GetBool("network.usehttpproxy") &&
-      g_guiSettings.GetString("network.httpproxyserver") &&
-      g_guiSettings.GetString("network.httpproxyport"))
+  if (g_guiSettings.GetBool("httpproxy.usehttpproxy") &&
+      g_guiSettings.GetString("httpproxy.httpproxyserver") &&
+      g_guiSettings.GetString("httpproxy.httpproxyport"))
   {
     CStdString strProxy;
-    if (g_guiSettings.GetString("network.httpproxyusername") &&
-        g_guiSettings.GetString("network.httpproxypassword"))
+    if (g_guiSettings.GetString("httpproxy.httpproxyusername") &&
+        g_guiSettings.GetString("httpproxy.httpproxypassword"))
     {
-      strProxy.Format("%s:%s@", g_guiSettings.GetString("network.httpproxyusername").c_str(),
-                                g_guiSettings.GetString("network.httpproxypassword").c_str());
+      strProxy.Format("%s:%s@", g_guiSettings.GetString("httpproxy.httpproxyusername").c_str(),
+                                g_guiSettings.GetString("httpproxy.httpproxypassword").c_str());
     }
 
-    strProxy += g_guiSettings.GetString("network.httpproxyserver");
-    strProxy += ":" + g_guiSettings.GetString("network.httpproxyport");
+    strProxy += g_guiSettings.GetString("httpproxy.httpproxyserver");
+    strProxy += ":" + g_guiSettings.GetString("httpproxy.httpproxyport");
 
 #ifdef _WIN32
     pgwin32_putenv(("HTTP_PROXY=http://" +strProxy).c_str());
