@@ -55,8 +55,7 @@ bool CWinSystemGLES::InitWindowSystem()
 
 bool CWinSystemGLES::DestroyWindowSystem()
 {
-  if (m_window)
-    m_eglplatform->DestroyWindowSystem(m_window);
+  m_eglplatform->DestroyWindowSystem(m_window);
   m_window = NULL;
 
   return true;
@@ -85,9 +84,9 @@ bool CWinSystemGLES::CreateNewWindow(const CStdString& name, bool fullScreen, RE
 
 bool CWinSystemGLES::DestroyWindow()
 {
-  Hide();
+  if (!m_eglplatform->DestroyWindow())
+    return false;
 
-  m_eglplatform->ReleaseSurface();
   m_bWindowCreated = false;
 
   return true;
