@@ -32,7 +32,8 @@ CConnectionJob::CConnectionJob(CConnectionPtr connection, CKeyringManager *keyri
 
 bool CConnectionJob::DoWork()
 {
-  return m_connection->Connect((IPassphraseStorage *)this, CIPConfig());
+  CIPConfig ipconfig;
+  return m_connection->Connect((IPassphraseStorage *)this, ipconfig);
 }
 
 void CConnectionJob::InvalidatePassphrase(const std::string &uuid)

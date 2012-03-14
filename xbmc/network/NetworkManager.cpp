@@ -48,8 +48,8 @@ CNetworkManager::~CNetworkManager()
 void CNetworkManager::Initialize()
 {
 #ifdef HAS_DBUS
-  if (CConnmanNetworkManager::HasConnman())
-    m_instance = new CConnmanNetworkManager();
+//  if (CConnmanNetworkManager::HasConnman())
+//    m_instance = new CConnmanNetworkManager();
 #endif
 
 #ifdef TARGET_POSIX
@@ -85,7 +85,7 @@ std::string CNetworkManager::GetDefaultConnectionName()
 std::string CNetworkManager::GetDefaultConnectionIP()
 {
   if (m_defaultConnection)
-    return m_defaultConnection->GetIP();
+    return m_defaultConnection->GetAddress();
   else
     return std::string("opps");
 }

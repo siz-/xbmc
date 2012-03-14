@@ -114,6 +114,9 @@ bool CConnmanNetworkManager::PumpNetworkEvents(INetworkEventsCallback *callback)
         result = true;
         callback->OnConnectionStateChange(CConnmanConnection::ParseConnectionState(stateString.asString().c_str()));
       }
+      else if (dbus_message_is_signal(msg, "net.connman.Manager", "NameAcquired"))
+      {
+      }
       else
         CLog::Log(LOGINFO, "ConnmanNetworkManager: Recieved an unknown signal %s", dbus_message_get_member(msg));
 
@@ -121,7 +124,7 @@ bool CConnmanNetworkManager::PumpNetworkEvents(INetworkEventsCallback *callback)
     }
   }
 
-  for (unsigned int i = 0; i < m_connections.size(); i++)
+  for (size_t i = 0; i < m_connections.size(); i++)
   {
     if (((CConnmanConnection *)m_connections[i].get())->PumpNetworkEvents())
     {

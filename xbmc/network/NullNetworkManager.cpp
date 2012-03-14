@@ -21,7 +21,7 @@
 
 #include "NullNetworkManager.h"
 
-bool CNullConnection::Connect(IPassphraseStorage *storage, const CIPConfig &ipconfig)
+bool CNullConnection::Connect(IPassphraseStorage *storage, CIPConfig &ipconfig)
 {
   return false;
 }
@@ -36,14 +36,14 @@ std::string CNullConnection::GetName() const
   return "Unkown connection";
 }
 
-std::string CNullConnection::GetIP() const
+std::string CNullConnection::GetAddress() const
 {
   return "127.0.0.1";
 }
 
 std::string CNullConnection::GetNetmask() const              { return "255.255.255.0"; }
-std::string CNullConnection::GetMacAddress() const           { return "00:00:00:00:00:00"; }
 std::string CNullConnection::GetGateway() const              { return ""; }
+std::string CNullConnection::GetMacAddress() const           { return "00:00:00:00:00:00"; }
 
 unsigned int CNullConnection::GetStrength() const            { return 100; }
 

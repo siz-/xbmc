@@ -32,15 +32,15 @@ public:
   CConnmanConnection(const char *serviceObject);
   virtual ~CConnmanConnection();
 
-  virtual bool Connect(IPassphraseStorage *storage, const CIPConfig &ipconfig);
+  virtual bool Connect(IPassphraseStorage *storage, CIPConfig &ipconfig);
   virtual ConnectionState GetConnectionState() const;
 
   virtual std::string GetName() const;
 
-  virtual std::string GetIP() const;
+  virtual std::string GetAddress() const;
   virtual std::string GetNetmask() const;
-  virtual std::string GetMacAddress() const;
   virtual std::string GetGateway() const;
+  virtual std::string GetMacAddress() const;
 
   virtual unsigned int GetStrength() const;
   virtual EncryptionType GetEncryption() const;
@@ -57,7 +57,7 @@ private:
   CVariant m_properties;
 
   std::string m_name;
-  std::string m_IP;
+  std::string m_address;
   std::string m_netmask;
   std::string m_macaddress;
   std::string m_gateway;

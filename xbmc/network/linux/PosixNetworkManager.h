@@ -34,5 +34,10 @@ public:
 
   virtual bool PumpNetworkEvents(INetworkEventsCallback *callback);
 private:
-  int m_socket;
+  void UpdateNetworkManager();
+  bool UpdateWifiConnections();
+
+  int            m_socket;
+  ConnectionList m_connections;
+  unsigned int   m_next_poll_time;
 };

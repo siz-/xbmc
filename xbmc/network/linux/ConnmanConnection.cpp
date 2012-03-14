@@ -72,7 +72,7 @@ CConnmanConnection::~CConnmanConnection()
   dbus_error_free (&m_error);
 }
 
-bool CConnmanConnection::Connect(IPassphraseStorage *storage, const CIPConfig &ipconfig)
+bool CConnmanConnection::Connect(IPassphraseStorage *storage, CIPConfig &ipconfig)
 {
   if (m_encryption != NETWORK_CONNECTION_ENCRYPTION_NONE)
   {
@@ -80,7 +80,7 @@ bool CConnmanConnection::Connect(IPassphraseStorage *storage, const CIPConfig &i
     if (!storage->GetPassphrase(m_serviceObject, passphrase))
       return false;
 
-    CDBusMessage message("net.connman", m_serviceObject.c_str(), "net.connman.Service", "SetProperties");
+    CDBusMessage message("net.connman", m_serviceObject.c_str(), "net.connman.Service", "SetProperty");
     message.AppendArgument("Passphrase");
     message.AppendArgument(passphrase.c_str());
 
@@ -107,9 +107,9 @@ std::string CConnmanConnection::GetName() const
   return m_name;
 }
 
-std::string CConnmanConnection::GetIP() const
+std::string CConnmanConnection::GetAddress() const
 {
-  return m_IP;
+  return m_address;
 }
 
 std::string CConnmanConnection::GetNetmask() const
@@ -117,14 +117,14 @@ std::string CConnmanConnection::GetNetmask() const
   return m_netmask;
 }
 
-std::string CConnmanConnection::GetMacAddress() const
-{
-  return m_macaddress;
-}
-
 std::string CConnmanConnection::GetGateway() const
 {
   return m_gateway;
+}
+
+std::string CConnmanConnection::GetMacAddress() const
+{
+  return m_macaddress;
 }
 
 unsigned int CConnmanConnection::GetStrength() const
@@ -196,13 +196,6 @@ ConnectionState CConnmanConnection::ParseConnectionState(const char *stateString
 
 void CConnmanConnection::UpdateConnection()
 {
-  CLog::Log(LOGDEBUG, "CConnmanConnection::UpdateConnection:Name(%s)",  m_properties["Name"].asString().c_str());
-  CLog::Log(LOGDEBUG, "CConnmanConnection::UpdateConnection:State(%s)", m_properties["State"].asString().c_str());
-  CLog::Log(LOGDEBUG, "CConnmanConnection::UpdateConnection:Type(%s)",  m_properties["Type"].asString().c_str());
-  CLog::Log(LOGDEBUG, "CConnmanConnection::UpdateConnection:Security(%s)",  m_properties["Security"].asString().c_str());
-  CLog::Log(LOGDEBUG, "CConnmanConnection::UpdateConnection:LoginRequired(%s)",  m_properties["LoginRequired"].asString().c_str());
-  CLog::Log(LOGDEBUG, "CConnmanConnection::UpdateConnection:PassphraseRequired(%s)",  m_properties["PassphraseRequired"].asString().c_str());
-
   m_name = m_properties["Name"].asString();
 
   m_state = ParseConnectionState(m_properties["State"].asString().c_str());
@@ -214,7 +207,7 @@ void CConnmanConnection::UpdateConnection()
   else
     m_type = NETWORK_CONNECTION_TYPE_UNKNOWN;
 
-  m_IP = m_properties["IPv4"]["Address"].asString();
+  m_address = m_properties["IPv4"]["Address"].asString();
   m_netmask = m_properties["IPv4"]["Netmask"].asString();
   m_macaddress = m_properties["Ethernet"]["Address"].asString();
   m_gateway = m_properties["IPv4"]["Gateway"].asString();
@@ -225,13 +218,13 @@ void CConnmanConnection::UpdateConnection()
     m_speed = m_properties["Ethernet"]["Speed"].asInteger();
 
     m_encryption = NETWORK_CONNECTION_ENCRYPTION_NONE;
-    if (strcmp(m_properties["LoginRequired"].asString().c_str(), "true") == 0)
+    if (strcmp(m_properties["PassphraseRequired"].asString().c_str(), "true") == 0)
     {
       if (m_properties["Security"].asString().empty())
         m_encryption = NETWORK_CONNECTION_ENCRYPTION_NONE;
       else if (strcmp(m_properties["Security"].asString().c_str(), "none") == 0)
         m_encryption = NETWORK_CONNECTION_ENCRYPTION_NONE;
-      if (strcmp(m_properties["Security"].asString().c_str(), "wep") == 0)
+      else if (strcmp(m_properties["Security"].asString().c_str(), "wep") == 0)
         m_encryption = NETWORK_CONNECTION_ENCRYPTION_WEP;
       else if (strcmp(m_properties["Security"].asString().c_str(), "wpa") == 0)
         m_encryption = NETWORK_CONNECTION_ENCRYPTION_WPA;

@@ -31,15 +31,16 @@ public:
   CWinConnection(IP_ADAPTER_INFO adapter);
   virtual ~CWinConnection();
 
-  virtual bool Connect(IPassphraseStorage *storage, const CIPConfig &ipconfig);
+  virtual bool Connect(IPassphraseStorage *storage, CIPConfig &ipconfig);
+  virtual bool Disconnect() { return true; };
   virtual ConnectionState GetConnectionState() const;
 
   virtual std::string GetName() const;
 
-  virtual std::string GetIP() const;
+  virtual std::string GetAddress() const;
   virtual std::string GetNetmask() const;
-  virtual std::string GetMacAddress() const;
   virtual std::string GetGateway() const;
+  virtual std::string GetMacAddress() const;
 
   virtual unsigned int GetStrength() const;
   virtual EncryptionType GetEncryption() const;

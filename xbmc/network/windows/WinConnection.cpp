@@ -32,7 +32,7 @@ CWinConnection::~CWinConnection()
 {
 }
 
-bool CWinConnection::Connect(IPassphraseStorage *storage, const CIPConfig &ipconfig)
+bool CWinConnection::Connect(IPassphraseStorage *storage, CIPConfig &ipconfig)
 {
   return false;
 }
@@ -53,7 +53,7 @@ std::string CWinConnection::GetName() const
 }
 
 
-std::string CWinConnection::GetIP() const
+std::string CWinConnection::GetAddress() const
 {
   return m_adapter.IpAddressList.IpAddress.String;
 }
@@ -63,14 +63,14 @@ std::string CWinConnection::GetNetmask() const
   return m_adapter.IpAddressList.IpMask.String;
 }
 
-std::string CWinConnection::GetMacAddress() const
-{
-  return std::string((char*)m_adapter.Address);
-}
-
 std::string CWinConnection::GetGateway() const
 {
   return m_adapter.GatewayList.IpAddress.String;
+}
+
+std::string CWinConnection::GetMacAddress() const
+{
+  return std::string((char*)m_adapter.Address);
 }
 
 unsigned int CWinConnection::GetStrength() const

@@ -52,6 +52,7 @@ enum EncryptionType
 
 enum IPConfigMethod
 {
+  IP_CONFIG_DISABLED,
   IP_CONFIG_STATIC,
   IP_CONFIG_DHCP
 };
@@ -64,23 +65,40 @@ public:
     reset();
   }
 
-  CIPConfig(IPConfigMethod method, const std::string &IP, const std::string &netmask)
+  CIPConfig(IPConfigMethod method,
+    const std::string &address, const std::string &netmask, const std::string &gateway, const std::string &interface,
+    const std::string &essid, const std::string &passphrase, const EncryptionType encryption)
   {
-    m_method = method;
-    m_IP = IP;
-    m_netmask = netmask;
+    m_method     = method;
+    m_address    = address;
+    m_netmask    = netmask;
+    m_gateway    = gateway;
+    m_interface  = interface;
+    m_essid      = essid;
+    m_passphrase = passphrase;
+    m_encryption = encryption;
   }
 
   void reset()
   {
-    m_method = IP_CONFIG_DHCP;
-    m_IP = "";
-    m_netmask = "";
+    m_method     = IP_CONFIG_DISABLED;
+    m_address    = "";
+    m_netmask    = "";
+    m_gateway    = "";
+    m_interface  = "";
+    m_essid      = "";
+    m_passphrase = "";
+    m_encryption = NETWORK_CONNECTION_ENCRYPTION_NONE;
   }
 
-  IPConfigMethod m_method;
-  std::string m_IP;
-  std::string m_netmask;
+  IPConfigMethod  m_method;
+  std::string     m_address;
+  std::string     m_netmask;
+  std::string     m_gateway;
+  std::string     m_interface;
+  std::string     m_essid;
+  std::string     m_passphrase;
+  EncryptionType  m_encryption;
 };
 
 class IConnection
@@ -92,11 +110,11 @@ public:
    \brief Connect to connection
 
    \param storage a passphrase provider
-   \param ipconfig a configuration for how to acquire IP
+   \param ipconfig a network configuration
    \returns true if connected, false if not.
    \sa IPassphraseStorage CIPConfig
    */
-  virtual bool Connect(IPassphraseStorage *storage, const CIPConfig &ipconfig) = 0;
+  virtual bool Connect(IPassphraseStorage *storage, CIPConfig &ipconfig) = 0;
 
   /*!
    \brief Get the state of the connection
@@ -120,7 +138,7 @@ public:
    \return The IP of the connection
    \sa IConnection
    */
-  virtual std::string GetIP() const = 0;
+  virtual std::string GetAddress() const = 0;
 
   /*!
    \brief Get the netmask of the connection

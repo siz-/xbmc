@@ -27,15 +27,15 @@ class CNullConnection : public IConnection
 public:
   virtual ~CNullConnection() { }
 
-  virtual bool Connect(IPassphraseStorage *storage, const CIPConfig &ipconfig) { return false; }
+  virtual bool Connect(IPassphraseStorage *storage, CIPConfig &ipconfig) { return false; }
   virtual ConnectionState GetConnectionState() const  { return NETWORK_CONNECTION_STATE_CONNECTED; }
 
   virtual std::string GetName() const                 { return "Unkown connection"; }
 
-  virtual std::string GetIP() const                   { return "127.0.0.1"; }
+  virtual std::string GetAddress() const              { return "127.0.0.1"; }
   virtual std::string GetNetmask() const              { return "255.255.255.0"; }
-  virtual std::string GetMacAddress() const           { return "00:00:00:00:00:00"; }
   virtual std::string GetGateway() const              { return ""; }
+  virtual std::string GetMacAddress() const           { return "00:00:00:00:00:00"; }
 
   virtual unsigned int GetStrength() const            { return 100; }
 
