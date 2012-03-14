@@ -38,6 +38,53 @@
 #include <net/if_arp.h>
 #include <string.h>
 
+// CPosixNetworkManager and CPosixConnection rely on the debian/ubuntu method of using
+// /etc/network/interfaces and pre-up/post-down scripts to handle bringing connection
+// to wired/wireless networks. The pre-up/post-down scripts handle wireless/wpa though
+// /etc/network/interfaces extensions "wireless-" and "wpa-". Basically, ifup/ifdown will
+// tokenize these as shell vars and passes them to the pre-up/post-down scripts for handling.
+//
+// /etc/network/interfaces examples:
+//    auto wlan0
+//    iface wlan0 inet dhcp
+//        wireless-essid [ESSID]
+//        wireless-mode [MODE]
+//
+// or
+//    auto wlan0
+//    iface wlan0 inet dhcp
+//        wpa-ssid mynetworkname
+//        wpa-psk mysecretpassphrase
+//
+// Then, 'ifup wlan0' will bring up wlan0 with the proper wifi setup and dhdp fetch.
+//
+// NOTE: BusyBox will call pre-up/post-down scripts BUT it does not pass $PHASE so the
+//   if the script is the same for pre-up/post-down it will not be able to tell what to do.
+//   The simple fix is to add the following to /etc/wpa_supplicant/ifupdown.sh
+//
+//   case $0 in
+//       *if-up.d*) PHASE="up";;
+//       *if-down.d*) PHASE="down";;
+//       *if-pre-up.d*) PHASE="pre-up";;
+//       *if-post-down.d*) PHASE="post-down";;
+//   esac
+//
+//   Also you need to merge post-up -> pre-up and pre-down -> post-down as those phases
+//   do not exist under Busybox.
+//
+//
+// CPosixNetworkManager and CPosixConnection work by detecting the avaliable network
+// interfaces, then for wlan0, doing a wifi scan for access points using ioctl calls.
+// A CPosixConnection object is created for each wired interface and each wifi access point.
+//
+// Switching connections is performed by a CPosixConnection method in three steps.
+//  1) use ifdown <interface> take down every interface except loopback.
+//  2) if the desired connection is wifi, then
+//       rewrite /etc/network/interfaces, only changing "wireless-" or "wpa-" items.
+//  3) use ifup <interface> to bring up the desired active connection.
+//
+//
+
 CPosixNetworkManager::CPosixNetworkManager()
 {
   m_socket = socket(AF_INET, SOCK_DGRAM, 0);
