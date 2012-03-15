@@ -30,13 +30,14 @@ public:
 
   void Initialize();
 
-  void PumpNetworkEvents();
+  bool PumpNetworkEvents();
 
   std::string GetDefaultConnectionName();
   std::string GetDefaultConnectionAddress();
   std::string GetDefaultConnectionNetmask();
   std::string GetDefaultConnectionMacAddress();
   std::string GetDefaultConnectionGateway();
+  std::string GetDefaultConnectionNameServer();
   ConnectionType GetDefaultConnectionType();
   IPConfigMethod GetDefaultConnectionMethod();
 
@@ -48,6 +49,8 @@ public:
   bool CanManageConnections();
 
   ConnectionList GetConnections();
+
+  bool Connect(CConnectionPtr connection, IPassphraseStorage *storage);
 
   virtual void OnConnectionStateChange(ConnectionState state);
   virtual void OnConnectionChange(CConnectionPtr connection);

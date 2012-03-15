@@ -35,14 +35,16 @@ public:
   virtual std::string GetAddress() const              { return "127.0.0.1"; }
   virtual std::string GetNetmask() const              { return "255.255.255.0"; }
   virtual std::string GetGateway() const              { return ""; }
+  virtual std::string GetNameServer() const           { return "127.0.0.1"; }
   virtual std::string GetMacAddress() const           { return "00:00:00:00:00:00"; }
 
   virtual unsigned int GetStrength() const            { return 100; }
 
   virtual EncryptionType GetEncryption() const        { return NETWORK_CONNECTION_ENCRYPTION_NONE; }
-  virtual unsigned int GetConnectionSpeed() const     { return 100; }
+  virtual unsigned int   GetSpeed() const             { return 100; }
   virtual ConnectionType GetType() const              { return NETWORK_CONNECTION_TYPE_UNKNOWN; }
   virtual IPConfigMethod GetMethod() const            { return IP_CONFIG_DISABLED; }
+  virtual void           GetIPConfig(CIPConfig &ipconfig) const { }
 };
 
 class CNullNetworkManager : public INetworkManager
@@ -52,6 +54,8 @@ class CNullNetworkManager : public INetworkManager
   virtual bool CanManageConnections() { return false; }
 
   virtual ConnectionList GetConnections() { ConnectionList list; list.push_back(CConnectionPtr(new CNullConnection())); return list; }
+
+  virtual bool Connect(CConnectionPtr connection, IPassphraseStorage *storage) { return false; }
 
   virtual bool PumpNetworkEvents(INetworkEventsCallback *callback) { return true; }
 };

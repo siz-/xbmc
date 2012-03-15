@@ -79,6 +79,16 @@ bool PosixGuessIsHex(const char *test_hex, size_t length)
   return true;
 }
 
+bool IsWireless(int socket, const char *interface)
+{
+  struct iwreq wrq;
+   strcpy(wrq.ifr_name, interface);
+   if (ioctl(socket, SIOCGIWNAME, &wrq) < 0)
+      return false;
+
+   return true;
+}
+
 std::string PosixGetDefaultGateway(const std::string interface)
 {
   std::string result = "";
@@ -135,25 +145,33 @@ CPosixConnection::CPosixConnection(int socket, const char *interfaceName)
 
   std::string::size_type start;
   std::string::size_type end;
-  if (m_connectionName.find("wired") != std::string::npos)
+  if (m_connectionName.find("wire") != std::string::npos)
   {
     m_essid = "Wired";
-    m_interface = "eth0";
+    // extract the interface name
+    start = m_connectionName.find(".") + 1;
+    start = m_connectionName.find(".", start) + 1;
+    end   = m_connectionName.find(".", start);
+    m_interface = m_connectionName.substr(start, end - start);
     m_type = NETWORK_CONNECTION_TYPE_WIRED;
   }
   else if (m_connectionName.find("wifi") != std::string::npos)
   {
-    start = m_connectionName.find("_") + 1;
-    start = m_connectionName.find("_", start) + 1;
-    end   = m_connectionName.find("_", start);
+    start = m_connectionName.find(".") + 1;
+    start = m_connectionName.find(".", start) + 1;
+    end   = m_connectionName.find(".", start);
+    // extract the interface name
+    m_interface = m_connectionName.substr(start, end - start);
+    // extract the essid
+    start = m_connectionName.find(".", start) + 1;
+    end   = m_connectionName.find(".", start);
     m_essid = m_connectionName.substr(start, end - start);
-    m_interface = "wlan0";
     m_type = NETWORK_CONNECTION_TYPE_WIFI;
-    if (m_connectionName.find("_wpa2") != std::string::npos)
+    if (m_connectionName.find(".wpa2") != std::string::npos)
       m_encryption = NETWORK_CONNECTION_ENCRYPTION_WPA2;
-    else if (m_connectionName.find("_wpa") != std::string::npos)
+    else if (m_connectionName.find(".wpa") != std::string::npos)
       m_encryption = NETWORK_CONNECTION_ENCRYPTION_WPA;
-    else if (m_connectionName.find("_wep") != std::string::npos)
+    else if (m_connectionName.find(".wep") != std::string::npos)
       m_encryption = NETWORK_CONNECTION_ENCRYPTION_WEP;
     else
       m_encryption = NETWORK_CONNECTION_ENCRYPTION_NONE;
@@ -165,16 +183,15 @@ CPosixConnection::CPosixConnection(int socket, const char *interfaceName)
     m_type = NETWORK_CONNECTION_TYPE_UNKNOWN;
     m_encryption = NETWORK_CONNECTION_ENCRYPTION_UNKNOWN;
   }
-  // reformat as simple connection name so we can use it for passphrase seeds.
-  start = m_connectionName.find("_") + 1;
-  end   = m_connectionName.find("_", start) + 1;
+  // reformat as simple connection name <wifi.ae:c5:de:bb:4f>
+  // so we can use it for passphrase seeds. Extract the IP address.
+  start = m_connectionName.find(".") + 1;
+  end   = m_connectionName.find(".", start) + 1;
   m_address = m_connectionName.substr(start, end - start);
   if (m_type == NETWORK_CONNECTION_TYPE_WIRED)
-    m_connectionName = "wired_" + m_essid + "_" + m_address;
+    m_connectionName = "wire." + m_essid + "." + m_address;
   else if ( m_type == NETWORK_CONNECTION_TYPE_WIFI)
-    m_connectionName = "wifi_"  + m_essid + "_" + m_address;
-
-  printf("CPosixConnection, m_essid(%s), m_address(%s)\n", m_essid.c_str(), m_address.c_str());
+    m_connectionName = "wifi."  + m_essid + "." + m_address;
 
   m_state = GetState();
 }
@@ -185,7 +202,15 @@ CPosixConnection::~CPosixConnection()
 
 bool CPosixConnection::Connect(IPassphraseStorage *storage, CIPConfig &ipconfig)
 {
-  //printf("CPosixConnection::Connect %s\n", m_connectionName.c_str());
+  if (m_type == NETWORK_CONNECTION_TYPE_WIFI)
+  {
+    if (m_encryption != NETWORK_CONNECTION_ENCRYPTION_NONE)
+    {
+      if (!storage->GetPassphrase(m_connectionName, m_passphrase))
+        return false;
+    }
+  }
+
   ipconfig.m_method     = IP_CONFIG_DHCP;
   ipconfig.m_address    = m_address;
   ipconfig.m_netmask    = m_netmask;
@@ -193,25 +218,11 @@ bool CPosixConnection::Connect(IPassphraseStorage *storage, CIPConfig &ipconfig)
   ipconfig.m_interface  = m_interface;
   ipconfig.m_essid      = m_essid;
   ipconfig.m_encryption = m_encryption;
-
-  if (m_type == NETWORK_CONNECTION_TYPE_WIRED)
+  ipconfig.m_passphrase = m_passphrase;
+  if (SetSettings(ipconfig) && GetState() == NETWORK_CONNECTION_STATE_CONNECTED)
   {
-    SetSettings(ipconfig);
-    return true;
-  }
-  else if (m_type == NETWORK_CONNECTION_TYPE_WIFI)
-  {
-    std::string command, result, passphrase;
-    if (m_encryption != NETWORK_CONNECTION_ENCRYPTION_NONE)
-    {
-      if (!storage->GetPassphrase(m_connectionName, passphrase))
-        return false;
-    }
-    ipconfig.m_passphrase = passphrase;
-    SetSettings(ipconfig);
-
+    // hack for now
     m_method = ipconfig.m_method;
-
     return true;
   }
 
@@ -223,8 +234,8 @@ ConnectionState CPosixConnection::GetState() const
   int zero = 0;
   struct ifreq ifr;
 
+  memset(&ifr, 0x00, sizeof(struct ifreq));
   // check if the interface is up.
-  memset(&ifr, 0, sizeof(ifr));
   strcpy(ifr.ifr_name, m_interface.c_str());
   if (ioctl(m_socket, SIOCGIFFLAGS, &ifr) < 0)
     return NETWORK_CONNECTION_STATE_DISCONNECTED;
@@ -252,12 +263,12 @@ ConnectionState CPosixConnection::GetState() const
     if (ioctl(m_socket, SIOCGIWNAME, &wrq) < 0)
       return NETWORK_CONNECTION_STATE_DISCONNECTED;
 
-    // since the wifi interface (wlan0) can be connected to
+    // since the wifi interface can be connected to
     // any wifi access point, we need to compare the assigned
     // essid to our connection essid. If they match, then
     // this connection is up.
     char essid[IFNAMSIZ];
-    memset(&wrq, 0, sizeof(struct iwreq));
+    memset(&wrq, 0x00, sizeof(struct iwreq));
     wrq.u.essid.pointer = (caddr_t)essid;
     wrq.u.essid.length  = sizeof(essid);
     strncpy(wrq.ifr_name, m_interface.c_str(), IFNAMSIZ);
@@ -317,6 +328,19 @@ std::string CPosixConnection::GetGateway() const
   return PosixGetDefaultGateway(m_interface);
 }
 
+std::string CPosixConnection::GetNameServer() const
+{
+  std::string nameserver("127.0.0.1");
+
+  res_init();
+  for (int i = 0; i < _res.nscount; i ++)
+  {
+      nameserver = inet_ntoa(((struct sockaddr_in *)&_res.nsaddr_list[0])->sin_addr);
+      break;
+  }
+  return nameserver;
+}
+
 std::string CPosixConnection::GetMacAddress() const
 {
   CStdString result;
@@ -327,12 +351,9 @@ std::string CPosixConnection::GetMacAddress() const
   if (ioctl(m_socket, SIOCGIFHWADDR, &ifr) >= 0)
   {
     result.Format("%02X:%02X:%02X:%02X:%02X:%02X",
-      ifr.ifr_hwaddr.sa_data[0],
-      ifr.ifr_hwaddr.sa_data[1],
-      ifr.ifr_hwaddr.sa_data[2],
-      ifr.ifr_hwaddr.sa_data[3],
-      ifr.ifr_hwaddr.sa_data[4],
-      ifr.ifr_hwaddr.sa_data[5]);
+      ifr.ifr_hwaddr.sa_data[0], ifr.ifr_hwaddr.sa_data[1],
+      ifr.ifr_hwaddr.sa_data[2], ifr.ifr_hwaddr.sa_data[3],
+      ifr.ifr_hwaddr.sa_data[4], ifr.ifr_hwaddr.sa_data[5]);
   }
 
   return result.c_str();
@@ -350,8 +371,8 @@ unsigned int CPosixConnection::GetStrength() const
     double max_qual = 92.0;
 
     // Fetch the range
-    memset(buffer, 0, sizeof(iw_range) * 2);
-    memset(&wreq,  0, sizeof(struct iwreq));
+    memset(buffer, 0x00, sizeof(iw_range) * 2);
+    memset(&wreq,  0x00, sizeof(struct iwreq));
     wreq.u.data.pointer = (caddr_t)buffer;
     wreq.u.data.length  = sizeof(buffer);
     wreq.u.data.flags   = 0;
@@ -366,7 +387,7 @@ unsigned int CPosixConnection::GetStrength() const
     }
 
     struct iw_statistics stats;
-    memset(&wreq, 0, sizeof(struct iwreq));
+    memset(&wreq, 0x00, sizeof(struct iwreq));
     // Fetch the stats
     wreq.u.data.pointer = (caddr_t)&stats;
     wreq.u.data.length  = sizeof(stats);
@@ -390,7 +411,7 @@ EncryptionType CPosixConnection::GetEncryption() const
   return m_encryption;
 }
 
-unsigned int CPosixConnection::GetConnectionSpeed() const
+unsigned int CPosixConnection::GetSpeed() const
 {
   int speed = 100;
   return speed;
@@ -404,6 +425,18 @@ ConnectionType CPosixConnection::GetType() const
 IPConfigMethod CPosixConnection::GetMethod() const
 {
   return m_method;
+}
+
+void CPosixConnection::GetIPConfig(CIPConfig &ipconfig) const
+{
+  ipconfig.m_method     = m_method;
+  ipconfig.m_address    = m_address;
+  ipconfig.m_netmask    = m_netmask;
+  ipconfig.m_gateway    = m_gateway;
+  ipconfig.m_interface  = m_interface;
+  ipconfig.m_essid      = m_essid;
+  ipconfig.m_encryption = m_encryption;
+  ipconfig.m_passphrase = m_passphrase;
 }
 
 bool CPosixConnection::PumpNetworkEvents()
@@ -422,103 +455,16 @@ bool CPosixConnection::PumpNetworkEvents()
   return state_changed;
 }
 
-void CPosixConnection::GetSettings(CIPConfig &ipconfig)
+bool CPosixConnection::SetSettings(const CIPConfig &ipconfig)
 {
-/*
-  ipconfig.reset();
+  // TODO: handle static in addition to dhcp settings.
 
-  FILE* fp = fopen("/etc/network/interfaces", "r");
-  if (!fp)
-  {
-    // TODO
-    return;
-  }
-
-  CStdString s;
-  size_t linel = 0;
-  char*  line  = NULL;
-  bool   foundInterface = false;
-
-  while (getdelim(&line, &linel, '\n', fp) > 0)
-  {
-    std::vector<CStdString> tokens;
-
-    s = line;
-    s.TrimLeft(" \t").TrimRight(" \n");
-
-    // skip comments
-    if (s.length() == 0 || s.GetAt(0) == '#')
-      continue;
-
-    // look for "iface <interface name> inet"
-    CUtil::Tokenize(s, tokens, " ");
-    if (!foundInterface && tokens.size() >=3 && tokens[0].Equals("iface") &&
-      tokens[1].Equals(ipconfig.m_interface.c_str()) && tokens[2].Equals("inet"))
-    {
-      if (tokens[3].Equals("dhcp"))
-      {
-        ipconfig.m_method = IP_CONFIG_DHCP;
-        foundInterface = true;
-      }
-      if (tokens[3].Equals("static"))
-      {
-        ipconfig.m_method = IP_CONFIG_STATIC;
-        foundInterface = true;
-      }
-    }
-
-    if (foundInterface && tokens.size() == 2)
-    {
-      if (tokens[0].Equals("address"))
-        ipconfig.m_address = tokens[1];
-      else if (tokens[0].Equals("netmask"))
-        ipconfig.m_netmask = tokens[1];
-      else if (tokens[0].Equals("gateway"))
-        ipconfig.m_gateway = tokens[1];
-      else if (tokens[0].Equals("wireless-essid"))
-        ipconfig.m_essid   = tokens[1];
-      else if (tokens[0].Equals("wireless-key"))
-      {
-        CStdString key;
-        key = tokens[1];
-        if (key.length() > 2 && key[0] == 's' && key[1] == ':')
-          key.erase(0, 2);
-        ipconfig.m_passphrase = key;
-        ipconfig.m_encryption = NETWORK_CONNECTION_ENCRYPTION_WEP;
-      }
-      else if (tokens[0].Equals("wpa-ssid"))
-        ipconfig.m_essid = tokens[1];
-      else if (tokens[0].Equals("wpa-proto") && tokens[1].Equals("WPA"))
-        ipconfig.m_encryption = NETWORK_CONNECTION_ENCRYPTION_WPA;
-      else if (tokens[0].Equals("wpa-proto") && tokens[1].Equals("WPA2"))
-        ipconfig.m_encryption = NETWORK_CONNECTION_ENCRYPTION_WPA2;
-      else if (tokens[0].Equals("wpa-psk"))
-        ipconfig.m_passphrase = tokens[1];
-      else if (tokens[0].Equals("auto") || tokens[0].Equals("iface") || tokens[0].Equals("mapping"))
-        break;
-    }
-  }
-  free(line);
-
-  // Fallback in case wpa-proto is not set
-  if (ipconfig.m_passphrase != "" && ipconfig.m_encryption == NETWORK_CONNECTION_ENCRYPTION_NONE)
-    ipconfig.m_encryption = NETWORK_CONNECTION_ENCRYPTION_WPA;
-
-  fclose(fp);
-*/
-}
-
-void CPosixConnection::SetSettings(const CIPConfig &ipconfig)
-{
   //printf("CPosixConnection::SetSettings %s, method(%d)\n",
   //  m_connectionName.c_str(), ipconfig.m_method);
 
   FILE *fr = fopen("/etc/network/interfaces", "r");
   if (!fr)
-  {
-    // TODO
-    return;
-  }
+    return false;
 
   char *line = NULL;
   size_t line_length = 0;
@@ -559,10 +505,10 @@ void CPosixConnection::SetSettings(const CIPConfig &ipconfig)
       std::string::size_type end   = ifdown_interface.find("inet", start);
       ifdown_interfaces.push_back(ifdown_interface.substr(start, end - start));
 
-      // is this our interface section (eth0 or wlan0)
+      // is this our interface section (ethX or wlanX)
       if (interfaces_lines[i].find(ipconfig.m_interface) != std::string::npos)
       {
-        // we only touch wlan0 (wifi) settings.
+        // we only touch wifi settings right now.
         if (m_type == NETWORK_CONNECTION_TYPE_WIFI)
         {
           std::string tmp;
@@ -602,10 +548,7 @@ void CPosixConnection::SetSettings(const CIPConfig &ipconfig)
 
   FILE* fw = fopen("/etc/network/interfaces.temp", "w");
   if (!fw)
-  {
-    // TODO
-    return;
-  }
+    return false;
   for (size_t i = 0; i < new_interfaces_lines.size(); i++)
   {
     printf("CPosixConnection::SetSettings, new_interfaces_lines:%s", new_interfaces_lines[i].c_str());
@@ -615,11 +558,7 @@ void CPosixConnection::SetSettings(const CIPConfig &ipconfig)
 
   // Rename the file (remember, you can not rename across devices)
   if (rename("/etc/network/interfaces.temp", "/etc/network/interfaces") < 0)
-  {
-    printf("CPosixConnection::SetSettings, rename failed, %s\n", strerror(errno));
-    // TODO
-    return;
-  }
+    return false;
 
   int rtn_error;
   std::string cmd;
@@ -639,4 +578,6 @@ void CPosixConnection::SetSettings(const CIPConfig &ipconfig)
     CLog::Log(LOGERROR, "Unable to start interface %s, %s", ipconfig.m_interface.c_str(), strerror(errno));
   else
     CLog::Log(LOGINFO, "Started interface %s", ipconfig.m_interface.c_str());
+
+  return true;
 }

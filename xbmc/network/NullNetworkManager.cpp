@@ -48,8 +48,10 @@ std::string CNullConnection::GetMacAddress() const           { return "00:00:00:
 unsigned int CNullConnection::GetStrength() const            { return 100; }
 
 EncryptionType CNullConnection::GetEncryption() const        { return NETWORK_CONNECTION_ENCRYPTION_NONE; }
-unsigned int CNullConnection::GetConnectionSpeed() const     { return 100; }
-ConnectionType CNullConnection::GetConnectionType() const    { return NETWORK_CONNECTION_TYPE_WIRED; }
+unsigned int   CNullConnection::GetSpeed() const             { return 100; }
+ConnectionType CNullConnection::GetType() const              { return NETWORK_CONNECTION_TYPE_UNKNOWN; }
+IPConfigMethod CNullConnection::GetMethod() const            { return IP_CONFIG_DISABLED; }
+void           GetIPConfig() const                           { }
 };
 
 class CNullNetworkManager : public INetworkManager
@@ -59,6 +61,8 @@ CNullNetworkManager::~CNullNetworkManager() { }
 bool CNullNetworkManager::CanManageConnections() { return false; }
 
 ConnectionList CNullNetworkManager::GetConnections() { ConnectionList list; list.push_back(CConnectionPtr(new CNullConnection())); return list; }
+
+bool CNullNetworkManager::Connect(CConnectionPtr connection, IPassphraseStorage *storage) { return false; }
 
 bool CNullNetworkManager::PumpNetworkEvents(INetworkEventsCallback *callback) { return true; }
 };

@@ -149,20 +149,29 @@ public:
   virtual std::string GetNetmask() const = 0;
 
   /*!
-   \brief Get the mac address of the connection
-
-   \return The mac address of the connection
-   \sa IConnection
-   */
-  virtual std::string GetMacAddress() const = 0;
-
-  /*!
    \brief Get the gateway address of the connection
 
    \return The gateway address of the connection
    \sa IConnection
    */
   virtual std::string GetGateway() const = 0;
+
+  /*!
+   \brief Get the name server of the connection
+
+   \return The name server of the connection
+   \sa IConnection
+   */
+
+  virtual std::string GetNameServer() const = 0;
+
+  /*!
+   \brief Get the mac address of the connection
+
+   \return The mac address of the connection
+   \sa IConnection
+   */
+  virtual std::string GetMacAddress() const = 0;
 
   /*!
    \brief The signal strength of the connection
@@ -186,7 +195,7 @@ public:
    \return The speed of the connection
    \sa IConnection
    */
-  virtual unsigned int GetConnectionSpeed() const = 0;
+  virtual unsigned int GetSpeed() const = 0;
 
   /*!
    \brief Get the connection type
@@ -203,6 +212,14 @@ public:
    \sa IPConfigMethod
    */
   virtual IPConfigMethod GetMethod() const = 0;
+
+  /*!
+   \brief Get the IPConfig of the connection
+
+   \return The IPConfig of the connection
+   \sa IConnection
+   */
+  virtual void GetIPConfig(CIPConfig &ipconfig) const = 0;
 };
 
 typedef boost::shared_ptr<IConnection> CConnectionPtr;

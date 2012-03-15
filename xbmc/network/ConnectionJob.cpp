@@ -20,6 +20,7 @@
  */
 
 #include "ConnectionJob.h"
+#include "Application.h"
 #include "utils/log.h"
 #include "dialogs/GUIDialogKeyboard.h"
 #include "security/KeyringManager.h"
@@ -32,8 +33,8 @@ CConnectionJob::CConnectionJob(CConnectionPtr connection, CKeyringManager *keyri
 
 bool CConnectionJob::DoWork()
 {
-  CIPConfig ipconfig;
-  return m_connection->Connect((IPassphraseStorage *)this, ipconfig);
+  // The Network Manager is in control of handling connections
+  return g_application.getNetworkManager().Connect(m_connection, (IPassphraseStorage *)this);
 }
 
 void CConnectionJob::InvalidatePassphrase(const std::string &uuid)

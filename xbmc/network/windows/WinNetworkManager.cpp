@@ -31,9 +31,20 @@ CWinNetworkManager::~CWinNetworkManager()
 {
 }
 
+bool CWinNetworkManager::Connect()
+{
+  return false;
+}
+
 bool CWinNetworkManager::CanManageConnections()
 {
   return false;
+}
+
+bool CWinNetworkManager::Connect(CConnectionPtr connection, IPassphraseStorage *storage)
+{
+  CIPConfig ipconfig;
+  return connection->Connect(storage, ipconfig);
 }
 
 ConnectionList CWinNetworkManager::GetConnections()

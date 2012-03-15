@@ -404,8 +404,7 @@ void CGUIWindowSettingsCategory::CreateSettings()
     else if (strSetting.Equals("network.connection"))
     {
       bool visible = g_application.getNetworkManager().CanManageConnections();
-      //((CGUIControl *)GetControl(GetSetting("network.sep1")->GetID()))->SetVisible(visible);
-      //((CGUIControl *)GetControl(GetSetting("network.connection")->GetID()))->SetVisible(visible);
+      //((CGUIControl*)GetControl(GetSetting("network.connection")->GetID()))->SetVisible(visible);
       if (visible)
         FillInNetworkConnection();
     }
@@ -749,37 +748,39 @@ void CGUIWindowSettingsCategory::UpdateSettings()
       }      
     }  
 #endif//HAS_AIRPLAY
-  else if (strSetting.Equals("network.connection"))
-  {
-    CGUIButtonControl *pControl = (CGUIButtonControl *)GetControl(GetSetting(strSetting)->GetID());
-
-    bool visible = g_application.getNetworkManager().CanManageConnections();
-    pControl->SetVisible(visible);
-    //((CGUIControl *)GetControl(GetSetting("network.sep1")->GetID()))->SetVisible(visible);
-
-    pControl->SetLabel(g_application.getNetworkManager().GetDefaultConnectionName());
-    switch (g_application.getNetworkManager().GetDefaultConnectionState())
+    else if (strSetting.Equals("network.connection"))
     {
-      case NETWORK_CONNECTION_STATE_CONNECTED:
-        pControl->SetLabel2(g_localizeStrings.Get(13296));
-        break;
-      case NETWORK_CONNECTION_STATE_CONNECTING:
-        pControl->SetLabel2(g_localizeStrings.Get(33203));
-        break;
-      default:
-        pControl->SetLabel2(g_localizeStrings.Get(33202));
-        break;
+      CGUIButtonControl *pControl = (CGUIButtonControl *)GetControl(GetSetting(strSetting)->GetID());
+
+      bool visible = g_application.getNetworkManager().CanManageConnections();
+      pControl->SetVisible(visible);
+
+      CStdString connection_name;
+      connection_name = g_application.getNetworkManager().GetDefaultConnectionName();
+      if (!connection_name.Equals(pControl->GetLabel()))
+      {
+        pControl->SetLabel(connection_name);
+        if (visible)
+          FillInNetworkConnection();
+      }
+      switch (g_application.getNetworkManager().GetDefaultConnectionState())
+      {
+        case NETWORK_CONNECTION_STATE_CONNECTED:
+          pControl->SetLabel2(g_localizeStrings.Get(13296));
+          break;
+        case NETWORK_CONNECTION_STATE_CONNECTING:
+          pControl->SetLabel2(g_localizeStrings.Get(33203));
+          break;
+        default:
+          pControl->SetLabel2(g_localizeStrings.Get(33202));
+          break;
+      }
     }
-    if (visible)
-      FillInNetworkConnection();
-  }
     else if (strSetting.Equals("network.method"))
     {
       CGUISpinControlEx* pControl1 = (CGUISpinControlEx *)GetControl(GetSetting("network.method")->GetID());
       if (pControl1)
          pControl1->SetEnabled(true);
-
-      printf("UpdateSettings, (%d)\n", pControl1->GetValue());
     }
     else if (strSetting.Equals("network.ipaddress") ||
       strSetting.Equals("network.netmask")  ||
@@ -1280,7 +1281,6 @@ void CGUIWindowSettingsCategory::OnSettingChanged(CBaseSettingControl *pSettingC
   {
     vector<CStdString> params;
     g_application.getApplicationMessenger().ActivateWindow(WINDOW_DIALOG_ACCESS_POINTS, params, false);
-    UpdateSettings();
   }
   else if (strSetting.Equals("httpproxy.httpproxyport"))
   {
@@ -2655,26 +2655,32 @@ void CGUIWindowSettingsCategory::FillInNetworkConnection()
   if (!GetSetting("network.connection"))
   return;
 
-  CStdString     address = g_application.getNetworkManager().GetDefaultConnectionAddress();
-  CStdString     netmask = g_application.getNetworkManager().GetDefaultConnectionNetmask();
-  CStdString     gateway = g_application.getNetworkManager().GetDefaultConnectionGateway();
-  CStdString     name    = g_application.getNetworkManager().GetDefaultConnectionName();
-  ConnectionType type    = g_application.getNetworkManager().GetDefaultConnectionType();
-  IPConfigMethod method  = g_application.getNetworkManager().GetDefaultConnectionMethod();
-  CStdString     nameserver("");
+  // run the net pump to clear out any stale info,
+  // the water gets mighty dirty when the pump
+  // only runs every 500ms.
+  for (size_t i = 0; i < 20; i++)
+    g_application.getNetworkManager().PumpNetworkEvents();
+
+  CStdString     address    = g_application.getNetworkManager().GetDefaultConnectionAddress();
+  CStdString     netmask    = g_application.getNetworkManager().GetDefaultConnectionNetmask();
+  CStdString     gateway    = g_application.getNetworkManager().GetDefaultConnectionGateway();
+  CStdString     name       = g_application.getNetworkManager().GetDefaultConnectionName();
+  ConnectionType type       = g_application.getNetworkManager().GetDefaultConnectionType();
+  IPConfigMethod method     = g_application.getNetworkManager().GetDefaultConnectionMethod();
+  CStdString     nameserver = g_application.getNetworkManager().GetDefaultConnectionNameServer();
   CStdString     passphrase("");
   if (type == NETWORK_CONNECTION_TYPE_WIFI)
   {
     CVariant secret;
-    std::string uuid = "wifi_" + address;
+    std::string uuid = "wifi." + address;
     if (g_application.getKeyringManager().FindSecret("network", uuid, secret) && secret.isString())
       passphrase = secret.asString();
   }
 
-  // set dhcp, static or disabled
+  // set dhcp or static
   CGUISpinControlEx* pControl1 = (CGUISpinControlEx*)GetControl(GetSetting("network.method")->GetID());
   if (pControl1) pControl1->SetValue(method);
-  printf("FillInNetworkConnection, (%d)\n", pControl1->GetValue());
+
   // set network information
   GetSetting("network.ipaddress" )->GetSetting()->FromString(address);
   GetSetting("network.netmask"   )->GetSetting()->FromString(netmask);

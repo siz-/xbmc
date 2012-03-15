@@ -32,10 +32,12 @@ public:
 
   virtual ConnectionList GetConnections();
 
+  virtual bool Connect(CConnectionPtr connection, IPassphraseStorage *storage);
+
   virtual bool PumpNetworkEvents(INetworkEventsCallback *callback);
 private:
   void UpdateNetworkManager();
-  bool UpdateWifiConnections();
+  bool UpdateWifiConnections(const char *interfaceName);
 
   int            m_socket;
   ConnectionList m_connections;

@@ -64,6 +64,7 @@ bool CGUIDialogAccessPoints::OnAction(const CAction &action)
 
 void CGUIDialogAccessPoints::OnInitWindow()
 {
+  printf("CGUIDialogAccessPoints::OnInitWindow\n");
   CGUIDialog::OnInitWindow();
 
   UpdateConnectionList();
@@ -71,6 +72,7 @@ void CGUIDialogAccessPoints::OnInitWindow()
 
 void CGUIDialogAccessPoints::OnJobComplete(unsigned int jobID, bool success, CJob *job)
 {
+  printf("CGUIDialogAccessPoints::OnJobComplete\n");
   if (success)
     Close();
 }

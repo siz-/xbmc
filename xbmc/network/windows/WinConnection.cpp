@@ -68,6 +68,12 @@ std::string CWinConnection::GetGateway() const
   return m_adapter.GatewayList.IpAddress.String;
 }
 
+std::string CPosixConnection::GetNameServer() const
+{
+  std::string nameserver("127.0.0.1");
+  return nameserver;
+}
+
 std::string CWinConnection::GetMacAddress() const
 {
   return std::string((char*)m_adapter.Address);
@@ -96,5 +102,9 @@ ConnectionType CWinConnection::GetType() const
 IPConfigMethod CWinConnection::GetMethod() const
 {
   return IP_CONFIG_DHCP;
+}
+
+void CWinConnection::GetIPConfig(CIPConfig &ipconfig) const
+{
 }
 #endif

@@ -76,13 +76,12 @@ bool CConnmanConnection::Connect(IPassphraseStorage *storage, CIPConfig &ipconfi
 {
   if (m_encryption != NETWORK_CONNECTION_ENCRYPTION_NONE)
   {
-    std::string passphrase;
-    if (!storage->GetPassphrase(m_serviceObject, passphrase))
+    if (!storage->GetPassphrase(m_serviceObject, m_passphrase))
       return false;
 
     CDBusMessage message("net.connman", m_serviceObject.c_str(), "net.connman.Service", "SetProperty");
     message.AppendArgument("Passphrase");
-    message.AppendArgument(passphrase.c_str());
+    message.AppendArgument(m_passphrase.c_str());
 
     CDBusReplyPtr reply = message.SendSystem();
     if (reply->IsErrorSet())
@@ -122,6 +121,11 @@ std::string CConnmanConnection::GetGateway() const
   return m_gateway;
 }
 
+std::string CConnmanConnection::GetNameServer() const
+{
+  return "127.0.0.1";
+}
+
 std::string CConnmanConnection::GetMacAddress() const
 {
   return m_macaddress;
@@ -137,7 +141,7 @@ EncryptionType CConnmanConnection::GetEncryption() const
   return m_encryption;
 }
 
-unsigned int CConnmanConnection::GetConnectionSpeed() const
+unsigned int CConnmanConnection::GetSpeed() const
 {
   return m_speed;
 }
@@ -155,6 +159,17 @@ IPConfigMethod CConnmanConnection::GetMethod() const
     return IP_CONFIG_STATIC;
   else
     return IP_CONFIG_DISABLED;
+}
+
+void CConnmanConnection::GetIPConfig(CIPConfig &ipconfig) const
+{
+  ipconfig.m_method     = GetMethod();
+  ipconfig.m_address    = m_address;
+  ipconfig.m_netmask    = m_netmask;
+  ipconfig.m_gateway    = m_gateway;
+  ipconfig.m_essid      = m_name;
+  ipconfig.m_encryption = m_encryption;
+  ipconfig.m_passphrase = m_passphrase;
 }
 
 bool CConnmanConnection::PumpNetworkEvents()

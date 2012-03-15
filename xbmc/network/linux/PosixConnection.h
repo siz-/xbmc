@@ -24,6 +24,7 @@
 
 int  PosixParseHex(char *str, unsigned char *addr);
 bool PosixGuessIsHex(const char *test_hex, size_t length);
+bool IsWireless(int socket, const char *interface);
 std::string PosixGetDefaultGateway(const std::string interface);
 
 class CPosixConnection : public IConnection
@@ -35,25 +36,24 @@ public:
   virtual bool Connect(IPassphraseStorage *storage, CIPConfig &ipconfig);
   virtual ConnectionState GetState() const;
 
-  virtual std::string GetName() const;
+  virtual std::string    GetName() const;
+  virtual std::string    GetAddress() const;
+  virtual std::string    GetNetmask() const;
+  virtual std::string    GetGateway() const;
+  virtual std::string    GetNameServer() const;
+  virtual std::string    GetMacAddress() const;
 
-  virtual std::string GetAddress() const;
-  virtual std::string GetNetmask() const;
-  virtual std::string GetGateway() const;
-  virtual std::string GetMacAddress() const;
-
-  virtual unsigned int GetStrength() const;
+  virtual unsigned int   GetStrength() const;
   virtual EncryptionType GetEncryption() const;
-  virtual unsigned int GetConnectionSpeed() const;
+  virtual unsigned int   GetSpeed()   const;
 
   virtual ConnectionType GetType() const;
   virtual IPConfigMethod GetMethod() const;
+  virtual void           GetIPConfig(CIPConfig &ipconfig) const;
 
   bool PumpNetworkEvents();
 private:
-  void GetSettings(CIPConfig &ipconfig);
-  void SetSettings(const CIPConfig &ipconfig);
-  void WriteSettings(FILE *fw, const CIPConfig &ipconfig);
+  bool SetSettings(const CIPConfig &ipconfig);
 
   int m_socket;
   std::string m_connectionName;
@@ -68,5 +68,6 @@ private:
   ConnectionType  m_type;
   ConnectionState m_state;
   IPConfigMethod  m_method;
+  std::string     m_passphrase;
   EncryptionType  m_encryption;
 };

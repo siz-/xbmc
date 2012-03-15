@@ -30,9 +30,13 @@ public:
   CWinNetworkManager();
   virtual ~CWinNetworkManager();
 
+  virtual bool Connect();
+
   virtual bool CanManageConnections();
 
   virtual ConnectionList GetConnections();
+
+  virtual bool Connect(CConnectionPtr connection, IPassphraseStorage *storage);
 
   virtual bool PumpNetworkEvents(INetworkEventsCallback *callback);
 };

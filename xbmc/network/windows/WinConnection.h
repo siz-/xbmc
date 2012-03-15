@@ -40,14 +40,16 @@ public:
   virtual std::string GetAddress() const;
   virtual std::string GetNetmask() const;
   virtual std::string GetGateway() const;
+  virtual std::string GetNameServer() const;
   virtual std::string GetMacAddress() const;
 
   virtual unsigned int GetStrength() const;
   virtual EncryptionType GetEncryption() const;
-  virtual unsigned int GetConnectionSpeed() const;
+  virtual unsigned int GetSpeed() const;
 
   virtual ConnectionType GetType() const;
   virtual IPConfigMethod GetMethod() const;
+  virtual void           GetIPConfig(CIPConfig &ipconfig) const;
 private:
   IP_ADAPTER_INFO m_adapter;
 };

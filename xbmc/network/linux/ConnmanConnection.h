@@ -37,17 +37,19 @@ public:
 
   virtual std::string GetName() const;
 
-  virtual std::string GetAddress() const;
-  virtual std::string GetNetmask() const;
-  virtual std::string GetGateway() const;
-  virtual std::string GetMacAddress() const;
+  virtual std::string    GetAddress() const;
+  virtual std::string    GetNetmask() const;
+  virtual std::string    GetGateway() const;
+  virtual std::string    GetNameServer() const;
+  virtual std::string    GetMacAddress() const;
 
-  virtual unsigned int GetStrength() const;
+  virtual unsigned int   GetStrength() const;
   virtual EncryptionType GetEncryption() const;
-  virtual unsigned int GetConnectionSpeed() const;
+  virtual unsigned int   GetSpeed() const;
 
   virtual ConnectionType GetType() const;
   virtual IPConfigMethod GetMethod() const;
+  virtual void           GetIPConfig(CIPConfig &ipconfig) const;
 
   bool PumpNetworkEvents();
 
@@ -70,6 +72,7 @@ private:
   unsigned int m_speed;
 
   ConnectionState m_state;
+  std::string     m_passphrase;
   EncryptionType  m_encryption;
   ConnectionType  m_type;
 

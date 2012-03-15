@@ -77,12 +77,24 @@
 // interfaces, then for wlan0, doing a wifi scan for access points using ioctl calls.
 // A CPosixConnection object is created for each wired interface and each wifi access point.
 //
+// The CPosixCOnnection object will get created with a named string that if composed of
+//   several fields with a '.' delimiter. The ".' was chosen as it is an invalid character
+//   for SSIDs. For example:
+//
+//   wire.bc:ae:c5:de:bb:4f.eth0
+//   wifi.00:23:6c:82:9b:33.wlan0.<essid>.none
+//   wifi.00:23:6c:82:9b:33.wlan0.test ap.wpa2
+//
+// After creation, the 1st two fields are retained as the internal connection name for
+//   passphrase look up which is only relevent for wifi conections.
+//
 // Switching connections is performed by a CPosixConnection method in three steps.
 //  1) use ifdown <interface> take down every interface except loopback.
 //  2) if the desired connection is wifi, then
 //       rewrite /etc/network/interfaces, only changing "wireless-" or "wpa-" items.
 //  3) use ifup <interface> to bring up the desired active connection.
 //
+//  TODO: handle static in addition to dhcp settings.
 //
 
 CPosixNetworkManager::CPosixNetworkManager()
@@ -106,6 +118,13 @@ bool CPosixNetworkManager::CanManageConnections()
 ConnectionList CPosixNetworkManager::GetConnections()
 {
   return m_connections;
+}
+
+bool CPosixNetworkManager::Connect(CConnectionPtr connection, IPassphraseStorage *storage)
+{
+  CIPConfig ipconfig;
+
+  return connection->Connect(storage, ipconfig);
 }
 
 bool CPosixNetworkManager::PumpNetworkEvents(INetworkEventsCallback *callback)
@@ -134,11 +153,11 @@ bool CPosixNetworkManager::PumpNetworkEvents(INetworkEventsCallback *callback)
   }
 
   // next network check in 5 seconds.
-  // if network setting GUI is up, then check in 1 second.
-  if (g_windowManager.GetWindow(WINDOW_DIALOG_ACCESS_POINTS))
-    m_next_poll_time = XbmcThreads::SystemClockMillis() + 5000;
+  // if system setting GUI is up, then we do not throttle.
+  if (g_windowManager.GetActiveWindow() == WINDOW_SETTINGS_SYSTEM)
+    m_next_poll_time = XbmcThreads::SystemClockMillis();
   else
-    m_next_poll_time = XbmcThreads::SystemClockMillis() + 1000;
+    m_next_poll_time = XbmcThreads::SystemClockMillis() + 5000;
 
   return result;
 }
@@ -173,11 +192,18 @@ void CPosixNetworkManager::UpdateNetworkManager()
 
     // make sure the device has ethernet encapsulation
     struct ifreq ifr;
-    memset(&ifr, 0, sizeof(ifr));
+    memset(&ifr, 0x00, sizeof(ifr));
     strcpy(ifr.ifr_name, interfaceName);
     if (ioctl(m_socket, SIOCGIFHWADDR, &ifr) >= 0)
     {
-      if (strstr(interfaceName, "eth0"))
+      if (IsWireless(m_socket, interfaceName))
+      {
+        // get the list of access points on this interface, try this 3 times
+        int retryCount = 0;
+        while (!UpdateWifiConnections(interfaceName) && retryCount < 3)
+          retryCount++;
+      }
+      else
       {
         // and ignore loopback
         if (ifr.ifr_hwaddr.sa_family == ARPHRD_ETHER && !(ifr.ifr_flags & IFF_LOOPBACK))
@@ -185,24 +211,16 @@ void CPosixNetworkManager::UpdateNetworkManager()
           char access_point[1024] = {0};
           if (ioctl(m_socket, SIOCGIFHWADDR, &ifr) >= 0)
           {
-            sprintf(access_point, "wired_%02X:%02X:%02X:%02X:%02X:%02X",
-              ifr.ifr_hwaddr.sa_data[0],
-              ifr.ifr_hwaddr.sa_data[1],
-              ifr.ifr_hwaddr.sa_data[2],
-              ifr.ifr_hwaddr.sa_data[3],
-              ifr.ifr_hwaddr.sa_data[4],
-              ifr.ifr_hwaddr.sa_data[5]);
+            // format up 'wire.<mac address>.<interface name>
+            sprintf(access_point, "wire.%02X:%02X:%02X:%02X:%02X:%02X.%s",
+              ifr.ifr_hwaddr.sa_data[0], ifr.ifr_hwaddr.sa_data[1],
+              ifr.ifr_hwaddr.sa_data[2], ifr.ifr_hwaddr.sa_data[3],
+              ifr.ifr_hwaddr.sa_data[4], ifr.ifr_hwaddr.sa_data[5],
+              interfaceName);
           }
           m_connections.push_back(CConnectionPtr(new CPosixConnection(m_socket, access_point)));
           //printf("CPosixNetworkManager::GetConnections access_point(%s) \n", access_point);
         }
-      }
-      else if (strstr(interfaceName, "wlan0"))
-      {
-        // Get the list of access points. Try this 3 times
-        int retryCount = 0;
-        while (!UpdateWifiConnections() && retryCount < 3)
-          retryCount++;
       }
     }
   }
@@ -211,17 +229,15 @@ void CPosixNetworkManager::UpdateNetworkManager()
   fclose(fp);
 }
 
-bool CPosixNetworkManager::UpdateWifiConnections()
+bool CPosixNetworkManager::UpdateWifiConnections(const char *interfaceName)
 {
-  const char* interfaceName = "wlan0";
-
   // Query the wireless extentsions version number. It will help us when we
   // parse the resulting events
   struct iwreq iwr;
   char rangebuffer[sizeof(iw_range) * 2];    /* Large enough */
   struct iw_range*  range = (struct iw_range*) rangebuffer;
 
-  memset(rangebuffer, 0, sizeof(rangebuffer));
+  memset(rangebuffer, 0x00, sizeof(rangebuffer));
   iwr.u.data.pointer = (caddr_t) rangebuffer;
   iwr.u.data.length = sizeof(rangebuffer);
   iwr.u.data.flags = 0;
@@ -234,7 +250,7 @@ bool CPosixNetworkManager::UpdateWifiConnections()
   }
 
   // Scan for wireless access points
-  memset(&iwr, 0, sizeof(iwr));
+  memset(&iwr, 0x00, sizeof(iwr));
   strncpy(iwr.ifr_name, interfaceName, IFNAMSIZ);
   if (ioctl(m_socket, SIOCSIWSCAN, &iwr) < 0)
   {
@@ -289,13 +305,6 @@ bool CPosixNetworkManager::UpdateWifiConnections()
     }
   }
 
-  /*
-  size_t len = iwr.u.data.length;
-  char*  pos = (char*)res_buf;
-  char*  end = (char*)res_buf + len;
-  char*  custom;
-  struct iw_event iwe_buf, *iwe = &iwe_buf;
-  */
   size_t len = iwr.u.data.length;           // total length of the wireless events from the scan results
   unsigned char* pos = res_buf;             // pointer to the current event (about 10 per wireless network)
   unsigned char* end = res_buf + len;       // marks the end of the scan results
@@ -348,12 +357,9 @@ bool CPosixNetworkManager::UpdateWifiConnections()
         char cur_bssid[256] = {0};
         // macAddress is big-endian, write in byte chunks
         sprintf(cur_bssid, "%02X:%02X:%02X:%02X:%02X:%02X",
-          iwe->u.ap_addr.sa_data[0],
-          iwe->u.ap_addr.sa_data[1],
-          iwe->u.ap_addr.sa_data[2],
-          iwe->u.ap_addr.sa_data[3],
-          iwe->u.ap_addr.sa_data[4],
-          iwe->u.ap_addr.sa_data[5]);
+          iwe->u.ap_addr.sa_data[0], iwe->u.ap_addr.sa_data[1],
+          iwe->u.ap_addr.sa_data[2], iwe->u.ap_addr.sa_data[3],
+          iwe->u.ap_addr.sa_data[4], iwe->u.ap_addr.sa_data[5]);
 
         if (first)
         {
@@ -364,7 +370,9 @@ bool CPosixNetworkManager::UpdateWifiConnections()
         {
           std::string essID(essid);
           std::string bssID(bssid);
-          const std::string access_point = "wifi_" + bssID + "_" + essID + "_" + encryption;
+          std::string interface(interfaceName);
+          // format up 'wifi.<mac address>.<interface name>.<essid>.<encryption>
+          const std::string access_point = "wifi." + bssID + "." + interface + "." + essID + "." + encryption;
           m_connections.push_back(CConnectionPtr(new CPosixConnection(m_socket, access_point.c_str())));
           //printf("CPosixNetworkManager::GetWifiConnections add access_point(%s), quality(%d), signalLevel(%d)\n",
           //  access_point.c_str(), quality, signalLevel);
@@ -410,11 +418,11 @@ bool CPosixNetworkManager::UpdateWifiConnections()
         {
           switch (custom[offset])
           {
-            case 0xdd: /* WPA1 */
+            case 0xdd: // WPA1
               if (encryption.find("wpa2") == std::string::npos)
                 encryption = "wpa";
               break;
-            case 0x30: /* WPA2 */
+            case 0x30: // WPA2
               encryption = "wpa2";
               break;
           }
@@ -429,7 +437,9 @@ bool CPosixNetworkManager::UpdateWifiConnections()
   {
     std::string essID(essid);
     std::string bssID(bssid);
-    const std::string access_point = "wifi_" + essID + "_" + bssID + "_" + encryption;
+    std::string interface(interfaceName);
+    // format up 'wifi.<mac address>.<interface name>.<essid>.<encryption>
+    const std::string access_point = "wifi." + bssID + "." + interface + "." + essID + "." + encryption;
     m_connections.push_back(CConnectionPtr(new CPosixConnection(m_socket, access_point.c_str())));
     //printf("CPosixNetworkManager::GetWifiConnections add access_point(%s), quality(%d), signalLevel(%d)\n",
     //  access_point.c_str(), quality, signalLevel);
@@ -438,30 +448,4 @@ bool CPosixNetworkManager::UpdateWifiConnections()
   free(res_buf);
   res_buf = NULL;
   return true;
-
-/*
-  // run 'wpa_cli scan', we do not care about the results.
-  result = WPA_cli("scan");
-  if (result.find("FAIL") != std::string::npos)
-  {
-    CLog::Log(LOGINFO, "CPosixNetworkManager::ScanWifi: Failed to scan");
-    return false;
-  }
-  sleep(1);
-
-  std::vector<wpa_network> wpa_networks;
-  result = WPA_cli_scan_results(wpa_networks);
-  if (result.find("FAIL") != std::string::npos)
-  {
-    CLog::Log(LOGINFO, "CPosixNetworkManager::ScanWifi: Failed to return scan results");
-    return false;
-  }
-  for (size_t i = 0; i < wpa_networks.size(); i++)
-  {
-    const std::string access_point = "wifi_" + wpa_networks[i].ssid + "_" + wpa_networks[i].bssid;
-    m_connections.push_back(CConnectionPtr(new CPosixConnection(m_socket, access_point.c_str())));
-    printf("CPosixNetworkManager::GetWifiConnections add access_point(%s)\n", access_point.c_str());
-  }
-  return true;
-*/
 }

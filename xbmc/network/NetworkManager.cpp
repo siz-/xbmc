@@ -69,9 +69,9 @@ void CNetworkManager::Initialize()
   OnConnectionListChange(m_instance->GetConnections());
 }
 
-void CNetworkManager::PumpNetworkEvents()
+bool CNetworkManager::PumpNetworkEvents()
 {
-  m_instance->PumpNetworkEvents(this);
+  return m_instance->PumpNetworkEvents(this);
 }
 
 std::string CNetworkManager::GetDefaultConnectionName()
@@ -130,6 +130,14 @@ std::string CNetworkManager::GetDefaultConnectionGateway()
     return std::string("opps");
 }
 
+std::string CNetworkManager::GetDefaultConnectionNameServer()
+{
+  if (m_defaultConnection)
+    return m_defaultConnection->GetNameServer();
+  else
+    return std::string("127.0.0.1");
+}
+
 ConnectionState CNetworkManager::GetDefaultConnectionState()
 {
   return m_state;
@@ -153,6 +161,28 @@ bool CNetworkManager::CanManageConnections()
 ConnectionList CNetworkManager::GetConnections()
 {
   return m_connections;
+}
+
+bool CNetworkManager::Connect(CConnectionPtr connection, IPassphraseStorage *storage)
+{
+  bool connected = false;
+/*
+  CConnectionPtr saved_connection = NULL;
+
+  for (unsigned int i = 0; i < m_connections.size(); i++)
+  {
+    if (m_connections[i]->GetState() == NETWORK_CONNECTION_STATE_CONNECTED)
+    {
+      saved_connection = m_connections[i];
+      break;
+    }
+  }
+  connected = m_instance->Connect(connection, storage);
+  if (!connected)
+    connected = m_instance->Connect(saved_connection, storage);
+*/
+  connected = m_instance->Connect(connection, storage);
+  return connected;
 }
 
 void CNetworkManager::OnConnectionStateChange(ConnectionState state)
