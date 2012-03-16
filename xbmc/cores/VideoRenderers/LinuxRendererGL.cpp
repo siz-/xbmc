@@ -2975,6 +2975,15 @@ bool CLinuxRendererGL::Supports(ERENDERFEATURE feature)
       return true;
   }
 
+  if (feature == RENDERFEATURE_STRETCH         ||
+      feature == RENDERFEATURE_NONLINSTRETCH   ||
+      feature == RENDERFEATURE_CROP            ||
+      feature == RENDERFEATURE_ZOOM            ||
+      feature == RENDERFEATURE_VERTICAL_SHIFT  ||
+      feature == RENDERFEATURE_PIXEL_RATIO     ||
+      feature == RENDERFEATURE_POSTPROCESS)
+    return true;
+
   return false;
 }
 

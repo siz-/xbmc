@@ -1793,6 +1793,16 @@ bool CLinuxRendererGLES::Supports(ERENDERFEATURE feature)
   if (feature == RENDERFEATURE_NONLINSTRETCH)
     return false;
 
+  if (feature == RENDERFEATURE_STRETCH         ||
+      feature == RENDERFEATURE_NONLINSTRETCH   ||
+      feature == RENDERFEATURE_CROP            ||
+      feature == RENDERFEATURE_ZOOM            ||
+      feature == RENDERFEATURE_VERTICAL_SHIFT  ||
+      feature == RENDERFEATURE_PIXEL_RATIO     ||
+      feature == RENDERFEATURE_POSTPROCESS)
+    return true;
+
+
   return false;
 }
 
