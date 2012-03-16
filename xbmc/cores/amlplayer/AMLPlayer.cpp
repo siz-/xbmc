@@ -41,6 +41,7 @@
 #include "utils/TimeUtils.h"
 #include "utils/URIUtils.h"
 #include "utils/LangCodeExpander.h"
+#include "settings/VideoSettings.h"
 
 // amlogic libplayer
 extern "C"
@@ -1796,6 +1797,43 @@ bool CAMLPlayer::GetStatus()
   //  player_info.audio_bufferlevel, player_info.video_bufferlevel, player_info.bufed_time, player_info.bufed_pos);
 
   return true;
+}
+
+void CAMLPlayer::GetRenderFeatures(Features* renderFeatures)
+{
+  renderFeatures->push_back(RENDERFEATURE_STRETCH);
+  return;
+}
+
+void CAMLPlayer::GetDeinterlaceMethods(Features* deinterlaceMethods)
+{
+  deinterlaceMethods->push_back(VS_INTERLACEMETHOD_DEINTERLACE);
+  return;
+}
+
+void CAMLPlayer::GetDeinterlaceModes(Features* deinterlaceModes)
+{
+  deinterlaceModes->push_back(VS_DEINTERLACEMODE_AUTO);
+  return;
+}
+
+void CAMLPlayer::GetScalingMethods(Features* scalingMethods)
+{
+  return;
+}
+
+void CAMLPlayer::GetAudioCapabilities(Features* audioCaps)
+{
+  audioCaps->push_back(IPC_AUD_SELECT_STREAM);
+  audioCaps->push_back(IPC_AUD_SELECT_OUTPUT);
+  return;
+}
+
+void CAMLPlayer::GetSubtitleCapabilities(Features* subCaps)
+{
+  subCaps->push_back(IPC_SUBS_EXTERNAL);
+  subCaps->push_back(IPC_SUBS_SELECT);
+  return;
 }
 
 #endif
