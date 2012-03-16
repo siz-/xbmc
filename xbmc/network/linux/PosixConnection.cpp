@@ -521,7 +521,13 @@ bool CPosixConnection::SetSettings(const CIPConfig &ipconfig)
           {
             tmp = "  wireless-essid \"" + ipconfig.m_essid + "\"\n";
             new_interfaces_lines.push_back(tmp);
-            tmp = "  wireless-key s:" + ipconfig.m_essid + "\n";
+            tmp = "  wireless-mode managed\n";
+            new_interfaces_lines.push_back(tmp);
+            // if ascii, then quote it, if hex, no quotes
+            if (PosixGuessIsHex(ipconfig.m_passphrase.c_str(), ipconfig.m_passphrase.size()))
+              tmp = "  wireless-key " + ipconfig.m_passphrase + "\n";
+            else
+              tmp = "  wireless-key \"s:" + ipconfig.m_passphrase + "\"\n";
             new_interfaces_lines.push_back(tmp);
           }
           else if (m_encryption == NETWORK_CONNECTION_ENCRYPTION_WPA ||
