@@ -180,6 +180,16 @@ bool CLinuxRendererGLES::Configure(unsigned int width, unsigned int height, unsi
     m_buffers[i].image.flags = 0;
 
   m_iLastRenderBuffer = -1;
+
+  if (( CONF_FLAGS_FORMAT_MASK(m_iFlags) == CONF_FLAGS_FORMAT_BYPASS) && g_application.m_pPlayer)
+  {
+    g_application.m_pPlayer->GetRenderFeatures(&m_renderFeatures);
+    g_application.m_pPlayer->GetDeinterlaceMethods(&m_deinterlaceMethods);
+    g_application.m_pPlayer->GetDeinterlaceModes(&m_deinterlaceModes);
+    g_application.m_pPlayer->GetScalingMethods(&m_scalingMethods);
+  }
+
+
   return true;
 }
 
@@ -1775,6 +1785,12 @@ void CLinuxRendererGLES::SetTextureFilter(GLenum method)
 
 bool CLinuxRendererGLES::Supports(ERENDERFEATURE feature)
 {
+  if((m_renderMethod & RENDER_BYPASS))
+  {
+    Features::iterator itr = std::find(m_renderFeatures.begin(),m_renderFeatures.end(), feature);
+    return itr != m_renderFeatures.end();
+  }
+
   if(feature == RENDERFEATURE_BRIGHTNESS)
     return false;
   
@@ -1813,6 +1829,12 @@ bool CLinuxRendererGLES::SupportsMultiPassRendering()
 
 bool CLinuxRendererGLES::Supports(EDEINTERLACEMODE mode)
 {
+  if((m_renderMethod & RENDER_BYPASS))
+  {
+    Features::iterator itr = std::find(m_deinterlaceModes.begin(),m_deinterlaceModes.end(), mode);
+    return itr != m_deinterlaceModes.end();
+  }
+
   if (mode == VS_DEINTERLACEMODE_OFF)
     return true;
 
@@ -1831,6 +1853,12 @@ bool CLinuxRendererGLES::Supports(EDEINTERLACEMODE mode)
 
 bool CLinuxRendererGLES::Supports(EINTERLACEMETHOD method)
 {
+  if((m_renderMethod & RENDER_BYPASS))
+  {
+    Features::iterator itr = std::find(m_deinterlaceMethods.begin(),m_deinterlaceMethods.end(), method);
+    return itr != m_deinterlaceMethods.end();
+  }
+
   if(m_renderMethod & RENDER_OMXEGL)
     return false;
 
@@ -1854,6 +1882,12 @@ bool CLinuxRendererGLES::Supports(EINTERLACEMETHOD method)
 
 bool CLinuxRendererGLES::Supports(ESCALINGMETHOD method)
 {
+  if((m_renderMethod & RENDER_BYPASS))
+  {
+    Features::iterator itr = std::find(m_scalingMethods.begin(),m_scalingMethods.end(), method);
+    return itr != m_scalingMethods.end();
+  }
+
   if(method == VS_SCALINGMETHOD_NEAREST
   || method == VS_SCALINGMETHOD_LINEAR)
     return true;
@@ -1863,6 +1897,14 @@ bool CLinuxRendererGLES::Supports(ESCALINGMETHOD method)
 
 EINTERLACEMETHOD CLinuxRendererGLES::AutoInterlaceMethod()
 {
+  if((m_renderMethod & RENDER_BYPASS))
+  {
+    if (m_deinterlaceMethods.size())
+      return ((EINTERLACEMETHOD)m_deinterlaceMethods[0]);
+    else
+      return VS_INTERLACEMETHOD_NONE;
+  }
+
   if(m_renderMethod & RENDER_OMXEGL)
     return VS_INTERLACEMETHOD_NONE;
 
