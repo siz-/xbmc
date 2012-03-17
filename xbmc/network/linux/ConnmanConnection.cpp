@@ -26,6 +26,8 @@
 #include "linux/DBusMessage.h"
 #include "utils/log.h"
 
+//-----------------------------------------------------------------------
+//-----------------------------------------------------------------------
 CConnmanConnection::CConnmanConnection(const char *serviceObject)
 {
   m_serviceObject = serviceObject;
@@ -72,35 +74,6 @@ CConnmanConnection::~CConnmanConnection()
   dbus_error_free (&m_error);
 }
 
-bool CConnmanConnection::Connect(IPassphraseStorage *storage, CIPConfig &ipconfig)
-{
-  if (m_encryption != NETWORK_CONNECTION_ENCRYPTION_NONE)
-  {
-    if (!storage->GetPassphrase(m_serviceObject, m_passphrase))
-      return false;
-
-    CDBusMessage message("net.connman", m_serviceObject.c_str(), "net.connman.Service", "SetProperty");
-    message.AppendArgument("Passphrase");
-    message.AppendArgument(m_passphrase.c_str());
-
-    CDBusReplyPtr reply = message.SendSystem();
-    if (reply->IsErrorSet())
-    {
-      CLog::Log(LOGERROR, "ConnmanConnection: Failed to set passphrase");
-      return false;
-    }
-  }
-
-  CLog::Log(LOGDEBUG, "CConnmanConnection::Connect:m_serviceObject(%s)", m_serviceObject.c_str());
-  CDBusMessage message("net.connman", m_serviceObject.c_str(), "net.connman.Service", "Connect");
-  return message.SendAsyncSystem();
-}
-
-ConnectionState CConnmanConnection::GetState() const
-{
-  return m_state;
-}
-
 std::string CConnmanConnection::GetName() const
 {
   return m_name;
@@ -131,24 +104,19 @@ std::string CConnmanConnection::GetMacAddress() const
   return m_macaddress;
 }
 
-unsigned int CConnmanConnection::GetStrength() const
+ConnectionType CConnmanConnection::GetType() const
 {
-  return m_strength;;
+  return m_type;
 }
 
-EncryptionType CConnmanConnection::GetEncryption() const
+ConnectionState CConnmanConnection::GetState() const
 {
-  return m_encryption;
+  return m_state;
 }
 
 unsigned int CConnmanConnection::GetSpeed() const
 {
   return m_speed;
-}
-
-ConnectionType CConnmanConnection::GetType() const
-{
-  return m_type;
 }
 
 IPConfigMethod CConnmanConnection::GetMethod() const
@@ -161,17 +129,41 @@ IPConfigMethod CConnmanConnection::GetMethod() const
     return IP_CONFIG_DISABLED;
 }
 
-void CConnmanConnection::GetIPConfig(CIPConfig &ipconfig) const
+unsigned int CConnmanConnection::GetStrength() const
 {
-  ipconfig.m_method     = GetMethod();
-  ipconfig.m_address    = m_address;
-  ipconfig.m_netmask    = m_netmask;
-  ipconfig.m_gateway    = m_gateway;
-  ipconfig.m_essid      = m_name;
-  ipconfig.m_encryption = m_encryption;
-  ipconfig.m_passphrase = m_passphrase;
+  return m_strength;;
 }
 
+EncryptionType CConnmanConnection::GetEncryption() const
+{
+  return m_encryption;
+}
+
+bool CConnmanConnection::Connect(IPassphraseStorage *storage, const CIPConfig &ipconfig)
+{
+  if (m_encryption != NETWORK_CONNECTION_ENCRYPTION_NONE)
+  {
+    if (!storage->GetPassphrase(m_serviceObject, m_passphrase))
+      return false;
+
+    CDBusMessage message("net.connman", m_serviceObject.c_str(), "net.connman.Service", "SetProperty");
+    message.AppendArgument("Passphrase");
+    message.AppendArgument(m_passphrase.c_str());
+
+    CDBusReplyPtr reply = message.SendSystem();
+    if (reply->IsErrorSet())
+    {
+      CLog::Log(LOGERROR, "ConnmanConnection: Failed to set passphrase");
+      return false;
+    }
+  }
+
+  CLog::Log(LOGDEBUG, "CConnmanConnection::Connect:m_serviceObject(%s)", m_serviceObject.c_str());
+  CDBusMessage message("net.connman", m_serviceObject.c_str(), "net.connman.Service", "Connect");
+  return message.SendAsyncSystem();
+}
+
+//-----------------------------------------------------------------------
 bool CConnmanConnection::PumpNetworkEvents()
 {
   bool result = false;

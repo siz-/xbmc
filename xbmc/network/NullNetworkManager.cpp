@@ -21,19 +21,15 @@
 
 #include "NullNetworkManager.h"
 
-bool CNullConnection::Connect(IPassphraseStorage *storage, CIPConfig &ipconfig)
+//-----------------------------------------------------------------------
+//-----------------------------------------------------------------------
+CNullConnection::~CNullConnection()
 {
-  return false;
-}
-
-ConnectionState CNullConnection::GetState() const
-{
-  return NETWORK_CONNECTION_STATE_CONNECTED;
 }
 
 std::string CNullConnection::GetName() const
 {
-  return "Unkown connection";
+  return "no connection";
 }
 
 std::string CNullConnection::GetAddress() const
@@ -41,28 +37,81 @@ std::string CNullConnection::GetAddress() const
   return "127.0.0.1";
 }
 
-std::string CNullConnection::GetNetmask() const              { return "255.255.255.0"; }
-std::string CNullConnection::GetGateway() const              { return ""; }
-std::string CNullConnection::GetMacAddress() const           { return "00:00:00:00:00:00"; }
-
-unsigned int CNullConnection::GetStrength() const            { return 100; }
-
-EncryptionType CNullConnection::GetEncryption() const        { return NETWORK_CONNECTION_ENCRYPTION_NONE; }
-unsigned int   CNullConnection::GetSpeed() const             { return 100; }
-ConnectionType CNullConnection::GetType() const              { return NETWORK_CONNECTION_TYPE_UNKNOWN; }
-IPConfigMethod CNullConnection::GetMethod() const            { return IP_CONFIG_DISABLED; }
-void           GetIPConfig() const                           { }
-};
-
-class CNullNetworkManager : public INetworkManager
+std::string CNullConnection::GetNetmask() const
 {
-CNullNetworkManager::~CNullNetworkManager() { }
+  return "255.255.255.0";
+}
 
-bool CNullNetworkManager::CanManageConnections() { return false; }
+std::string CNullConnection::GetGateway() const
+{
+  return "127.0.0.1";
+}
 
-ConnectionList CNullNetworkManager::GetConnections() { ConnectionList list; list.push_back(CConnectionPtr(new CNullConnection())); return list; }
+std::string CNullConnection::GetNameServer() const
+{
+  return "127.0.0.1";
+}
 
-bool CNullNetworkManager::Connect(CConnectionPtr connection, IPassphraseStorage *storage) { return false; }
+std::string CNullConnection::GetMacAddress() const
+{
+  return "00:00:00:00:00:00";
+}
 
-bool CNullNetworkManager::PumpNetworkEvents(INetworkEventsCallback *callback) { return true; }
-};
+ConnectionType CNullConnection::GetType() const
+{
+  return NETWORK_CONNECTION_TYPE_UNKNOWN;
+}
+
+unsigned int CNullConnection::GetSpeed() const
+{
+  return 100;
+}
+
+ConnectionState CNullConnection::GetState() const
+{
+  return NETWORK_CONNECTION_STATE_DISCONNECTED;
+}
+
+IPConfigMethod CNullConnection::GetMethod() const
+{
+  return IP_CONFIG_DISABLED;
+}
+
+unsigned int CNullConnection::GetStrength() const
+{
+  return 100;
+}
+
+EncryptionType CNullConnection::GetEncryption() const
+{
+  return NETWORK_CONNECTION_ENCRYPTION_NONE;
+}
+
+bool CNullConnection::Connect(IPassphraseStorage *storage, const CIPConfig &ipconfig)
+{
+  return false;
+}
+
+
+//-----------------------------------------------------------------------
+//-----------------------------------------------------------------------
+CNullNetworkManager::~CNullNetworkManager()
+{
+}
+
+bool CNullNetworkManager::CanManageConnections()
+{
+  return false;
+}
+
+ConnectionList CNullNetworkManager::GetConnections()
+{
+  ConnectionList list;
+  list.push_back(CConnectionPtr(new CNullConnection()));
+  return list;
+}
+
+bool CNullNetworkManager::PumpNetworkEvents(INetworkEventsCallback *callback)
+{
+  return true;
+}

@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2010 Team XBMC
+ *      Copyright (C) 2011-2012 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -24,6 +24,7 @@
 #include "utils/StdString.h"
 #include "utils/log.h"
 
+#include <fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -37,6 +38,7 @@
 #include <string.h>
 #include <vector>
 
+//-----------------------------------------------------------------------
 int PosixParseHex(char *str, unsigned char *addr)
 {
   int len = 0;
@@ -56,13 +58,30 @@ int PosixParseHex(char *str, unsigned char *addr)
   return len;
 }
 
-bool PosixGuessIsHex(const char *test_hex, size_t length)
+bool PosixGuessIsHexPassPhrase(const std::string &passphrase)
 {
+  // wap/wpa2 hex has a length of 64.
+  if (passphrase.size() == 64)
+    return true;
+
+  // wep-104 hex is 26 characters.
+  if (passphrase.size() == 26)
+    return true;
+
+  // wep-40 ascii is 5 characters.
+  if (passphrase.size() == 5)
+    return false;
+
+  // wap/wpa2 ascii can have 8 to 63 characters.
+  // wep-104  ascii is 13 characters.
+  // wep-40   hex is 10 characters.
+  // So we can not prequalify these and just have to probe.
+
   // we could get fooled by strings that only
   // have 0-9, A, B, C, D, E, F in them :)
-  for (size_t i = 0; i < length; i++)
+  for (size_t i = 0; i < passphrase.size(); i++)
   {
-    switch (*test_hex++)
+    switch (passphrase[i])
     {
       default:
         return false;
@@ -89,7 +108,28 @@ bool IsWireless(int socket, const char *interface)
    return true;
 }
 
-std::string PosixGetDefaultGateway(const std::string interface)
+bool PosixCheckInterfaceUp(const std::string &interface)
+{
+  std::string iface_state;
+  std::string sysclasspath("/sys/class/net/" + interface + "/operstate");
+
+  int fd = open(sysclasspath.c_str(), O_RDONLY);
+  if (fd >= 0)
+  {
+    char buffer[256] = {0};
+    read(fd, buffer, 255);
+    close(fd);
+    // make sure we can treat this as a c-str.
+    buffer[255] = 0;
+    iface_state = buffer;
+  }
+  if (iface_state.find("up") != std::string::npos)
+    return true;
+  else
+    return false;
+}
+
+std::string PosixGetDefaultGateway(const std::string &interface)
 {
   std::string result = "";
 
@@ -137,6 +177,8 @@ std::string PosixGetDefaultGateway(const std::string interface)
   return result;
 }
 
+//-----------------------------------------------------------------------
+//-----------------------------------------------------------------------
 CPosixConnection::CPosixConnection(int socket, const char *interfaceName)
 {
   m_socket = socket;
@@ -198,100 +240,6 @@ CPosixConnection::CPosixConnection(int socket, const char *interfaceName)
 
 CPosixConnection::~CPosixConnection()
 {
-}
-
-bool CPosixConnection::Connect(IPassphraseStorage *storage, CIPConfig &ipconfig)
-{
-  if (m_type == NETWORK_CONNECTION_TYPE_WIFI)
-  {
-    if (m_encryption != NETWORK_CONNECTION_ENCRYPTION_NONE)
-    {
-      if (!storage->GetPassphrase(m_connectionName, m_passphrase))
-        return false;
-    }
-  }
-
-  ipconfig.m_method     = IP_CONFIG_DHCP;
-  ipconfig.m_address    = m_address;
-  ipconfig.m_netmask    = m_netmask;
-  ipconfig.m_gateway    = m_gateway;
-  ipconfig.m_interface  = m_interface;
-  ipconfig.m_essid      = m_essid;
-  ipconfig.m_encryption = m_encryption;
-  ipconfig.m_passphrase = m_passphrase;
-  if (SetSettings(ipconfig) && GetState() == NETWORK_CONNECTION_STATE_CONNECTED)
-  {
-    // hack for now
-    m_method = ipconfig.m_method;
-    return true;
-  }
-
-  return false;
-}
-
-ConnectionState CPosixConnection::GetState() const
-{
-  int zero = 0;
-  struct ifreq ifr;
-
-  memset(&ifr, 0x00, sizeof(struct ifreq));
-  // check if the interface is up.
-  strcpy(ifr.ifr_name, m_interface.c_str());
-  if (ioctl(m_socket, SIOCGIFFLAGS, &ifr) < 0)
-    return NETWORK_CONNECTION_STATE_DISCONNECTED;
-
-  // check for running and not loopback
-  if (!(ifr.ifr_flags & IFF_RUNNING) || (ifr.ifr_flags & IFF_LOOPBACK))
-    return NETWORK_CONNECTION_STATE_DISCONNECTED;
-
-  // check for an ip address
-  if (ioctl(m_socket, SIOCGIFADDR, &ifr) < 0)
-    return NETWORK_CONNECTION_STATE_DISCONNECTED;
-
-  if (ifr.ifr_addr.sa_data == NULL)
-    return NETWORK_CONNECTION_STATE_DISCONNECTED;
-
-  // return only interfaces which have an ip address
-  if (memcmp(ifr.ifr_addr.sa_data + sizeof(short), &zero, sizeof(int)) == 0)
-    return NETWORK_CONNECTION_STATE_DISCONNECTED;
-
-  if (m_type == NETWORK_CONNECTION_TYPE_WIFI)
-  {
-    // for wifi, we need to check we have a wifi driver name.
-    struct iwreq wrq;
-    strcpy(wrq.ifr_name, m_interface.c_str());
-    if (ioctl(m_socket, SIOCGIWNAME, &wrq) < 0)
-      return NETWORK_CONNECTION_STATE_DISCONNECTED;
-
-    // since the wifi interface can be connected to
-    // any wifi access point, we need to compare the assigned
-    // essid to our connection essid. If they match, then
-    // this connection is up.
-    char essid[IFNAMSIZ];
-    memset(&wrq, 0x00, sizeof(struct iwreq));
-    wrq.u.essid.pointer = (caddr_t)essid;
-    wrq.u.essid.length  = sizeof(essid);
-    strncpy(wrq.ifr_name, m_interface.c_str(), IFNAMSIZ);
-    if (ioctl(m_socket, SIOCGIWESSID, &wrq) < 0)
-      return NETWORK_CONNECTION_STATE_DISCONNECTED;
-
-    if (wrq.u.essid.length <= 0)
-      return NETWORK_CONNECTION_STATE_DISCONNECTED;
-
-    std::string test_essid(essid, wrq.u.essid.length);
-    if (m_essid.find(test_essid) == std::string::npos)
-      return NETWORK_CONNECTION_STATE_DISCONNECTED;
-  }
-
-  // finally, we need to see if we have a gateway assigned to our interface.
-  std::string default_gateway = PosixGetDefaultGateway(m_interface);
-  if (default_gateway.size() <= 0)
-    return NETWORK_CONNECTION_STATE_DISCONNECTED;
-
-  //printf("CPosixConnection::GetState, %s: we are up\n", m_connectionName.c_str());
-
-  // passing the above tests means we are connected.
-  return NETWORK_CONNECTION_STATE_CONNECTED;
 }
 
 std::string CPosixConnection::GetName() const
@@ -359,6 +307,87 @@ std::string CPosixConnection::GetMacAddress() const
   return result.c_str();
 }
 
+ConnectionType CPosixConnection::GetType() const
+{
+  return m_type;
+}
+
+ConnectionState CPosixConnection::GetState() const
+{
+  int zero = 0;
+  struct ifreq ifr;
+
+  memset(&ifr, 0x00, sizeof(struct ifreq));
+  // check if the interface is up.
+  strcpy(ifr.ifr_name, m_interface.c_str());
+  if (ioctl(m_socket, SIOCGIFFLAGS, &ifr) < 0)
+    return NETWORK_CONNECTION_STATE_DISCONNECTED;
+
+  // check for running and not loopback
+  if (!(ifr.ifr_flags & IFF_RUNNING) || (ifr.ifr_flags & IFF_LOOPBACK))
+    return NETWORK_CONNECTION_STATE_DISCONNECTED;
+
+  // check for an ip address
+  if (ioctl(m_socket, SIOCGIFADDR, &ifr) < 0)
+    return NETWORK_CONNECTION_STATE_DISCONNECTED;
+
+  if (ifr.ifr_addr.sa_data == NULL)
+    return NETWORK_CONNECTION_STATE_DISCONNECTED;
+
+  // return only interfaces which have an ip address
+  if (memcmp(ifr.ifr_addr.sa_data + sizeof(short), &zero, sizeof(int)) == 0)
+    return NETWORK_CONNECTION_STATE_DISCONNECTED;
+
+  if (m_type == NETWORK_CONNECTION_TYPE_WIFI)
+  {
+    // for wifi, we need to check we have a wifi driver name.
+    struct iwreq wrq;
+    strcpy(wrq.ifr_name, m_interface.c_str());
+    if (ioctl(m_socket, SIOCGIWNAME, &wrq) < 0)
+      return NETWORK_CONNECTION_STATE_DISCONNECTED;
+
+    // since the wifi interface can be connected to
+    // any wifi access point, we need to compare the assigned
+    // essid to our connection essid. If they match, then
+    // this connection is up.
+    char essid[IFNAMSIZ];
+    memset(&wrq, 0x00, sizeof(struct iwreq));
+    wrq.u.essid.pointer = (caddr_t)essid;
+    wrq.u.essid.length  = sizeof(essid);
+    strncpy(wrq.ifr_name, m_interface.c_str(), IFNAMSIZ);
+    if (ioctl(m_socket, SIOCGIWESSID, &wrq) < 0)
+      return NETWORK_CONNECTION_STATE_DISCONNECTED;
+
+    if (wrq.u.essid.length <= 0)
+      return NETWORK_CONNECTION_STATE_DISCONNECTED;
+
+    std::string test_essid(essid, wrq.u.essid.length);
+    if (m_essid.find(test_essid) == std::string::npos)
+      return NETWORK_CONNECTION_STATE_DISCONNECTED;
+  }
+
+  // finally, we need to see if we have a gateway assigned to our interface.
+  std::string default_gateway = PosixGetDefaultGateway(m_interface);
+  if (default_gateway.size() <= 0)
+    return NETWORK_CONNECTION_STATE_DISCONNECTED;
+
+  //printf("CPosixConnection::GetState, %s: we are up\n", m_connectionName.c_str());
+
+  // passing the above tests means we are connected.
+  return NETWORK_CONNECTION_STATE_CONNECTED;
+}
+
+unsigned int CPosixConnection::GetSpeed() const
+{
+  int speed = 100;
+  return speed;
+}
+
+IPConfigMethod CPosixConnection::GetMethod() const
+{
+  return m_method;
+}
+
 unsigned int CPosixConnection::GetStrength() const
 {
   int strength = 100;
@@ -411,34 +440,31 @@ EncryptionType CPosixConnection::GetEncryption() const
   return m_encryption;
 }
 
-unsigned int CPosixConnection::GetSpeed() const
+bool CPosixConnection::Connect(IPassphraseStorage *storage, const CIPConfig &ipconfig)
 {
-  int speed = 100;
-  return speed;
+  if (storage && m_type == NETWORK_CONNECTION_TYPE_WIFI)
+  {
+    if (m_encryption != NETWORK_CONNECTION_ENCRYPTION_NONE)
+    {
+      if (!storage->GetPassphrase(m_connectionName, m_passphrase))
+        return false;
+    }
+  }
+
+  if (DoConnection(ipconfig) && GetState() == NETWORK_CONNECTION_STATE_CONNECTED)
+  {
+    // quick update of some internal vars
+    m_method  = ipconfig.m_method;
+    m_address = ipconfig.m_address;
+    m_netmask = ipconfig.m_netmask;
+    m_gateway = ipconfig.m_gateway;
+    return true;
+  }
+
+  return false;
 }
 
-ConnectionType CPosixConnection::GetType() const
-{
-  return m_type;
-}
-
-IPConfigMethod CPosixConnection::GetMethod() const
-{
-  return m_method;
-}
-
-void CPosixConnection::GetIPConfig(CIPConfig &ipconfig) const
-{
-  ipconfig.m_method     = m_method;
-  ipconfig.m_address    = m_address;
-  ipconfig.m_netmask    = m_netmask;
-  ipconfig.m_gateway    = m_gateway;
-  ipconfig.m_interface  = m_interface;
-  ipconfig.m_essid      = m_essid;
-  ipconfig.m_encryption = m_encryption;
-  ipconfig.m_passphrase = m_passphrase;
-}
-
+//-----------------------------------------------------------------------
 bool CPosixConnection::PumpNetworkEvents()
 {
   bool state_changed = false;
@@ -455,13 +481,8 @@ bool CPosixConnection::PumpNetworkEvents()
   return state_changed;
 }
 
-bool CPosixConnection::SetSettings(const CIPConfig &ipconfig)
+bool CPosixConnection::DoConnection(const CIPConfig &ipconfig)
 {
-  // TODO: handle static in addition to dhcp settings.
-
-  //printf("CPosixConnection::SetSettings %s, method(%d)\n",
-  //  m_connectionName.c_str(), ipconfig.m_method);
-
   FILE *fr = fopen("/etc/network/interfaces", "r");
   if (!fr)
     return false;
@@ -477,15 +498,16 @@ bool CPosixConnection::SetSettings(const CIPConfig &ipconfig)
   std::vector<std::string> ifdown_interfaces;
   for (size_t i = 0; i < interfaces_lines.size(); i++)
   {
-    //printf("CPosixConnection::SetSettings, interfaces_lines:%s", interfaces_lines[i].c_str());
-    // always copy auto section over
+    printf("CPosixConnection::SetSettings, interfaces_lines:%s", interfaces_lines[i].c_str());
+
+    // always copy the auto section over
     if (interfaces_lines[i].find("auto") != std::string::npos)
     {
       new_interfaces_lines.push_back(interfaces_lines[i]);
       continue;
     }
 
-    // always copy loopback iface section over
+    // always copy the loopback iface section over
     if (interfaces_lines[i].find("iface lo") != std::string::npos)
     {
       new_interfaces_lines.push_back(interfaces_lines[i]);
@@ -495,23 +517,63 @@ bool CPosixConnection::SetSettings(const CIPConfig &ipconfig)
     // look for "iface <interface name> inet"
     if (interfaces_lines[i].find("iface") != std::string::npos)
     {
-      // we always copy the iface line over.
-      new_interfaces_lines.push_back(interfaces_lines[i]);
-
-      // we will take all interfaces down, then bring up this one.
-      // so find all iface names.
+      // we will take all interfaces down, then bring up ours.
+      // so remember all iface names. This could be more robust :)
       std::string ifdown_interface = interfaces_lines[i];
       std::string::size_type start = ifdown_interface.find("iface") + sizeof("iface");
-      std::string::size_type end   = ifdown_interface.find("inet", start);
+      std::string::size_type end   = ifdown_interface.find(" inet", start);
       ifdown_interfaces.push_back(ifdown_interface.substr(start, end - start));
 
-      // is this our interface section (ethX or wlanX)
-      if (interfaces_lines[i].find(ipconfig.m_interface) != std::string::npos)
+      if (interfaces_lines[i].find(m_interface) == std::string::npos)
       {
-        // we only touch wifi settings right now.
+        // this is not our interface section (ethX or wlanX).
+        // we always copy the iface line over.
+        new_interfaces_lines.push_back(interfaces_lines[i]);
+        for (size_t j = i + 1; j < interfaces_lines.size(); j++)
+        {
+          // if next line is an 'iface', we are done.
+          if (interfaces_lines[j].find("iface") != std::string::npos)
+          {
+            // back up by one so next pass in
+            // loop starts at correct place.
+            i = j - 1;
+            break;
+          }
+          else
+          {
+            // copy these iface details over, we do not care about them.
+            new_interfaces_lines.push_back(interfaces_lines[j]);
+          }
+        }
+        continue;
+      }
+      else
+      {
+        std::string tmp;
+        // is this our interface section (ethX or wlanX)
+        // check requested method first.
+        if (ipconfig.m_method == IP_CONFIG_STATIC)
+        {
+          std::string method("static");
+          tmp = "iface " + m_interface + " inet " + method + "\n";
+          new_interfaces_lines.push_back(tmp);
+          tmp = "  address " + ipconfig.m_address + "\n";
+          new_interfaces_lines.push_back(tmp);
+          tmp = "  netmask " + ipconfig.m_netmask + "\n";
+          new_interfaces_lines.push_back(tmp);
+          tmp = "  gateway " + ipconfig.m_gateway + "\n";
+          new_interfaces_lines.push_back(tmp);
+        }
+        else
+        {
+          std::string method("dhcp");
+          tmp = "iface " + m_interface + " inet " + method + "\n";
+          new_interfaces_lines.push_back(tmp);
+        }
+
+        // fill in the wifi details if needed
         if (m_type == NETWORK_CONNECTION_TYPE_WIFI)
         {
-          std::string tmp;
           if (m_encryption == NETWORK_CONNECTION_ENCRYPTION_NONE)
           {
             tmp = "  wireless-essid \"" + ipconfig.m_essid + "\"\n";
@@ -519,12 +581,13 @@ bool CPosixConnection::SetSettings(const CIPConfig &ipconfig)
           }
           else if (m_encryption == NETWORK_CONNECTION_ENCRYPTION_WEP)
           {
+            // quote the essid, spaces are legal characters
             tmp = "  wireless-essid \"" + ipconfig.m_essid + "\"\n";
             new_interfaces_lines.push_back(tmp);
             tmp = "  wireless-mode managed\n";
             new_interfaces_lines.push_back(tmp);
             // if ascii, then quote it, if hex, no quotes
-            if (PosixGuessIsHex(ipconfig.m_passphrase.c_str(), ipconfig.m_passphrase.size()))
+            if (PosixGuessIsHexPassPhrase(ipconfig.m_passphrase))
               tmp = "  wireless-key " + ipconfig.m_passphrase + "\n";
             else
               tmp = "  wireless-key \"s:" + ipconfig.m_passphrase + "\"\n";
@@ -533,15 +596,16 @@ bool CPosixConnection::SetSettings(const CIPConfig &ipconfig)
           else if (m_encryption == NETWORK_CONNECTION_ENCRYPTION_WPA ||
             m_encryption == NETWORK_CONNECTION_ENCRYPTION_WPA2)
           {
+            // quote the essid, spaces are legal characters
             tmp = "  wpa-ssid \"" + ipconfig.m_essid + "\"\n";
             new_interfaces_lines.push_back(tmp);
             // if ascii, then quote it, if hex, no quotes
-            if (PosixGuessIsHex(ipconfig.m_passphrase.c_str(), ipconfig.m_passphrase.size()))
+            if (PosixGuessIsHexPassPhrase(ipconfig.m_passphrase))
               tmp = "  wpa-psk " + ipconfig.m_passphrase + "\n";
             else
               tmp = "  wpa-psk \"" + ipconfig.m_passphrase + "\"\n";
             new_interfaces_lines.push_back(tmp);
-            if (ipconfig.m_encryption == NETWORK_CONNECTION_ENCRYPTION_WPA)
+            if (m_encryption == NETWORK_CONNECTION_ENCRYPTION_WPA)
               tmp = "  wpa-proto WPA\n";
             else
               tmp = "  wpa-proto WPA2\n";
@@ -552,6 +616,8 @@ bool CPosixConnection::SetSettings(const CIPConfig &ipconfig)
     }
   }
 
+  // write out the new /etc/network/interfaces as a temp file.
+  // we do a rename on it later as that is atomic.
   FILE* fw = fopen("/etc/network/interfaces.temp", "w");
   if (!fw)
     return false;
@@ -562,28 +628,36 @@ bool CPosixConnection::SetSettings(const CIPConfig &ipconfig)
   }
   fclose(fw);
 
-  // Rename the file (remember, you can not rename across devices)
-  if (rename("/etc/network/interfaces.temp", "/etc/network/interfaces") < 0)
-    return false;
-
+  // take down all interfaces using the current /etc/network/interfaces
   int rtn_error;
   std::string cmd;
   for (size_t i = 0; i < ifdown_interfaces.size(); i++)
   {
-    cmd = "/sbin/ifdown " + ifdown_interfaces[i];
-    rtn_error = system(cmd.c_str());
-    if (rtn_error != 0 && rtn_error != ECHILD)
-      CLog::Log(LOGERROR, "Unable to stop interface %s, %s", ifdown_interfaces[i].c_str(), strerror(errno));
-    else
-      CLog::Log(LOGINFO, "Stopped interface %s", ifdown_interfaces[i].c_str());
+    // check if interface is actually 'up'
+    if (PosixCheckInterfaceUp(ifdown_interfaces[i]))
+    {
+      cmd = "/sbin/ifdown " + ifdown_interfaces[i];
+      rtn_error = system(cmd.c_str());
+      // ifdown was succesful but we got 'No child processes' which is harmless
+      if (rtn_error != 0 && errno != ECHILD)
+        CLog::Log(LOGERROR, "NetworkManager: Unable to stop interface %s, %s", ifdown_interfaces[i].c_str(), strerror(errno));
+      else
+        CLog::Log(LOGDEBUG, "NetworkManager: Stopped interface %s", ifdown_interfaces[i].c_str());
+    }
   }
 
-  cmd = "/sbin/ifup " + ipconfig.m_interface;
+  // Rename the file (remember, you can not rename across devices)
+  if (rename("/etc/network/interfaces.temp", "/etc/network/interfaces") < 0)
+    return false;
+
+  // bring up this interface using the new /etc/network/interfaces
+  cmd = "/sbin/ifup " + m_interface;
   rtn_error = system(cmd.c_str());
-  if (rtn_error != 0 && rtn_error != ECHILD)
-    CLog::Log(LOGERROR, "Unable to start interface %s, %s", ipconfig.m_interface.c_str(), strerror(errno));
+  // ifup was succesful but we got 'No child processes' which is harmless
+  if (rtn_error != 0 && errno != ECHILD)
+    CLog::Log(LOGERROR, "NetworkManager: Unable to start interface %s, %s", m_interface.c_str(), strerror(errno));
   else
-    CLog::Log(LOGINFO, "Started interface %s", ipconfig.m_interface.c_str());
+    CLog::Log(LOGDEBUG, "NetworkManager: Started interface %s", m_interface.c_str());
 
   return true;
 }

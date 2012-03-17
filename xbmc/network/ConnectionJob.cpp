@@ -22,19 +22,41 @@
 #include "ConnectionJob.h"
 #include "Application.h"
 #include "utils/log.h"
+#include "dialogs/GUIDialogOK.h"
+#include "dialogs/GUIDialogBusy.h"
 #include "dialogs/GUIDialogKeyboard.h"
+#include "guilib/GUIWindowManager.h"
 #include "security/KeyringManager.h"
+#include "settings/AdvancedSettings.h"
 
-CConnectionJob::CConnectionJob(CConnectionPtr connection, CKeyringManager *keyringManager)
+CConnectionJob::CConnectionJob(CConnectionPtr connection, const CIPConfig &ipconfig, CKeyringManager *keyringManager)
 {
+  m_ipconfig = ipconfig;
   m_connection = connection;
   m_keyringManager = keyringManager;
 }
 
 bool CConnectionJob::DoWork()
 {
-  // The Network Manager is in control of handling connections
-  return g_application.getNetworkManager().Connect(m_connection, (IPassphraseStorage *)this);
+  bool result;
+
+  CGUIDialogBusy *busy_dialog = (CGUIDialogBusy*)g_windowManager.GetWindow(WINDOW_DIALOG_BUSY);
+  busy_dialog->Show();
+
+  // we need to shutdown network services before changing the connection.
+  // The Network Manager's PumpNetworkEvents will take care of starting them back up.
+  g_application.getNetworkManager().StopServices();
+  result = m_connection->Connect((IPassphraseStorage*)this, m_ipconfig);
+  if (!result)
+  {
+    // the connect failed, pop a failed dialog
+    // and revert to the previous connection.
+    // <string id="13297">Not connected. Check network settings.</string>
+    CGUIDialogOK::ShowAndGetInput(0, 13297, 0, 0);
+  }
+
+  busy_dialog->Close();
+  return result;
 }
 
 void CConnectionJob::InvalidatePassphrase(const std::string &uuid)
@@ -52,8 +74,13 @@ bool CConnectionJob::GetPassphrase(const std::string &uuid, std::string &passphr
   }
   else
   {
+    bool result;
     CStdString utf8;
-    bool result = CGUIDialogKeyboard::ShowAndGetNewPassword(utf8);
+    if (g_advancedSettings.m_showNetworkPassPhrase)
+      result = CGUIDialogKeyboard::ShowAndGetInput(utf8, 12340, false);
+    else
+      result = CGUIDialogKeyboard::ShowAndGetNewPassword(utf8);
+
     passphrase = utf8;
     return result;
   }

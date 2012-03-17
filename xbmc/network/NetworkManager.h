@@ -28,39 +28,38 @@ public:
   CNetworkManager();
   virtual ~CNetworkManager();
 
-  void Initialize();
+  void            Initialize();
 
-  bool PumpNetworkEvents();
+  bool            PumpNetworkEvents();
 
-  std::string GetDefaultConnectionName();
-  std::string GetDefaultConnectionAddress();
-  std::string GetDefaultConnectionNetmask();
-  std::string GetDefaultConnectionMacAddress();
-  std::string GetDefaultConnectionGateway();
-  std::string GetDefaultConnectionNameServer();
-  ConnectionType GetDefaultConnectionType();
-  IPConfigMethod GetDefaultConnectionMethod();
+  std::string     GetDefaultConnectionName();
+  std::string     GetDefaultConnectionAddress();
+  std::string     GetDefaultConnectionNetmask();
+  std::string     GetDefaultConnectionGateway();
+  std::string     GetDefaultConnectionNameServer();
+  std::string     GetDefaultConnectionMacAddress();
 
+  ConnectionType  GetDefaultConnectionType();
   ConnectionState GetDefaultConnectionState();
-  bool IsConnected();
+  IPConfigMethod  GetDefaultConnectionMethod();
 
-  bool IsAvailable(bool wait = false);
+  bool            IsConnected();
 
-  bool CanManageConnections();
+  bool            IsAvailable(bool wait = false);
 
-  ConnectionList GetConnections();
+  bool            CanManageConnections();
 
-  bool Connect(CConnectionPtr connection, IPassphraseStorage *storage);
+  ConnectionList  GetConnections();
 
-  virtual void OnConnectionStateChange(ConnectionState state);
-  virtual void OnConnectionChange(CConnectionPtr connection);
-  virtual void OnConnectionListChange(ConnectionList list);
+  virtual void    OnConnectionStateChange(ConnectionState state);
+  virtual void    OnConnectionChange(CConnectionPtr connection);
+  virtual void    OnConnectionListChange(ConnectionList list);
 
-  void StartServices();
-  void StopServices();
+  void            StartServices();
+  void            StopServices();
 private:
-  void StopServices(bool wait);
-  const char *ConnectionStateToString(ConnectionState state);
+  void            StopServices(bool wait);
+  const char*     ConnectionStateToString(ConnectionState state);
 
   INetworkManager *m_instance;
   CConnectionPtr   m_defaultConnection;

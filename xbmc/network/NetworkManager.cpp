@@ -34,6 +34,8 @@
 #include "utils/log.h"
 #include "utils/RssReader.h"
 
+//-----------------------------------------------------------------------
+//-----------------------------------------------------------------------
 CNetworkManager::CNetworkManager()
 {
   m_instance = NULL;
@@ -82,22 +84,6 @@ std::string CNetworkManager::GetDefaultConnectionName()
     return std::string("opps");
 }
 
-ConnectionType CNetworkManager::GetDefaultConnectionType()
-{
-  if (m_defaultConnection)
-    return m_defaultConnection->GetType();
-  else
-    return NETWORK_CONNECTION_TYPE_UNKNOWN;
-}
-
-IPConfigMethod CNetworkManager::GetDefaultConnectionMethod()
-{
-  if (m_defaultConnection)
-    return m_defaultConnection->GetMethod();
-  else
-    return IP_CONFIG_DISABLED;
-}
-
 std::string CNetworkManager::GetDefaultConnectionAddress()
 {
   if (m_defaultConnection)
@@ -138,6 +124,22 @@ std::string CNetworkManager::GetDefaultConnectionNameServer()
     return std::string("127.0.0.1");
 }
 
+ConnectionType CNetworkManager::GetDefaultConnectionType()
+{
+  if (m_defaultConnection)
+    return m_defaultConnection->GetType();
+  else
+    return NETWORK_CONNECTION_TYPE_UNKNOWN;
+}
+
+IPConfigMethod CNetworkManager::GetDefaultConnectionMethod()
+{
+  if (m_defaultConnection)
+    return m_defaultConnection->GetMethod();
+  else
+    return IP_CONFIG_DISABLED;
+}
+
 ConnectionState CNetworkManager::GetDefaultConnectionState()
 {
   return m_state;
@@ -163,35 +165,13 @@ ConnectionList CNetworkManager::GetConnections()
   return m_connections;
 }
 
-bool CNetworkManager::Connect(CConnectionPtr connection, IPassphraseStorage *storage)
-{
-  bool connected = false;
-/*
-  CConnectionPtr saved_connection = NULL;
-
-  for (unsigned int i = 0; i < m_connections.size(); i++)
-  {
-    if (m_connections[i]->GetState() == NETWORK_CONNECTION_STATE_CONNECTED)
-    {
-      saved_connection = m_connections[i];
-      break;
-    }
-  }
-  connected = m_instance->Connect(connection, storage);
-  if (!connected)
-    connected = m_instance->Connect(saved_connection, storage);
-*/
-  connected = m_instance->Connect(connection, storage);
-  return connected;
-}
-
 void CNetworkManager::OnConnectionStateChange(ConnectionState state)
 {
   ConnectionState oldState = m_state;
   m_state = state;
 
   if (m_state != oldState)
-    CLog::Log(LOGDEBUG, "NetworkManager: State changed %s", ConnectionStateToString(m_state));
+    CLog::Log(LOGDEBUG, "NetworkManager: State changed to %s", ConnectionStateToString(m_state));
 
   if (oldState != NETWORK_CONNECTION_STATE_CONNECTED && m_state == NETWORK_CONNECTION_STATE_CONNECTED)
     StartServices();
@@ -206,7 +186,7 @@ void CNetworkManager::OnConnectionChange(CConnectionPtr connection)
 
   if (g_windowManager.GetWindow(WINDOW_DIALOG_ACCESS_POINTS))
   {
-    CAction action(ACTION_CONNECTIONS_REFRESH );
+    CAction action(ACTION_CONNECTIONS_REFRESH);
     g_application.getApplicationMessenger().SendAction(action, WINDOW_DIALOG_ACCESS_POINTS);
   }
 }
@@ -227,14 +207,14 @@ void CNetworkManager::OnConnectionListChange(ConnectionList list)
 
   if (g_windowManager.GetWindow(WINDOW_DIALOG_ACCESS_POINTS))
   {
-    CAction action(ACTION_CONNECTIONS_REFRESH );
+    CAction action(ACTION_CONNECTIONS_REFRESH);
     g_application.getApplicationMessenger().SendAction(action, WINDOW_DIALOG_ACCESS_POINTS);
   }
 }
 
 void CNetworkManager::StartServices()
 {
-  CLog::Log(LOGDEBUG, "NetworkManager: Signaling network services to start");
+  CLog::Log(LOGDEBUG, "NetworkManager: Starting network services");
 
 #ifdef HAS_TIME_SERVER
   g_application.StartTimeServer();
@@ -270,7 +250,7 @@ void CNetworkManager::StartServices()
 
 void CNetworkManager::StopServices()
 {
-  CLog::Log(LOGDEBUG, "NetworkManager: Signaling network services to stop");
+  CLog::Log(LOGDEBUG, "NetworkManager: Stopping network services");
   StopServices(false);
   CLog::Log(LOGDEBUG, "NetworkManager: Waiting for network services to stop");
   StopServices(true);

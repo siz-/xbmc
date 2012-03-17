@@ -25,37 +25,31 @@
 class CNullConnection : public IConnection
 {
 public:
-  virtual ~CNullConnection() { }
+  virtual ~CNullConnection();
 
-  virtual bool Connect(IPassphraseStorage *storage, CIPConfig &ipconfig) { return false; }
-  virtual ConnectionState GetState() const            { return NETWORK_CONNECTION_STATE_CONNECTED; }
+  virtual std::string     GetName()       const;
+  virtual std::string     GetAddress()    const;
+  virtual std::string     GetNetmask()    const;
+  virtual std::string     GetGateway()    const;
+  virtual std::string     GetNameServer() const;
+  virtual std::string     GetMacAddress() const;
 
-  virtual std::string GetName() const                 { return "Unkown connection"; }
+  virtual ConnectionType  GetType()       const;
+  virtual ConnectionState GetState()      const;
+  virtual unsigned int    GetSpeed()      const;
+  virtual IPConfigMethod  GetMethod()     const;
+  virtual unsigned int    GetStrength()   const;
+  virtual EncryptionType  GetEncryption() const;
 
-  virtual std::string GetAddress() const              { return "127.0.0.1"; }
-  virtual std::string GetNetmask() const              { return "255.255.255.0"; }
-  virtual std::string GetGateway() const              { return ""; }
-  virtual std::string GetNameServer() const           { return "127.0.0.1"; }
-  virtual std::string GetMacAddress() const           { return "00:00:00:00:00:00"; }
-
-  virtual unsigned int GetStrength() const            { return 100; }
-
-  virtual EncryptionType GetEncryption() const        { return NETWORK_CONNECTION_ENCRYPTION_NONE; }
-  virtual unsigned int   GetSpeed() const             { return 100; }
-  virtual ConnectionType GetType() const              { return NETWORK_CONNECTION_TYPE_UNKNOWN; }
-  virtual IPConfigMethod GetMethod() const            { return IP_CONFIG_DISABLED; }
-  virtual void           GetIPConfig(CIPConfig &ipconfig) const { }
+  virtual bool            Connect(IPassphraseStorage *storage, const CIPConfig &ipconfig);
 };
 
 class CNullNetworkManager : public INetworkManager
 {
-  virtual ~CNullNetworkManager() { }
+  virtual ~CNullNetworkManager();
 
-  virtual bool CanManageConnections() { return false; }
+  virtual bool CanManageConnections();
 
-  virtual ConnectionList GetConnections() { ConnectionList list; list.push_back(CConnectionPtr(new CNullConnection())); return list; }
-
-  virtual bool Connect(CConnectionPtr connection, IPassphraseStorage *storage) { return false; }
-
-  virtual bool PumpNetworkEvents(INetworkEventsCallback *callback) { return true; }
+  virtual ConnectionList GetConnections();
+  virtual bool PumpNetworkEvents(INetworkEventsCallback *callback);
 };

@@ -60,9 +60,7 @@ public:
 
   virtual bool CanManageConnections() = 0;
 
-  virtual ConnectionList GetConnections() = 0;
-
-  virtual bool Connect(CConnectionPtr connection, IPassphraseStorage *storage) = 0;
+  virtual      ConnectionList GetConnections() = 0;
 
   virtual bool PumpNetworkEvents(INetworkEventsCallback *callback) = 0;
 };

@@ -27,6 +27,9 @@
 #include "IConnection.h"
 #include "utils/Job.h"
 
+
+const std::string EncodeAccessPointParam(const CIPConfig &ipconfig);
+
 class CFileItemList;
 
 class CGUIDialogAccessPoints : public CGUIDialog, public IJobCallback
@@ -34,16 +37,20 @@ class CGUIDialogAccessPoints : public CGUIDialog, public IJobCallback
 public:
   CGUIDialogAccessPoints(void);
   virtual ~CGUIDialogAccessPoints(void);
-  virtual void OnInitWindow();
   virtual bool OnAction(const CAction &action);
+  virtual bool OnMessage(CGUIMessage& message);
+  virtual bool OnBack(int actionID);
 
   virtual void OnJobComplete(unsigned int jobID, bool success, CJob *job);
 private:
   void UpdateConnectionList();
+  void DecodeAccessPointParam(const std::string &param);
 
   static const char *ConnectionStateToString(ConnectionState state);
   static const char *ConnectionTypeToString(ConnectionType type);
   static const char *EncryptionToString(EncryptionType type);
 
+  CIPConfig     m_ipconfig;
+  bool          m_doing_connection;
   CFileItemList *m_connectionsFileList;
 };

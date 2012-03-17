@@ -32,51 +32,46 @@ public:
   CConnmanConnection(const char *serviceObject);
   virtual ~CConnmanConnection();
 
-  virtual bool Connect(IPassphraseStorage *storage, CIPConfig &ipconfig);
-  virtual ConnectionState GetState() const;
+  virtual std::string     GetName()       const;
+  virtual std::string     GetAddress()    const;
+  virtual std::string     GetNetmask()    const;
+  virtual std::string     GetGateway()    const;
+  virtual std::string     GetNameServer() const;
+  virtual std::string     GetMacAddress() const;
 
-  virtual std::string GetName() const;
+  virtual ConnectionType  GetType()       const;
+  virtual ConnectionState GetState()      const;
+  virtual unsigned int    GetSpeed()      const;
+  virtual IPConfigMethod  GetMethod()     const;
+  virtual unsigned int    GetStrength()   const;
+  virtual EncryptionType  GetEncryption() const;
 
-  virtual std::string    GetAddress() const;
-  virtual std::string    GetNetmask() const;
-  virtual std::string    GetGateway() const;
-  virtual std::string    GetNameServer() const;
-  virtual std::string    GetMacAddress() const;
-
-  virtual unsigned int   GetStrength() const;
-  virtual EncryptionType GetEncryption() const;
-  virtual unsigned int   GetSpeed() const;
-
-  virtual ConnectionType GetType() const;
-  virtual IPConfigMethod GetMethod() const;
-  virtual void           GetIPConfig(CIPConfig &ipconfig) const;
+  virtual bool            Connect(IPassphraseStorage *storage, const CIPConfig &ipconfig);
 
   bool PumpNetworkEvents();
-
   static ConnectionState ParseConnectionState(const char *stateString);
+
 private:
   void UpdateConnection();
 
-  CVariant m_properties;
+  std::string     m_name;
+  std::string     m_address;
+  std::string     m_netmask;
+  std::string     m_gateway;
+  std::string     m_macaddress;
 
-  std::string m_name;
-  std::string m_address;
-  std::string m_netmask;
-  std::string m_macaddress;
-  std::string m_gateway;
-  std::string m_method;
-
-  std::string m_serviceObject;
-
-  unsigned int m_strength;
-  unsigned int m_speed;
-
-  ConnectionState m_state;
-  std::string     m_passphrase;
-  EncryptionType  m_encryption;
   ConnectionType  m_type;
+  ConnectionState m_state;
+  unsigned int    m_speed;
+  std::string     m_method;
+  unsigned int    m_strength;
+  EncryptionType  m_encryption;
+  std::string     m_passphrase;
+
+  CVariant        m_properties;
+  std::string     m_serviceObject;
 
   DBusConnection *m_connection;
-  DBusError m_error;
+  DBusError       m_error;
 };
 #endif

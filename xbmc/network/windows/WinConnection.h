@@ -31,25 +31,20 @@ public:
   CWinConnection(IP_ADAPTER_INFO adapter);
   virtual ~CWinConnection();
 
-  virtual bool Connect(IPassphraseStorage *storage, CIPConfig &ipconfig);
-  virtual bool Disconnect() { return true; };
+  virtual std::string     GetName() const;
+  virtual std::string     GetAddress() const;
+  virtual std::string     GetNetmask() const;
+  virtual std::string     GetGateway() const;
+  virtual std::string     GetNameServer() const;
+  virtual std::string     GetMacAddress() const;
+
+  virtual ConnectionType  GetType() const;
+  virtual unsigned int    GetSpeed() const;
   virtual ConnectionState GetState() const;
-
-  virtual std::string GetName() const;
-
-  virtual std::string GetAddress() const;
-  virtual std::string GetNetmask() const;
-  virtual std::string GetGateway() const;
-  virtual std::string GetNameServer() const;
-  virtual std::string GetMacAddress() const;
-
-  virtual unsigned int GetStrength() const;
-  virtual EncryptionType GetEncryption() const;
-  virtual unsigned int GetSpeed() const;
-
-  virtual ConnectionType GetType() const;
-  virtual IPConfigMethod GetMethod() const;
-  virtual void           GetIPConfig(CIPConfig &ipconfig) const;
+  virtual IPConfigMethod  GetMethod() const;
+  virtual unsigned int    GetStrength() const;
+  virtual EncryptionType  GetEncryption() const;
+  virtual bool            Connect(IPassphraseStorage *storage, const CIPConfig &ipconfig);
 private:
   IP_ADAPTER_INFO m_adapter;
 };

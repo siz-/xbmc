@@ -83,12 +83,6 @@ ConnectionList CConnmanNetworkManager::GetConnections()
   return m_connections;
 }
 
-bool CConnmanNetworkManager::Connect(CConnectionPtr connection, IPassphraseStorage *storage)
-{
-  CIPConfig ipconfig;
-  return connection->Connect(storage, ipconfig);
-}
-
 bool CConnmanNetworkManager::PumpNetworkEvents(INetworkEventsCallback *callback)
 {
   bool result = false;

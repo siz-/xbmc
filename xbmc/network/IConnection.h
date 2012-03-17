@@ -66,63 +66,43 @@ public:
   }
 
   CIPConfig(IPConfigMethod method,
-    const std::string &address, const std::string &netmask, const std::string &gateway, const std::string &interface,
-    const std::string &essid, const std::string &passphrase, const EncryptionType encryption)
+    const std::string &address, const std::string &netmask,
+    const std::string &gateway, const std::string &nameserver,
+    const std::string &essid,   const std::string &passphrase)
   {
+    m_essid      = essid;
     m_method     = method;
     m_address    = address;
     m_netmask    = netmask;
     m_gateway    = gateway;
-    m_interface  = interface;
-    m_essid      = essid;
+    m_nameserver = nameserver;
     m_passphrase = passphrase;
-    m_encryption = encryption;
   }
 
   void reset()
   {
+    m_essid      = "";
     m_method     = IP_CONFIG_DISABLED;
     m_address    = "";
     m_netmask    = "";
     m_gateway    = "";
-    m_interface  = "";
-    m_essid      = "";
+    m_nameserver = "";
     m_passphrase = "";
-    m_encryption = NETWORK_CONNECTION_ENCRYPTION_NONE;
   }
 
+  std::string     m_essid;
   IPConfigMethod  m_method;
   std::string     m_address;
   std::string     m_netmask;
   std::string     m_gateway;
-  std::string     m_interface;
-  std::string     m_essid;
+  std::string     m_nameserver;
   std::string     m_passphrase;
-  EncryptionType  m_encryption;
 };
 
 class IConnection
 {
 public:
   virtual ~IConnection() { }
-
-  /*!
-   \brief Connect to connection
-
-   \param storage a passphrase provider
-   \param ipconfig a network configuration
-   \returns true if connected, false if not.
-   \sa IPassphraseStorage CIPConfig
-   */
-  virtual bool Connect(IPassphraseStorage *storage, CIPConfig &ipconfig) = 0;
-
-  /*!
-   \brief Get the state of the connection
-
-   \return The state the connection is currently in.
-   \sa ConnectionState
-   */
-  virtual ConnectionState GetState() const = 0;
 
   /*!
    \brief Get the name of the connection
@@ -174,6 +154,38 @@ public:
   virtual std::string GetMacAddress() const = 0;
 
   /*!
+   \brief Get the connection type
+
+   \return The connection type
+   \sa ConnectionType
+   */
+  virtual ConnectionType GetType() const = 0;
+
+  /*!
+   \brief Get the state of the connection
+
+   \return The state the connection is currently in.
+   \sa ConnectionState
+   */
+  virtual ConnectionState GetState() const = 0;
+
+  /*!
+   \brief Get the speed of the connection
+
+   \return The speed of the connection
+   \sa IConnection
+   */
+  virtual unsigned int GetSpeed() const = 0;
+
+  /*!
+   \brief Get the connection type
+
+   \return The connection method
+   \sa IPConfigMethod
+   */
+  virtual IPConfigMethod GetMethod() const = 0;
+
+  /*!
    \brief The signal strength of the connection
 
    \return The signal strength of the connection
@@ -190,36 +202,14 @@ public:
   virtual EncryptionType GetEncryption() const = 0;
 
   /*!
-   \brief Get the speed of the connection
+   \brief Connect to connection
 
-   \return The speed of the connection
-   \sa IConnection
+   \param storage a passphrase provider
+   \param ipconfig a network configuration
+   \returns true if connected, false if not.
+   \sa IPassphraseStorage CIPConfig
    */
-  virtual unsigned int GetSpeed() const = 0;
-
-  /*!
-   \brief Get the connection type
-
-   \return The connection type
-   \sa ConnectionType
-   */
-  virtual ConnectionType GetType() const = 0;
-
-  /*!
-   \brief Get the connection type
-
-   \return The connection method
-   \sa IPConfigMethod
-   */
-  virtual IPConfigMethod GetMethod() const = 0;
-
-  /*!
-   \brief Get the IPConfig of the connection
-
-   \return The IPConfig of the connection
-   \sa IConnection
-   */
-  virtual void GetIPConfig(CIPConfig &ipconfig) const = 0;
+  virtual bool Connect(IPassphraseStorage *storage, const CIPConfig &ipconfig) = 0;
 };
 
 typedef boost::shared_ptr<IConnection> CConnectionPtr;

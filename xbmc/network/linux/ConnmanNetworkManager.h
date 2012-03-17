@@ -37,8 +37,6 @@ public:
 
   virtual ConnectionList GetConnections();
 
-  virtual bool Connect(CConnectionPtr connection, IPassphraseStorage *storage);
-
   virtual bool PumpNetworkEvents(INetworkEventsCallback *callback);
 
   static bool HasConnman();

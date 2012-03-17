@@ -29,7 +29,7 @@ class CKeyringManager;
 class CConnectionJob : public CJob, public IPassphraseStorage
 {
 public:
-  CConnectionJob(CConnectionPtr connection, CKeyringManager *keyringManager);
+  CConnectionJob(CConnectionPtr connection, const CIPConfig &ipconfig, CKeyringManager *keyringManager);
 
   virtual bool DoWork();
 
@@ -37,6 +37,7 @@ public:
   virtual bool GetPassphrase(const std::string &uuid, std::string &passphrase);
   virtual void StorePassphrase(const std::string &uuid, const std::string &passphrase);
 private:
-  CConnectionPtr m_connection;
+  CIPConfig       m_ipconfig;
+  CConnectionPtr  m_connection;
   CKeyringManager *m_keyringManager;
 };

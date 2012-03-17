@@ -21,28 +21,25 @@
 
 #include "PosixNetworkManager.h"
 #include "PosixConnection.h"
-#include "threads/Thread.h"
 #include "guilib/Key.h"
 #include "guilib/GUIWindowManager.h"
+#include "settings/GUISettings.h"
+#include "threads/Thread.h"
 #include "utils/log.h"
 
+#include <errno.h>
+#include <string.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <linux/if.h>
 #include <linux/wireless.h>
-#include <linux/sockios.h>
-#include <errno.h>
-#include <resolv.h>
 #include <net/if_arp.h>
-#include <string.h>
 
 // CPosixNetworkManager and CPosixConnection rely on the debian/ubuntu method of using
 // /etc/network/interfaces and pre-up/post-down scripts to handle bringing connection
 // to wired/wireless networks. The pre-up/post-down scripts handle wireless/wpa though
 // /etc/network/interfaces extensions "wireless-" and "wpa-". Basically, ifup/ifdown will
 // tokenize these as shell vars and passes them to the pre-up/post-down scripts for handling.
+// Note: This method,of course, requires root permissions.
 //
 // /etc/network/interfaces examples:
 //    auto wlan0
@@ -97,11 +94,18 @@
 //  TODO: handle static in addition to dhcp settings.
 //
 
+//-----------------------------------------------------------------------
+//-----------------------------------------------------------------------
 CPosixNetworkManager::CPosixNetworkManager()
 {
+  CLog::Log(LOGDEBUG, "NetworkManager: PosixNetworkManager created");
   m_socket = socket(AF_INET, SOCK_DGRAM, 0);
-  m_next_poll_time = XbmcThreads::SystemClockMillis();
-  UpdateNetworkManager();
+  m_next_pump_time = XbmcThreads::SystemClockMillis();
+  FindNetworkInterfaces();
+  if (CanManageConnections())
+    RestoreSavedConnection();
+  else
+    RestoreSystemConnection();
 }
 
 CPosixNetworkManager::~CPosixNetworkManager()
@@ -112,6 +116,7 @@ CPosixNetworkManager::~CPosixNetworkManager()
 
 bool CPosixNetworkManager::CanManageConnections()
 {
+  //return g_advancedSettings.m_enableNetworkManager;
   return true;
 }
 
@@ -120,19 +125,12 @@ ConnectionList CPosixNetworkManager::GetConnections()
   return m_connections;
 }
 
-bool CPosixNetworkManager::Connect(CConnectionPtr connection, IPassphraseStorage *storage)
-{
-  CIPConfig ipconfig;
-
-  return connection->Connect(storage, ipconfig);
-}
-
 bool CPosixNetworkManager::PumpNetworkEvents(INetworkEventsCallback *callback)
 {
   bool result = false;
 
   // throttle calls to PumpNetworkEvents, we get called every 500ms
-  if (m_next_poll_time > XbmcThreads::SystemClockMillis())
+  if (m_next_pump_time > XbmcThreads::SystemClockMillis())
     return result;
 
   for (size_t i = 0; i < m_connections.size(); i++)
@@ -155,14 +153,50 @@ bool CPosixNetworkManager::PumpNetworkEvents(INetworkEventsCallback *callback)
   // next network check in 5 seconds.
   // if system setting GUI is up, then we do not throttle.
   if (g_windowManager.GetActiveWindow() == WINDOW_SETTINGS_SYSTEM)
-    m_next_poll_time = XbmcThreads::SystemClockMillis();
+    m_next_pump_time = XbmcThreads::SystemClockMillis();
   else
-    m_next_poll_time = XbmcThreads::SystemClockMillis() + 5000;
+    m_next_pump_time = XbmcThreads::SystemClockMillis() + 5000;
 
   return result;
 }
 
-void CPosixNetworkManager::UpdateNetworkManager()
+//-----------------------------------------------------------------------
+void CPosixNetworkManager::RestoreSavedConnection()
+{
+  CLog::Log(LOGDEBUG, "NetworkManager: Restoring saved connection");
+
+  CIPConfig saved_ipconfig;
+  saved_ipconfig.m_essid      = g_guiSettings.GetString("network.connection");
+  saved_ipconfig.m_method     = (IPConfigMethod)g_guiSettings.GetInt("network.method");
+  saved_ipconfig.m_address    = g_guiSettings.GetString("network.address");
+  saved_ipconfig.m_netmask    = g_guiSettings.GetString("network.netmask");
+  saved_ipconfig.m_gateway    = g_guiSettings.GetString("network.gateway");
+  saved_ipconfig.m_nameserver = g_guiSettings.GetString("network.nameserver");
+  saved_ipconfig.m_essid      = g_guiSettings.GetString("network.essid");
+  saved_ipconfig.m_passphrase = g_guiSettings.GetString("network.passphrase");
+  for (size_t i = 0; i < m_connections.size(); i++)
+  {
+    std::string connection_name = ((CPosixConnection*)m_connections[i].get())->GetName();
+    if (connection_name.find(saved_ipconfig.m_essid) != std::string::npos)
+    {
+      if (!((CPosixConnection*)m_connections[i].get())->Connect(NULL, saved_ipconfig))
+      {
+        // best we can do is try an existing system connection
+        RestoreSystemConnection();
+      }
+      break;
+    }
+  }
+}
+
+void CPosixNetworkManager::RestoreSystemConnection()
+{
+  CLog::Log(LOGDEBUG, "NetworkManager: Defaulting to system connection");
+  // nothing to do here, CNetworkManager will activate the first
+  // connection with a state of NETWORK_CONNECTION_STATE_CONNECTED;
+}
+
+void CPosixNetworkManager::FindNetworkInterfaces()
 {
   m_connections.clear();
 
@@ -171,7 +205,7 @@ void CPosixNetworkManager::UpdateNetworkManager()
     return;
 
   int n, linenum = 0;
-  char* line = NULL;
+  char*  line = NULL;
   size_t linel = 0;
   char* interfaceName;
 
@@ -200,7 +234,7 @@ void CPosixNetworkManager::UpdateNetworkManager()
       {
         // get the list of access points on this interface, try this 3 times
         int retryCount = 0;
-        while (!UpdateWifiConnections(interfaceName) && retryCount < 3)
+        while (!FindWifiConnections(interfaceName) && retryCount < 3)
           retryCount++;
       }
       else
@@ -229,7 +263,7 @@ void CPosixNetworkManager::UpdateNetworkManager()
   fclose(fp);
 }
 
-bool CPosixNetworkManager::UpdateWifiConnections(const char *interfaceName)
+bool CPosixNetworkManager::FindWifiConnections(const char *interfaceName)
 {
   // Query the wireless extentsions version number. It will help us when we
   // parse the resulting events

@@ -54,7 +54,7 @@
 #include "dialogs/GUIDialogKeyboard.h"
 #include "dialogs/GUIDialogYesNo.h"
 #include "dialogs/GUIDialogOK.h"
-#include "dialogs/GUIDialogProgress.h"
+#include "dialogs/GUIDialogBusy.h"
 #include "dialogs/GUIDialogKaiToast.h"
 #include "addons/Visualisation.h"
 #include "addons/AddonManager.h"
@@ -769,23 +769,11 @@ void CGUIWindowSettingsCategory::UpdateSettings()
 
       CStdString connection_name;
       connection_name = g_application.getNetworkManager().GetDefaultConnectionName();
-      if (!connection_name.Equals(pControl->GetLabel()))
+      if (!connection_name.Equals(pControl->GetLabel2()))
       {
-        pControl->SetLabel(connection_name);
+        pControl->SetLabel2(connection_name);
         if (visible)
           FillInNetworkConnection();
-      }
-      switch (g_application.getNetworkManager().GetDefaultConnectionState())
-      {
-        case NETWORK_CONNECTION_STATE_CONNECTED:
-          pControl->SetLabel2(g_localizeStrings.Get(13296));
-          break;
-        case NETWORK_CONNECTION_STATE_CONNECTING:
-          pControl->SetLabel2(g_localizeStrings.Get(33203));
-          break;
-        default:
-          pControl->SetLabel2(g_localizeStrings.Get(33202));
-          break;
       }
     }
     else if (strSetting.Equals("network.method"))
@@ -794,9 +782,9 @@ void CGUIWindowSettingsCategory::UpdateSettings()
       if (pControl1)
          pControl1->SetEnabled(true);
     }
-    else if (strSetting.Equals("network.ipaddress") ||
-      strSetting.Equals("network.netmask")  ||
-      strSetting.Equals("network.gateway")  ||
+    else if (strSetting.Equals("network.address") ||
+      strSetting.Equals("network.netmask")    ||
+      strSetting.Equals("network.gateway")    ||
       strSetting.Equals("network.nameserver"))
     {
       bool enabled = false;
@@ -1292,6 +1280,29 @@ void CGUIWindowSettingsCategory::OnSettingChanged(CBaseSettingControl *pSettingC
   else if (strSetting.Equals("network.connection"))
   {
     vector<CStdString> params;
+    g_application.getApplicationMessenger().ActivateWindow(WINDOW_DIALOG_ACCESS_POINTS, params, false);
+  }
+  else if (strSetting.Equals("network.apply"))
+  {
+    CIPConfig ipconfig;
+    // fetch the hidden connection name.
+    ipconfig.m_essid  = g_guiSettings.GetString("network.essid");
+    // fetch the current method
+    CGUISpinControlEx* spin_control = (CGUISpinControlEx*)GetControl(GetSetting("network.method")->GetID());
+    ipconfig.m_method = (IPConfigMethod)spin_control->GetValue();
+    // fetch the current ip info
+    CGUIEditControl* edit_control;
+    edit_control = (CGUIEditControl*)GetControl(GetSetting("network.address")->GetID());
+    ipconfig.m_address = edit_control->GetLabel2();
+    edit_control = (CGUIEditControl*)GetControl(GetSetting("network.netmask")->GetID());
+    ipconfig.m_netmask = edit_control->GetLabel2();
+    edit_control = (CGUIEditControl*)GetControl(GetSetting("network.gateway")->GetID());
+    ipconfig.m_gateway = edit_control->GetLabel2();
+    edit_control = (CGUIEditControl*)GetControl(GetSetting("network.nameserver")->GetID());
+    ipconfig.m_nameserver = edit_control->GetLabel2();
+    // pass the connection config as an encoded param string
+    vector<CStdString> params;
+    params.push_back(EncodeAccessPointParam(ipconfig));
     g_application.getApplicationMessenger().ActivateWindow(WINDOW_DIALOG_ACCESS_POINTS, params, false);
   }
   else if (strSetting.Equals("httpproxy.httpproxyport"))
@@ -2694,10 +2705,11 @@ void CGUIWindowSettingsCategory::FillInNetworkConnection()
   if (pControl1) pControl1->SetValue(method);
 
   // set network information
-  GetSetting("network.ipaddress" )->GetSetting()->FromString(address);
+  GetSetting("network.address" )->GetSetting()->FromString(address);
   GetSetting("network.netmask"   )->GetSetting()->FromString(netmask);
   GetSetting("network.gateway"   )->GetSetting()->FromString(gateway);
   GetSetting("network.nameserver")->GetSetting()->FromString(nameserver);
+  g_guiSettings.SetString("network.essid", name);
   if (type == NETWORK_CONNECTION_TYPE_WIFI)
     g_guiSettings.SetString("network.passphrase", passphrase);
 }

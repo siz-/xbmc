@@ -768,11 +768,13 @@ void CGUISettings::Initialize()
   networkMethod.insert(make_pair(                    716, IP_CONFIG_DHCP));
   networkMethod.insert(make_pair(                    717, IP_CONFIG_STATIC));
   AddInt(   net,    "network.method",                715, IP_CONFIG_DHCP, networkMethod, SPIN_CONTROL_TEXT);
-  AddString(net,    "network.ipaddress",             719, "0.0.0.0",       EDIT_CONTROL_IP_INPUT);
+  AddString(net,    "network.address",               719, "0.0.0.0",       EDIT_CONTROL_IP_INPUT);
   AddString(net,    "network.netmask",               720, "255.255.255.0", EDIT_CONTROL_IP_INPUT);
   AddString(net,    "network.gateway",               721, "0.0.0.0",       EDIT_CONTROL_IP_INPUT);
   AddString(net,    "network.nameserver",            722, "0.0.0.0",       EDIT_CONTROL_IP_INPUT);
-  // add hidden passphrase so we can save/restore it
+  AddString(net,    "network.apply",                 779, "",              BUTTON_CONTROL_STANDARD);
+  // add hidden essid/passphrase so we can save/restore it
+  AddString(NULL,   "network.essid",                 776, "",              EDIT_CONTROL_INPUT);
   AddString(NULL,   "network.passphrase",            777, "",              EDIT_CONTROL_INPUT);
   //
   CSettingsCategory* proxy = AddCategory(6, "httpproxy", 713);

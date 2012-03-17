@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2011 Team XBMC
+ *      Copyright (C) 2011-2012 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -24,14 +24,39 @@
 #include "Application.h"
 #include "FileItem.h"
 #include "guilib/LocalizeStrings.h"
+#include "guilib/GUIWindowManager.h"
 #include "utils/JobManager.h"
 #include "ConnectionJob.h"
 
-#define CONTROL_ACCESS_POINTS 3
+// defines for the controls
+#define ACCESS_POINT_LABEL 1
+#define ACCESS_POINT_LIST  3
 
+//--------------------------------------------------------------
+const std::string EncodeAccessPointParam(const CIPConfig &ipconfig)
+{
+  // encode CIPConfig structure into a string based ip connect param.
+  std::string method("dhcp");
+  if (ipconfig.m_method == IP_CONFIG_STATIC)
+    method = "static";
+
+  // '+' and '\t' are invalid essid characters,
+  // a ' ' is valid so watch out for those in the name.
+  const std::string param("name+" + ipconfig.m_essid + "\t" +
+      "method+"  + method             + "\t" +
+      "address+" + ipconfig.m_address + "\t" +
+      "netmask+" + ipconfig.m_netmask + "\t" +
+      "gateway+" + ipconfig.m_gateway + "\t" +
+      "nameserver+" + ipconfig.m_nameserver + "\t");
+  return param;
+}
+
+//--------------------------------------------------------------
+//--------------------------------------------------------------
 CGUIDialogAccessPoints::CGUIDialogAccessPoints(void)
     : CGUIDialog(WINDOW_DIALOG_ACCESS_POINTS, "DialogAccessPoints.xml")
 {
+  m_doing_connection = false;
   m_connectionsFileList = new CFileItemList;
 }
 
@@ -44,17 +69,28 @@ bool CGUIDialogAccessPoints::OnAction(const CAction &action)
 {
   if (action.GetID() == ACTION_SELECT_ITEM)
   {
-    CGUIMessage msg(GUI_MSG_ITEM_SELECTED, GetID(), CONTROL_ACCESS_POINTS);
-    OnMessage(msg);
-    int iItem = msg.GetParam1();
+    // block users from doing another connection
+    //  while we are already trying to connect.
+    if (!m_doing_connection)
+    {
+      // fetch the current selected item (access point)
+      CGUIMessage msg(GUI_MSG_ITEM_SELECTED, GetID(), ACCESS_POINT_LIST);
+      OnMessage(msg);
+      int iItem = msg.GetParam1();
 
-    ConnectionList connections = g_application.getNetworkManager().GetConnections();
-    CJobManager::GetInstance().AddJob(new CConnectionJob(connections[iItem], &g_application.getKeyringManager()), this);
-
+      printf("CGUIDialogAccessPoints::OnAction, ACTION_SELECT_ITEM, iItem(%d)\n", iItem);
+      ConnectionList  connections = g_application.getNetworkManager().GetConnections();
+      CConnectionJob  *connection = new CConnectionJob(connections[iItem],
+        m_ipconfig, &g_application.getKeyringManager());
+      CJobManager::GetInstance().AddJob(connection, this);
+      m_doing_connection = true;
+    }
     return true;
   }
-  else if (action.GetID() == 300)
+  else if (action.GetID() == ACTION_CONNECTIONS_REFRESH)
   {
+    // msg from Network Manager when the network connection changes.
+    // this is for future support for scanning for new access points.
     UpdateConnectionList();
     return true;
   }
@@ -62,17 +98,59 @@ bool CGUIDialogAccessPoints::OnAction(const CAction &action)
   return CGUIDialog::OnAction(action);
 }
 
-void CGUIDialogAccessPoints::OnInitWindow()
+bool CGUIDialogAccessPoints::OnMessage(CGUIMessage& message)
 {
-  printf("CGUIDialogAccessPoints::OnInitWindow\n");
-  CGUIDialog::OnInitWindow();
+  bool result = CGUIDialog::OnMessage(message);
+  switch (message.GetMessage())
+  {
+    case GUI_MSG_WINDOW_INIT:
+    {
+      // fetch the param list
+      std::string param(message.GetStringParam());
 
-  UpdateConnectionList();
+      // network apply vs network connect
+      if (param.find("name+") != std::string::npos)
+      {
+        // network apply, param contains a description for connecting
+        // to an access point. we want to find this access point,
+        // disable the others, then inject a OnAction msg to select it.
+        printf("CGUIDialogAccessPoints::OnMessage, %s\n", param.c_str());
+        DecodeAccessPointParam(param);
+        // change the label to show we are doing a connection.
+        CGUIMessage msg(GUI_MSG_LABEL_SET, GetID(), ACCESS_POINT_LABEL);
+        // <string id="33203">Connecting</string>
+        msg.SetLabel(g_localizeStrings.Get(33203));
+        OnMessage(msg);
+      }
+      UpdateConnectionList();
+      // if we are doing an 'apply', then inject a click on the "selected" item.
+      if (m_ipconfig.m_essid.size() > 0)
+      {
+        printf("CGUIDialogAccessPoints::OnMessage:GUI_MSG_WINDOW_INIT, doing ACTION_SELECT_ITEM\n");
+        g_application.getApplicationMessenger().SendAction(CAction(ACTION_SELECT_ITEM), GetID());
+      }
+      break;
+    }
+  }
+
+  return result;
 }
 
+bool CGUIDialogAccessPoints::OnBack(int actionID)
+{
+  // block the user from closing us if we are trying to connect.
+  if (m_doing_connection)
+    return false;
+  else
+    return CGUIDialog::OnBack(actionID);
+}
+
+//--------------------------------------------------------------
+//--------------------------------------------------------------
 void CGUIDialogAccessPoints::OnJobComplete(unsigned int jobID, bool success, CJob *job)
 {
-  printf("CGUIDialogAccessPoints::OnJobComplete\n");
+  // auto-close when connection job completes
+  m_doing_connection = false;
   if (success)
     Close();
 }
@@ -81,29 +159,78 @@ void CGUIDialogAccessPoints::UpdateConnectionList()
 {
   m_connectionsFileList->Clear();
 
-  CGUIMessage msgReset(GUI_MSG_LABEL_RESET, GetID(), CONTROL_ACCESS_POINTS);
+  CGUIMessage msgReset(GUI_MSG_LABEL_RESET, GetID(), ACCESS_POINT_LIST);
   OnMessage(msgReset);
 
+  int connectedItem = 0;
   ConnectionList connections = g_application.getNetworkManager().GetConnections();
 
-  for (int i = 0; i < (int) connections.size(); i++)
+  std::string connection_name;
+  for (size_t i = 0; i < connections.size(); i++)
   {
-    CFileItemPtr item(new CFileItem(connections[i]->GetName()));
+    connection_name = connections[i]->GetName();
+    CFileItemPtr item(new CFileItem(connection_name));
 
+    if (m_ipconfig.m_essid.size() > 0)
+    {
+      if (connection_name.find(m_ipconfig.m_essid) != std::string::npos)
+        connectedItem = i;
+    }
+    else
+    {
+      if (connections[i]->GetState() == NETWORK_CONNECTION_STATE_CONNECTED)
+        connectedItem = i;
+    }
     if (connections[i]->GetType() == NETWORK_CONNECTION_TYPE_WIFI)
     {
-      item->SetProperty("signal", (int)(connections[i]->GetStrength() / 20));
+      item->SetProperty("signal",     (int)(connections[i]->GetStrength() / 20));
       item->SetProperty("encryption", EncryptionToString(connections[i]->GetEncryption()));
     }
 
-    item->SetProperty("type", ConnectionTypeToString(connections[i]->GetType()));
+    item->SetProperty("type",  ConnectionTypeToString(connections[i]->GetType()));
     item->SetProperty("state", ConnectionStateToString(connections[i]->GetState()));
  
     m_connectionsFileList->Add(item);
   }
+  printf("CGUIDialogAccessPoints::UpdateConnectionList, "
+    "connectedItem(%d), connection_name(%s),  m_ipconfig.m_essid(%s)\n",
+    connectedItem, connection_name.c_str(), m_ipconfig.m_essid.c_str());
 
-  CGUIMessage msg(GUI_MSG_LABEL_BIND, GetID(), CONTROL_ACCESS_POINTS, 0, 0, m_connectionsFileList);
+  CGUIMessage msg(GUI_MSG_LABEL_BIND, GetID(), ACCESS_POINT_LIST, connectedItem, 0, m_connectionsFileList);
   OnMessage(msg);
+}
+
+void CGUIDialogAccessPoints::DecodeAccessPointParam(const std::string &param)
+{
+  // decode a string based ip connect param into a CIPConfig structure.
+  std::string::size_type start;
+  std::string::size_type end;
+
+  start = param.find("name+") + sizeof("name");
+  end   = param.find("\t", start);
+  m_ipconfig.m_essid = param.substr(start, end - start);
+  //
+  start = param.find("method+") + sizeof("method");
+  end   = param.find("\t", start);
+  m_ipconfig.m_method = IP_CONFIG_DHCP;
+  if (param.find("static", start) != std::string::npos)
+    m_ipconfig.m_method = IP_CONFIG_STATIC;
+  //
+  start = param.find("address+") + sizeof("address");
+  end   = param.find("\t", start);
+  m_ipconfig.m_address = param.substr(start, end - start);
+  //
+  start = param.find("netmask+") + sizeof("netmask");
+  end   = param.find("\t", start);
+  m_ipconfig.m_netmask = param.substr(start, end - start);
+  //
+  start = param.find("gateway+") + sizeof("gateway");
+  end   = param.find("\t", start);
+  m_ipconfig.m_gateway = param.substr(start, end - start);
+  //
+  start = param.find("nameserver+") + sizeof("nameserver");
+  end   = param.find("\t", start);
+  m_ipconfig.m_nameserver = param.substr(start, end - start);
 }
 
 const char *CGUIDialogAccessPoints::ConnectionStateToString(ConnectionState state)
