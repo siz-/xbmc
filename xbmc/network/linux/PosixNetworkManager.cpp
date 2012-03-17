@@ -21,8 +21,10 @@
 
 #include "PosixNetworkManager.h"
 #include "PosixConnection.h"
+#include "dialogs/GUIDialogKaiToast.h"
 #include "guilib/Key.h"
 #include "guilib/GUIWindowManager.h"
+#include "guilib/LocalizeStrings.h"
 #include "settings/GUISettings.h"
 #include "threads/Thread.h"
 #include "utils/log.h"
@@ -101,6 +103,7 @@ CPosixNetworkManager::CPosixNetworkManager()
   CLog::Log(LOGDEBUG, "NetworkManager: PosixNetworkManager created");
   m_socket = socket(AF_INET, SOCK_DGRAM, 0);
   m_next_pump_time = XbmcThreads::SystemClockMillis();
+  m_post_failed = false;
   FindNetworkInterfaces();
   if (CanManageConnections())
     RestoreSavedConnection();
@@ -133,6 +136,20 @@ bool CPosixNetworkManager::PumpNetworkEvents(INetworkEventsCallback *callback)
   if (m_next_pump_time > XbmcThreads::SystemClockMillis())
     return result;
 
+  // check for a failed startup connection
+  if (m_post_failed)
+  {
+    // since network startup happens before windowing and rendering are up
+    // wait until we can retrive WINDOW_DIALOG_KAI_TOAST before posting.
+    CGUIDialogKaiToast *toast = (CGUIDialogKaiToast*)g_windowManager.GetWindow(WINDOW_DIALOG_KAI_TOAST);
+    if (toast)
+    {
+      CGUIDialogKaiToast::QueueNotification(CGUIDialogKaiToast::Error, g_localizeStrings.Get(13279), g_localizeStrings.Get(1001));
+       m_post_failed = false;
+    }
+  }
+
+  // pump  our connection
   for (size_t i = 0; i < m_connections.size(); i++)
   {
     if (((CPosixConnection*)m_connections[i].get())->PumpNetworkEvents())
@@ -194,6 +211,10 @@ void CPosixNetworkManager::RestoreSystemConnection()
   CLog::Log(LOGDEBUG, "NetworkManager: Defaulting to system connection");
   // nothing to do here, CNetworkManager will activate the first
   // connection with a state of NETWORK_CONNECTION_STATE_CONNECTED;
+
+  // humm, how do we check ?
+  // m_post_failed = true;
+
 }
 
 void CPosixNetworkManager::FindNetworkInterfaces()
