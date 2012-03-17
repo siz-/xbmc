@@ -301,6 +301,7 @@ bool CAdvancedSettings::Load()
   //       it should instead use the versions of GetString/Integer/Float that
   //       don't take defaults in.  Defaults are set in the constructor above
   Initialize(); // In case of profile switch.
+  CSpecialProtocol::SetProfilePath(g_settings.GetUserDataFolder());
   ParseSettingsFile("special://xbmc/system/advancedsettings.xml");
   for (unsigned int i = 0; i < m_settingsFiles.size(); i++)
     ParseSettingsFile(m_settingsFiles[i]);
@@ -863,6 +864,57 @@ void CAdvancedSettings::ParseSettingsFile(const CStdString &file)
     }
   }
 
+  TiXmlElement* pSettingsOverride = pRootElement->FirstChildElement("settingsoverride");
+  if (pSettingsOverride)
+  {
+    m_settingsOverride.clear();
+    CLog::Log(LOGDEBUG,"Configuring settings overrides");
+    TiXmlNode* pOverride = pSettingsOverride->FirstChildElement("override");
+    while (pOverride)
+    {
+      SettingsOverride override;
+      TiXmlNode* pSetting = pOverride->FirstChild("setting");
+      if (pSetting)
+        override.setting = _P(pSetting->FirstChild()->Value()).c_str();
+      TiXmlNode* pValue = pOverride->FirstChild("default");
+      if (pValue)
+        override.value = pValue->FirstChild()->Value();
+
+      override.hidden = false;
+      CStdString StrHidden = pSetting->ToElement()->Attribute("hidden");;
+      if (!StrHidden.IsEmpty() && StrHidden != "0" && !StrHidden.Equals("false"))
+        override.hidden = true;
+
+      override.locked = false;
+      CStdString StrLocked = pSetting->ToElement()->Attribute("locked");
+      if (!StrLocked.IsEmpty() && StrLocked != "0" && !StrLocked.Equals("false"))
+        override.locked = true;
+
+      if (!override.setting.IsEmpty() && !override.value.IsEmpty())
+      {
+        CLog::Log(LOGDEBUG,"  Overriding:");
+        CLog::Log(LOGDEBUG,"    Setting:  [%s]", override.setting.c_str());
+        CLog::Log(LOGDEBUG,"    Default:    [%s]", override.value.c_str());
+        if (override.hidden)
+          CLog::Log(LOGDEBUG,"    Hidden:   [true]");
+        if (override.locked)
+          CLog::Log(LOGDEBUG,"    Locked:   [true]");
+        m_settingsOverride.push_back(override);
+      }
+      else
+      {
+        // error message about missing tag
+        if (override.setting.IsEmpty())
+          CLog::Log(LOGERROR,"  Missing <setting> tag");
+        else
+          CLog::Log(LOGERROR,"  Missing <default> tag");
+      }
+
+      // get next one
+      pOverride = pOverride->NextSiblingElement("override");
+    }
+  }
+
   XMLUtils::GetInt(pRootElement, "remotedelay", m_remoteDelay, 1, 20);
   XMLUtils::GetFloat(pRootElement, "controllerdeadzone", m_controllerDeadzone, 0.0f, 1.0f);
   XMLUtils::GetInt(pRootElement, "thumbsize", m_thumbSize, 0, 1024);
@@ -963,9 +1015,6 @@ void CAdvancedSettings::ParseSettingsFile(const CStdString &file)
     XMLUtils::GetInt(pElement, "algorithmdirtyregions",     m_guiAlgorithmDirtyRegions);
     XMLUtils::GetInt(pElement, "nofliptimeout",             m_guiDirtyRegionNoFlipTimeout);
   }
-
-  // load in the GUISettings overrides:
-  g_guiSettings.LoadXML(pRootElement, true);  // true to hide the settings we read in
 }
 
 void CAdvancedSettings::Clear()
