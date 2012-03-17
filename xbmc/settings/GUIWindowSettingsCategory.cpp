@@ -587,6 +587,7 @@ void CGUIWindowSettingsCategory::UpdateSettings()
     CBaseSettingControl *pSettingControl = m_vecSettings[i];
     pSettingControl->Update();
     CStdString strSetting = pSettingControl->GetSetting()->GetSetting();
+
 #ifdef HAVE_LIBVDPAU
     if (strSetting.Equals("videoplayer.vdpauUpscalingLevel"))
     {
