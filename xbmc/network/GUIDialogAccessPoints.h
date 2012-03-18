@@ -28,7 +28,7 @@
 #include "utils/Job.h"
 
 
-const std::string EncodeAccessPointParam(const CIPConfig &ipconfig);
+const std::string EncodeAccessPointParam(const std::string name, const CIPConfig &ipconfig);
 
 class CFileItemList;
 
@@ -50,7 +50,9 @@ private:
   static const char *ConnectionTypeToString(ConnectionType type);
   static const char *EncryptionToString(EncryptionType type);
 
+  std::string   m_ipname;
   CIPConfig     m_ipconfig;
+  bool          m_use_ipconfig;
   bool          m_doing_connection;
   CFileItemList *m_connectionsFileList;
 };

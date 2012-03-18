@@ -33,7 +33,7 @@
 #define ACCESS_POINT_LIST  3
 
 //--------------------------------------------------------------
-const std::string EncodeAccessPointParam(const CIPConfig &ipconfig)
+const std::string EncodeAccessPointParam(const std::string name, const CIPConfig &ipconfig)
 {
   // encode CIPConfig structure into a string based ip connect param.
   std::string method("dhcp");
@@ -42,7 +42,7 @@ const std::string EncodeAccessPointParam(const CIPConfig &ipconfig)
 
   // '+' and '\t' are invalid essid characters,
   // a ' ' is valid so watch out for those in the name.
-  const std::string param("name+" + ipconfig.m_essid + "\t" +
+  const std::string param("name+" + name + "\t" +
       "method+"  + method             + "\t" +
       "address+" + ipconfig.m_address + "\t" +
       "netmask+" + ipconfig.m_netmask + "\t" +
@@ -56,7 +56,6 @@ const std::string EncodeAccessPointParam(const CIPConfig &ipconfig)
 CGUIDialogAccessPoints::CGUIDialogAccessPoints(void)
     : CGUIDialog(WINDOW_DIALOG_ACCESS_POINTS, "DialogAccessPoints.xml")
 {
-  m_doing_connection = false;
   m_connectionsFileList = new CFileItemList;
 }
 
@@ -100,17 +99,23 @@ bool CGUIDialogAccessPoints::OnAction(const CAction &action)
 
 bool CGUIDialogAccessPoints::OnMessage(CGUIMessage& message)
 {
+  if (message.GetMessage() != GUI_MSG_ITEM_SELECT)
+    printf("CGUIDialogAccessPoints::OnMessage: message.GetMessage(%d)\n", message.GetMessage());
+
   bool result = CGUIDialog::OnMessage(message);
   switch (message.GetMessage())
   {
     case GUI_MSG_WINDOW_INIT:
     {
+      m_use_ipconfig = false;
+      m_doing_connection = false;
       // fetch the param list
       std::string param(message.GetStringParam());
 
       // network apply vs network connect
       if (param.find("name+") != std::string::npos)
       {
+        m_use_ipconfig = true;
         // network apply, param contains a description for connecting
         // to an access point. we want to find this access point,
         // disable the others, then inject a OnAction msg to select it.
@@ -124,12 +129,15 @@ bool CGUIDialogAccessPoints::OnMessage(CGUIMessage& message)
       }
       UpdateConnectionList();
       // if we are doing an 'apply', then inject a click on the "selected" item.
-      if (m_ipconfig.m_essid.size() > 0)
+      if (m_use_ipconfig)
       {
         printf("CGUIDialogAccessPoints::OnMessage:GUI_MSG_WINDOW_INIT, doing ACTION_SELECT_ITEM\n");
         g_application.getApplicationMessenger().SendAction(CAction(ACTION_SELECT_ITEM), GetID());
       }
       break;
+    }
+    case GUI_MSG_WINDOW_DEINIT:
+    {
     }
   }
 
@@ -152,7 +160,9 @@ void CGUIDialogAccessPoints::OnJobComplete(unsigned int jobID, bool success, CJo
   // auto-close when connection job completes
   m_doing_connection = false;
   if (success)
-    Close();
+  {
+    Close(true);
+  }
 }
 
 void CGUIDialogAccessPoints::UpdateConnectionList()
@@ -171,9 +181,9 @@ void CGUIDialogAccessPoints::UpdateConnectionList()
     connection_name = connections[i]->GetName();
     CFileItemPtr item(new CFileItem(connection_name));
 
-    if (m_ipconfig.m_essid.size() > 0)
+    if (m_use_ipconfig)
     {
-      if (connection_name.find(m_ipconfig.m_essid) != std::string::npos)
+      if (connection_name.find(m_ipname) != std::string::npos)
         connectedItem = i;
     }
     else
@@ -183,7 +193,19 @@ void CGUIDialogAccessPoints::UpdateConnectionList()
     }
     if (connections[i]->GetType() == NETWORK_CONNECTION_TYPE_WIFI)
     {
-      item->SetProperty("signal",     (int)(connections[i]->GetStrength() / 20));
+      int signal, strength = connections[i]->GetStrength();
+      if (strength == 0 || strength < 20)
+        signal = 1;
+      else if (strength == 20 || strength < 40)
+        signal = 2;
+      else if (strength == 40 || strength < 60)
+        signal = 3;
+      else if (strength == 60 || strength < 80)
+        signal = 4;
+      else
+        signal = 5;
+
+      item->SetProperty("signal",     signal);
       item->SetProperty("encryption", EncryptionToString(connections[i]->GetEncryption()));
     }
 
@@ -192,9 +214,6 @@ void CGUIDialogAccessPoints::UpdateConnectionList()
  
     m_connectionsFileList->Add(item);
   }
-  printf("CGUIDialogAccessPoints::UpdateConnectionList, "
-    "connectedItem(%d), connection_name(%s),  m_ipconfig.m_essid(%s)\n",
-    connectedItem, connection_name.c_str(), m_ipconfig.m_essid.c_str());
 
   CGUIMessage msg(GUI_MSG_LABEL_BIND, GetID(), ACCESS_POINT_LIST, connectedItem, 0, m_connectionsFileList);
   OnMessage(msg);
@@ -208,7 +227,7 @@ void CGUIDialogAccessPoints::DecodeAccessPointParam(const std::string &param)
 
   start = param.find("name+") + sizeof("name");
   end   = param.find("\t", start);
-  m_ipconfig.m_essid = param.substr(start, end - start);
+  m_ipname = param.substr(start, end - start);
   //
   start = param.find("method+") + sizeof("method");
   end   = param.find("\t", start);

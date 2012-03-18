@@ -23,7 +23,6 @@
 #include "xbmc/network/IConnection.h"
 
 int  PosixParseHex(char *str, unsigned char *addr);
-bool PosixGuessIsHex(const char *test_hex, size_t length);
 bool IsWireless(int socket, const char *interface);
 bool PosixCheckInterfaceUp(const std::string &interface);
 std::string PosixGetDefaultGateway(const std::string &interface);
@@ -33,7 +32,8 @@ std::string PosixGetDefaultGateway(const std::string &interface);
 class CPosixConnection : public IConnection
 {
 public:
-  CPosixConnection(int socket, const char *interfaceName);
+  CPosixConnection(int socket, const char *interface, const char *macaddress,
+    const char *essid, ConnectionType type, EncryptionType encryption, int signal);
   virtual ~CPosixConnection();
 
   virtual std::string     GetName()       const;
@@ -54,7 +54,7 @@ public:
 
   bool PumpNetworkEvents();
 private:
-  bool DoConnection(const CIPConfig &ipconfig);
+  bool DoConnection(const CIPConfig &ipconfig, std::string passphrase);
 
   std::string     m_essid;
   std::string     m_address;
@@ -66,9 +66,8 @@ private:
   ConnectionState m_state;
   IPConfigMethod  m_method;
   EncryptionType  m_encryption;
-  std::string     m_passphrase;
 
+  int             m_signal;
   int             m_socket;
   std::string     m_interface;
-  std::string     m_connectionName;
 };

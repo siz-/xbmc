@@ -102,7 +102,6 @@ CPosixNetworkManager::CPosixNetworkManager()
 {
   CLog::Log(LOGDEBUG, "NetworkManager: PosixNetworkManager created");
   m_socket = socket(AF_INET, SOCK_DGRAM, 0);
-  m_next_pump_time = XbmcThreads::SystemClockMillis();
   m_post_failed = false;
   FindNetworkInterfaces();
   if (CanManageConnections())
@@ -131,10 +130,6 @@ ConnectionList CPosixNetworkManager::GetConnections()
 bool CPosixNetworkManager::PumpNetworkEvents(INetworkEventsCallback *callback)
 {
   bool result = false;
-
-  // throttle calls to PumpNetworkEvents, we get called every 500ms
-  if (m_next_pump_time > XbmcThreads::SystemClockMillis())
-    return result;
 
   // check for a failed startup connection
   if (m_post_failed)
@@ -167,13 +162,6 @@ bool CPosixNetworkManager::PumpNetworkEvents(INetworkEventsCallback *callback)
     }
   }
 
-  // next network check in 5 seconds.
-  // if system setting GUI is up, then we do not throttle.
-  if (g_windowManager.GetActiveWindow() == WINDOW_SETTINGS_SYSTEM)
-    m_next_pump_time = XbmcThreads::SystemClockMillis();
-  else
-    m_next_pump_time = XbmcThreads::SystemClockMillis() + 5000;
-
   return result;
 }
 
@@ -182,19 +170,19 @@ void CPosixNetworkManager::RestoreSavedConnection()
 {
   CLog::Log(LOGDEBUG, "NetworkManager: Restoring saved connection");
 
+  std::string saved_name       = g_guiSettings.GetString("network.connection");
+
   CIPConfig saved_ipconfig;
-  saved_ipconfig.m_essid      = g_guiSettings.GetString("network.connection");
-  saved_ipconfig.m_method     = (IPConfigMethod)g_guiSettings.GetInt("network.method");
-  saved_ipconfig.m_address    = g_guiSettings.GetString("network.address");
-  saved_ipconfig.m_netmask    = g_guiSettings.GetString("network.netmask");
-  saved_ipconfig.m_gateway    = g_guiSettings.GetString("network.gateway");
-  saved_ipconfig.m_nameserver = g_guiSettings.GetString("network.nameserver");
-  saved_ipconfig.m_essid      = g_guiSettings.GetString("network.essid");
-  saved_ipconfig.m_passphrase = g_guiSettings.GetString("network.passphrase");
+  saved_ipconfig.m_method      = (IPConfigMethod)g_guiSettings.GetInt("network.method");
+  saved_ipconfig.m_address     = g_guiSettings.GetString("network.address");
+  saved_ipconfig.m_netmask     = g_guiSettings.GetString("network.netmask");
+  saved_ipconfig.m_gateway     = g_guiSettings.GetString("network.gateway");
+  saved_ipconfig.m_nameserver  = g_guiSettings.GetString("network.nameserver");
+
   for (size_t i = 0; i < m_connections.size(); i++)
   {
     std::string connection_name = ((CPosixConnection*)m_connections[i].get())->GetName();
-    if (connection_name.find(saved_ipconfig.m_essid) != std::string::npos)
+    if (connection_name.find(saved_name) != std::string::npos)
     {
       if (!((CPosixConnection*)m_connections[i].get())->Connect(NULL, saved_ipconfig))
       {
@@ -228,7 +216,7 @@ void CPosixNetworkManager::FindNetworkInterfaces()
   int n, linenum = 0;
   char*  line = NULL;
   size_t linel = 0;
-  char* interfaceName;
+  char*  interfaceName;
 
   while (getdelim(&line, &linel, '\n', fp) > 0)
   {
@@ -263,17 +251,17 @@ void CPosixNetworkManager::FindNetworkInterfaces()
         // and ignore loopback
         if (ifr.ifr_hwaddr.sa_family == ARPHRD_ETHER && !(ifr.ifr_flags & IFF_LOOPBACK))
         {
-          char access_point[1024] = {0};
+          char macaddress[1024] = {0};
           if (ioctl(m_socket, SIOCGIFHWADDR, &ifr) >= 0)
           {
             // format up 'wire.<mac address>.<interface name>
-            sprintf(access_point, "wire.%02X:%02X:%02X:%02X:%02X:%02X.%s",
+            sprintf(macaddress, "%02X:%02X:%02X:%02X:%02X:%02X",
               ifr.ifr_hwaddr.sa_data[0], ifr.ifr_hwaddr.sa_data[1],
               ifr.ifr_hwaddr.sa_data[2], ifr.ifr_hwaddr.sa_data[3],
-              ifr.ifr_hwaddr.sa_data[4], ifr.ifr_hwaddr.sa_data[5],
-              interfaceName);
+              ifr.ifr_hwaddr.sa_data[4], ifr.ifr_hwaddr.sa_data[5]);
           }
-          m_connections.push_back(CConnectionPtr(new CPosixConnection(m_socket, access_point)));
+          m_connections.push_back(CConnectionPtr(new CPosixConnection(m_socket, interfaceName, macaddress,
+            "Wired", NETWORK_CONNECTION_TYPE_WIRED, NETWORK_CONNECTION_ENCRYPTION_NONE, 100)));
           //printf("CPosixNetworkManager::GetConnections access_point(%s) \n", access_point);
         }
       }
@@ -368,9 +356,9 @@ bool CPosixNetworkManager::FindWifiConnections(const char *interfaceName)
 
   bool first = true;
   char essid[IW_ESSID_MAX_SIZE+1];
-  char bssid[256];
+  char macaddress[256];
   int  quality = 0, signalLevel = 0;
-  std::string encryption("none");
+  EncryptionType encryption = NETWORK_CONNECTION_ENCRYPTION_NONE;
 
   while (pos + IW_EV_LCP_LEN <= end)
   {
@@ -408,10 +396,10 @@ bool CPosixNetworkManager::FindWifiConnections(const char *interfaceName)
       {
         // this is the 1st cmp we get, so we have to play games
         // and push back our parsed results on the next one, but
-        // we need to save the bssid so we push the right one.
-        char cur_bssid[256] = {0};
+        // we need to save the macaddress so we push the right one.
+        char cur_macaddress[256] = {0};
         // macAddress is big-endian, write in byte chunks
-        sprintf(cur_bssid, "%02X:%02X:%02X:%02X:%02X:%02X",
+        sprintf(cur_macaddress, "%02X:%02X:%02X:%02X:%02X:%02X",
           iwe->u.ap_addr.sa_data[0], iwe->u.ap_addr.sa_data[1],
           iwe->u.ap_addr.sa_data[2], iwe->u.ap_addr.sa_data[3],
           iwe->u.ap_addr.sa_data[4], iwe->u.ap_addr.sa_data[5]);
@@ -419,22 +407,18 @@ bool CPosixNetworkManager::FindWifiConnections(const char *interfaceName)
         if (first)
         {
           first = false;
-          memcpy(bssid, cur_bssid, sizeof(bssid));
+          memcpy(macaddress, cur_macaddress, sizeof(macaddress));
         }
         else
         {
-          std::string essID(essid);
-          std::string bssID(bssid);
-          std::string interface(interfaceName);
-          // format up 'wifi.<mac address>.<interface name>.<essid>.<encryption>
-          const std::string access_point = "wifi." + bssID + "." + interface + "." + essID + "." + encryption;
-          m_connections.push_back(CConnectionPtr(new CPosixConnection(m_socket, access_point.c_str())));
+          m_connections.push_back(CConnectionPtr(new CPosixConnection(m_socket, interfaceName, macaddress,
+            essid, NETWORK_CONNECTION_TYPE_WIFI, encryption, quality)));
           //printf("CPosixNetworkManager::GetWifiConnections add access_point(%s), quality(%d), signalLevel(%d)\n",
           //  access_point.c_str(), quality, signalLevel);
-          memcpy(bssid, cur_bssid, sizeof(bssid));
+          memcpy(macaddress, cur_macaddress, sizeof(macaddress));
         }
         // reset encryption for parsing next access point
-        encryption = "none";
+        encryption = NETWORK_CONNECTION_ENCRYPTION_NONE;
         signalLevel = 0;
         break;
       }
@@ -459,8 +443,8 @@ bool CPosixNetworkManager::FindWifiConnections(const char *interfaceName)
       // Get encoding token & mode
       case SIOCGIWENCODE:
       {
-        if (!(iwe->u.data.flags & IW_ENCODE_DISABLED) && encryption.find("none") != std::string::npos)
-          encryption = "wep";
+        if (!(iwe->u.data.flags & IW_ENCODE_DISABLED) && encryption == NETWORK_CONNECTION_ENCRYPTION_NONE)
+          encryption = NETWORK_CONNECTION_ENCRYPTION_WEP;
         break;
       }
 
@@ -474,11 +458,11 @@ bool CPosixNetworkManager::FindWifiConnections(const char *interfaceName)
           switch (custom[offset])
           {
             case 0xdd: // WPA1
-              if (encryption.find("wpa2") == std::string::npos)
-                encryption = "wpa";
+              if (encryption != NETWORK_CONNECTION_ENCRYPTION_WPA2)
+                encryption = NETWORK_CONNECTION_ENCRYPTION_WPA;
               break;
             case 0x30: // WPA2
-              encryption = "wpa2";
+              encryption = NETWORK_CONNECTION_ENCRYPTION_WPA2;
               break;
           }
           offset += custom[offset+1] + 2;
@@ -490,12 +474,8 @@ bool CPosixNetworkManager::FindWifiConnections(const char *interfaceName)
 
   if (!first)
   {
-    std::string essID(essid);
-    std::string bssID(bssid);
-    std::string interface(interfaceName);
-    // format up 'wifi.<mac address>.<interface name>.<essid>.<encryption>
-    const std::string access_point = "wifi." + bssID + "." + interface + "." + essID + "." + encryption;
-    m_connections.push_back(CConnectionPtr(new CPosixConnection(m_socket, access_point.c_str())));
+    m_connections.push_back(CConnectionPtr(new CPosixConnection(m_socket, interfaceName, macaddress,
+      essid, NETWORK_CONNECTION_TYPE_WIFI, encryption, quality)));
     //printf("CPosixNetworkManager::GetWifiConnections add access_point(%s), quality(%d), signalLevel(%d)\n",
     //  access_point.c_str(), quality, signalLevel);
   }

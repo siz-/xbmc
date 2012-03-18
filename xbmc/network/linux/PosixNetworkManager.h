@@ -43,5 +43,4 @@ private:
   int            m_socket;
   ConnectionList m_connections;
   bool           m_post_failed;
-  unsigned int   m_next_pump_time;
 };

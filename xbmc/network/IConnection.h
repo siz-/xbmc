@@ -67,36 +67,29 @@ public:
 
   CIPConfig(IPConfigMethod method,
     const std::string &address, const std::string &netmask,
-    const std::string &gateway, const std::string &nameserver,
-    const std::string &essid,   const std::string &passphrase)
+    const std::string &gateway, const std::string &nameserver)
   {
-    m_essid      = essid;
     m_method     = method;
     m_address    = address;
     m_netmask    = netmask;
     m_gateway    = gateway;
     m_nameserver = nameserver;
-    m_passphrase = passphrase;
   }
 
   void reset()
   {
-    m_essid      = "";
     m_method     = IP_CONFIG_DISABLED;
     m_address    = "";
     m_netmask    = "";
     m_gateway    = "";
     m_nameserver = "";
-    m_passphrase = "";
   }
 
-  std::string     m_essid;
   IPConfigMethod  m_method;
   std::string     m_address;
   std::string     m_netmask;
   std::string     m_gateway;
   std::string     m_nameserver;
-  std::string     m_passphrase;
 };
 
 class IConnection

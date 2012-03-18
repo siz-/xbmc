@@ -403,9 +403,9 @@ void CGUIWindowSettingsCategory::CreateSettings()
     }
     else if (strSetting.Equals("network.connection"))
     {
-      bool visible = g_application.getNetworkManager().CanManageConnections();
+      bool canManage = g_application.getNetworkManager().CanManageConnections();
       //((CGUIControl*)GetControl(GetSetting("network.connection")->GetID()))->SetVisible(visible);
-      if (visible)
+      if (canManage)
         FillInNetworkConnection();
     }
     else if (strSetting.Equals("httpproxy.httpproxyport"))
@@ -762,25 +762,29 @@ void CGUIWindowSettingsCategory::UpdateSettings()
 #endif//HAS_AIRPLAY
     else if (strSetting.Equals("network.connection"))
     {
-      CGUIButtonControl *pControl = (CGUIButtonControl *)GetControl(GetSetting(strSetting)->GetID());
+      bool canManage = g_application.getNetworkManager().CanManageConnections();
+      CGUIButtonControl *pControl = (CGUIButtonControl*)GetControl(GetSetting(strSetting)->GetID());
+      pControl->SetEnabled(canManage);
 
-      bool visible = g_application.getNetworkManager().CanManageConnections();
-      pControl->SetVisible(visible);
-
-      CStdString connection_name;
-      connection_name = g_application.getNetworkManager().GetDefaultConnectionName();
-      if (!connection_name.Equals(pControl->GetLabel2()))
+      if (canManage)
       {
+        CStdString connection_name;
+        connection_name = g_application.getNetworkManager().GetDefaultConnectionName();
         pControl->SetLabel2(connection_name);
-        if (visible)
-          FillInNetworkConnection();
+        FillInNetworkConnection();
+      }
+      else
+      {
+        // <string id="13296">Connected</string>
+        pControl->SetLabel2(g_localizeStrings.Get(13296));
       }
     }
     else if (strSetting.Equals("network.method"))
     {
-      CGUISpinControlEx* pControl1 = (CGUISpinControlEx *)GetControl(GetSetting("network.method")->GetID());
+      bool canManage = g_application.getNetworkManager().CanManageConnections();
+      CGUISpinControlEx *pControl1 = (CGUISpinControlEx*)GetControl(GetSetting("network.method")->GetID());
       if (pControl1)
-         pControl1->SetEnabled(true);
+         pControl1->SetEnabled(canManage);
     }
     else if (strSetting.Equals("network.address") ||
       strSetting.Equals("network.netmask")    ||
@@ -788,13 +792,21 @@ void CGUIWindowSettingsCategory::UpdateSettings()
       strSetting.Equals("network.nameserver"))
     {
       bool enabled = false;
-      CGUISpinControlEx* pControl1 = (CGUISpinControlEx *)GetControl(GetSetting("network.method")->GetID());
+      bool canManage = g_application.getNetworkManager().CanManageConnections();
+      CGUISpinControlEx *pControl1 = (CGUISpinControlEx*)GetControl(GetSetting("network.method")->GetID());
       if (pControl1)
         enabled = (pControl1->GetValue() == IP_CONFIG_STATIC);
 
-      CGUIControl *pControl = (CGUIControl *)GetControl(pSettingControl->GetID());
+      CGUIControl *pControl = (CGUIControl*)GetControl(pSettingControl->GetID());
       if (pControl)
-        pControl->SetEnabled(enabled);
+        pControl->SetEnabled(enabled && canManage);
+    }
+    else if (strSetting.Equals("network.apply"))
+    {
+      bool canManage = g_application.getNetworkManager().CanManageConnections();
+      CGUIButtonControl *pControl = (CGUIButtonControl*)GetControl(GetSetting(strSetting)->GetID());
+      if (pControl)
+         pControl->SetEnabled(canManage);
     }
     else if (strSetting.Equals("httpproxy.httpproxyserver")   || strSetting.Equals("httpproxy.httpproxyport") ||
              strSetting.Equals("httpproxy.httpproxyusername") || strSetting.Equals("httpproxy.httpproxypassword"))
@@ -1279,31 +1291,43 @@ void CGUIWindowSettingsCategory::OnSettingChanged(CBaseSettingControl *pSettingC
   }
   else if (strSetting.Equals("network.connection"))
   {
-    vector<CStdString> params;
-    g_application.getApplicationMessenger().ActivateWindow(WINDOW_DIALOG_ACCESS_POINTS, params, false);
+    CGUIDialogAccessPoints *access_points = (CGUIDialogAccessPoints*)g_windowManager.GetWindow(WINDOW_DIALOG_ACCESS_POINTS);
+    if (access_points)
+    {
+      access_points->DoModal();
+      FillInNetworkConnection();
+      UpdateSettings();
+    }
   }
   else if (strSetting.Equals("network.apply"))
   {
-    CIPConfig ipconfig;
-    // fetch the hidden connection name.
-    ipconfig.m_essid  = g_guiSettings.GetString("network.essid");
-    // fetch the current method
-    CGUISpinControlEx* spin_control = (CGUISpinControlEx*)GetControl(GetSetting("network.method")->GetID());
-    ipconfig.m_method = (IPConfigMethod)spin_control->GetValue();
-    // fetch the current ip info
-    CGUIEditControl* edit_control;
-    edit_control = (CGUIEditControl*)GetControl(GetSetting("network.address")->GetID());
-    ipconfig.m_address = edit_control->GetLabel2();
-    edit_control = (CGUIEditControl*)GetControl(GetSetting("network.netmask")->GetID());
-    ipconfig.m_netmask = edit_control->GetLabel2();
-    edit_control = (CGUIEditControl*)GetControl(GetSetting("network.gateway")->GetID());
-    ipconfig.m_gateway = edit_control->GetLabel2();
-    edit_control = (CGUIEditControl*)GetControl(GetSetting("network.nameserver")->GetID());
-    ipconfig.m_nameserver = edit_control->GetLabel2();
-    // pass the connection config as an encoded param string
-    vector<CStdString> params;
-    params.push_back(EncodeAccessPointParam(ipconfig));
-    g_application.getApplicationMessenger().ActivateWindow(WINDOW_DIALOG_ACCESS_POINTS, params, false);
+    CGUIDialogAccessPoints *access_points = (CGUIDialogAccessPoints*)g_windowManager.GetWindow(WINDOW_DIALOG_ACCESS_POINTS);
+    if (access_points)
+    {
+      // fetch the connection name.
+      CGUIEditControl* edit_control;
+      edit_control = (CGUIEditControl*)GetControl(GetSetting("network.connection")->GetID());
+      std::string connection_name(edit_control->GetLabel2());
+
+      CIPConfig ipconfig;
+      // fetch the current method
+      CGUISpinControlEx* spin_control = (CGUISpinControlEx*)GetControl(GetSetting("network.method")->GetID());
+      ipconfig.m_method = (IPConfigMethod)spin_control->GetValue();
+      // fetch the current ip info
+      edit_control = (CGUIEditControl*)GetControl(GetSetting("network.address")->GetID());
+      ipconfig.m_address = edit_control->GetLabel2();
+      edit_control = (CGUIEditControl*)GetControl(GetSetting("network.netmask")->GetID());
+      ipconfig.m_netmask = edit_control->GetLabel2();
+      edit_control = (CGUIEditControl*)GetControl(GetSetting("network.gateway")->GetID());
+      ipconfig.m_gateway = edit_control->GetLabel2();
+      edit_control = (CGUIEditControl*)GetControl(GetSetting("network.nameserver")->GetID());
+      ipconfig.m_nameserver = edit_control->GetLabel2();
+      // pass the connection config as an encoded param string
+
+      access_points->DoModal(WINDOW_DIALOG_ACCESS_POINTS, EncodeAccessPointParam(connection_name, ipconfig));
+      FillInNetworkConnection();
+      UpdateSettings();
+    }
   }
   else if (strSetting.Equals("httpproxy.httpproxyport"))
   {
@@ -2684,34 +2708,22 @@ void CGUIWindowSettingsCategory::FillInNetworkConnection()
   for (size_t i = 0; i < 20; i++)
     g_application.getNetworkManager().PumpNetworkEvents();
 
+  CStdString     name       = g_application.getNetworkManager().GetDefaultConnectionName();
+  IPConfigMethod method     = g_application.getNetworkManager().GetDefaultConnectionMethod();
   CStdString     address    = g_application.getNetworkManager().GetDefaultConnectionAddress();
   CStdString     netmask    = g_application.getNetworkManager().GetDefaultConnectionNetmask();
   CStdString     gateway    = g_application.getNetworkManager().GetDefaultConnectionGateway();
-  CStdString     name       = g_application.getNetworkManager().GetDefaultConnectionName();
-  ConnectionType type       = g_application.getNetworkManager().GetDefaultConnectionType();
-  IPConfigMethod method     = g_application.getNetworkManager().GetDefaultConnectionMethod();
   CStdString     nameserver = g_application.getNetworkManager().GetDefaultConnectionNameServer();
-  CStdString     passphrase("");
-  if (type == NETWORK_CONNECTION_TYPE_WIFI)
-  {
-    CVariant secret;
-    std::string uuid = "wifi." + address;
-    if (g_application.getKeyringManager().FindSecret("network", uuid, secret) && secret.isString())
-      passphrase = secret.asString();
-  }
 
-  // set dhcp or static
+  // set method (dhcp or static)
   CGUISpinControlEx* pControl1 = (CGUISpinControlEx*)GetControl(GetSetting("network.method")->GetID());
   if (pControl1) pControl1->SetValue(method);
 
-  // set network information
+  // set network ip information
   GetSetting("network.address" )->GetSetting()->FromString(address);
   GetSetting("network.netmask"   )->GetSetting()->FromString(netmask);
   GetSetting("network.gateway"   )->GetSetting()->FromString(gateway);
   GetSetting("network.nameserver")->GetSetting()->FromString(nameserver);
-  g_guiSettings.SetString("network.essid", name);
-  if (type == NETWORK_CONNECTION_TYPE_WIFI)
-    g_guiSettings.SetString("network.passphrase", passphrase);
 }
 
 void CGUIWindowSettingsCategory::ValidatePortNumber(CBaseSettingControl* pSettingControl, const CStdString& userPort, const CStdString& privPort, bool listening/*=true*/)

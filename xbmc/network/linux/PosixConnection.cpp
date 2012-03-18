@@ -24,6 +24,9 @@
 #include "utils/StdString.h"
 #include "utils/log.h"
 
+// temp until keychainManager is working
+#include "settings/GUISettings.h"
+
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
@@ -58,25 +61,8 @@ int PosixParseHex(char *str, unsigned char *addr)
   return len;
 }
 
-bool PosixGuessIsHexPassPhrase(const std::string &passphrase)
+bool PosixCheckHex(const std::string &passphrase)
 {
-  // wap/wpa2 hex has a length of 64.
-  if (passphrase.size() == 64)
-    return true;
-
-  // wep-104 hex is 26 characters.
-  if (passphrase.size() == 26)
-    return true;
-
-  // wep-40 ascii is 5 characters.
-  if (passphrase.size() == 5)
-    return false;
-
-  // wap/wpa2 ascii can have 8 to 63 characters.
-  // wep-104  ascii is 13 characters.
-  // wep-40   hex is 10 characters.
-  // So we can not prequalify these and just have to probe.
-
   // we could get fooled by strings that only
   // have 0-9, A, B, C, D, E, F in them :)
   for (size_t i = 0; i < passphrase.size(); i++)
@@ -96,6 +82,37 @@ bool PosixGuessIsHexPassPhrase(const std::string &passphrase)
   }
 
   return true;
+}
+
+bool PosixGuessIsHexPassPhrase(const std::string &passphrase, EncryptionType encryption)
+{
+  if (encryption == NETWORK_CONNECTION_ENCRYPTION_WEP)
+  {
+    // wep hex 256-bit is 58 characters.
+    if (passphrase.size() == 58)
+      return true;
+
+    // wep hex 152-bit is 32 characters.
+    if (passphrase.size() == 32)
+      return true;
+
+    // wep hex 128-bit is 26 characters.
+    if (passphrase.size() == 26)
+      return true;
+
+    // wep hex 64-bit is 10 characters.
+    if (passphrase.size() == 10)
+      return true;
+  }
+  else
+  {
+    // wap/wpa2 hex has a length of 64.
+    if (passphrase.size() == 64)
+      return true;
+  }
+
+  // anthing else is wep/wap/wpa2 ascii
+  return false;
 }
 
 bool IsWireless(int socket, const char *interface)
@@ -179,61 +196,17 @@ std::string PosixGetDefaultGateway(const std::string &interface)
 
 //-----------------------------------------------------------------------
 //-----------------------------------------------------------------------
-CPosixConnection::CPosixConnection(int socket, const char *interfaceName)
+CPosixConnection::CPosixConnection(int socket, const char *interface, const char *macaddress,
+  const char *essid, ConnectionType type, EncryptionType encryption, int signal)
 {
   m_socket = socket;
-  m_connectionName = interfaceName;
-  m_method = IP_CONFIG_DISABLED;
 
-  std::string::size_type start;
-  std::string::size_type end;
-  if (m_connectionName.find("wire") != std::string::npos)
-  {
-    m_essid = "Wired";
-    // extract the interface name
-    start = m_connectionName.find(".") + 1;
-    start = m_connectionName.find(".", start) + 1;
-    end   = m_connectionName.find(".", start);
-    m_interface = m_connectionName.substr(start, end - start);
-    m_type = NETWORK_CONNECTION_TYPE_WIRED;
-  }
-  else if (m_connectionName.find("wifi") != std::string::npos)
-  {
-    start = m_connectionName.find(".") + 1;
-    start = m_connectionName.find(".", start) + 1;
-    end   = m_connectionName.find(".", start);
-    // extract the interface name
-    m_interface = m_connectionName.substr(start, end - start);
-    // extract the essid
-    start = m_connectionName.find(".", start) + 1;
-    end   = m_connectionName.find(".", start);
-    m_essid = m_connectionName.substr(start, end - start);
-    m_type = NETWORK_CONNECTION_TYPE_WIFI;
-    if (m_connectionName.find(".wpa2") != std::string::npos)
-      m_encryption = NETWORK_CONNECTION_ENCRYPTION_WPA2;
-    else if (m_connectionName.find(".wpa") != std::string::npos)
-      m_encryption = NETWORK_CONNECTION_ENCRYPTION_WPA;
-    else if (m_connectionName.find(".wep") != std::string::npos)
-      m_encryption = NETWORK_CONNECTION_ENCRYPTION_WEP;
-    else
-      m_encryption = NETWORK_CONNECTION_ENCRYPTION_NONE;
-  }
-  else
-  {
-    m_essid = "Unknown";
-    m_interface = "unknown";
-    m_type = NETWORK_CONNECTION_TYPE_UNKNOWN;
-    m_encryption = NETWORK_CONNECTION_ENCRYPTION_UNKNOWN;
-  }
-  // reformat as simple connection name <wifi.ae:c5:de:bb:4f>
-  // so we can use it for passphrase seeds. Extract the IP address.
-  start = m_connectionName.find(".") + 1;
-  end   = m_connectionName.find(".", start) + 1;
-  m_address = m_connectionName.substr(start, end - start);
-  if (m_type == NETWORK_CONNECTION_TYPE_WIRED)
-    m_connectionName = "wire." + m_essid + "." + m_address;
-  else if ( m_type == NETWORK_CONNECTION_TYPE_WIFI)
-    m_connectionName = "wifi."  + m_essid + "." + m_address;
+  m_type       = type;
+  m_essid      = essid;
+  m_signal     = signal;
+  m_interface  = interface;
+  m_macaddress = macaddress;
+  m_encryption = encryption;
 
   m_state = GetState();
 }
@@ -371,8 +344,6 @@ ConnectionState CPosixConnection::GetState() const
   if (default_gateway.size() <= 0)
     return NETWORK_CONNECTION_STATE_DISCONNECTED;
 
-  //printf("CPosixConnection::GetState, %s: we are up\n", m_connectionName.c_str());
-
   // passing the above tests means we are connected.
   return NETWORK_CONNECTION_STATE_CONNECTED;
 }
@@ -390,6 +361,7 @@ IPConfigMethod CPosixConnection::GetMethod() const
 
 unsigned int CPosixConnection::GetStrength() const
 {
+  /*
   int strength = 100;
   if (m_type == NETWORK_CONNECTION_TYPE_WIFI)
   {
@@ -414,6 +386,7 @@ unsigned int CPosixConnection::GetStrength() const
       if (range->max_qual.level > 0)
         max_qual_level = range->max_qual.level;
     }
+    printf("CPosixConnection::GetStrength, max_qual(%d), qual(%d)\n", max_qual_level, max_qual_level);
 
     struct iw_statistics stats;
     memset(&wreq, 0x00, sizeof(struct iwreq));
@@ -423,16 +396,17 @@ unsigned int CPosixConnection::GetStrength() const
     wreq.u.data.flags   = 1;     // Clear updated flag
     strncpy(wreq.ifr_name, m_interface.c_str(), IFNAMSIZ);
     if (ioctl(m_socket, SIOCGIWSTATS, &wreq) < 0) {
-        printf("Failed to fetch signal stats, %s", strerror(errno));
-        return 0;
+      return strength;
     }
 
     // this is not correct :)
     strength = (100 * wreq.u.qual.qual)/256;
 
-    //printf("CPosixConnection::GetStrength, strength(%d)\n", strength);
+    printf("CPosixConnection::GetStrength, strength(%d), qual(%d)\n", strength, wreq.u.qual.qual);
   }
   return strength;
+  */
+  return m_signal;
 }
 
 EncryptionType CPosixConnection::GetEncryption() const
@@ -442,16 +416,30 @@ EncryptionType CPosixConnection::GetEncryption() const
 
 bool CPosixConnection::Connect(IPassphraseStorage *storage, const CIPConfig &ipconfig)
 {
+  std::string passphrase("");
+
   if (storage && m_type == NETWORK_CONNECTION_TYPE_WIFI)
   {
     if (m_encryption != NETWORK_CONNECTION_ENCRYPTION_NONE)
     {
-      if (!storage->GetPassphrase(m_connectionName, m_passphrase))
+      if (!storage->GetPassphrase(m_essid, passphrase))
         return false;
     }
   }
+  else
+  {
+    passphrase = g_guiSettings.GetString("network.passphrase");
+    /*
+    CVariant secret;
+    if (m_keyringManager->FindSecret("network", m_essid, secret) && secret.isString())
+    {
+      passphrase = secret.asString();
+      return true;
+    }
+    */
+  }
 
-  if (DoConnection(ipconfig) && GetState() == NETWORK_CONNECTION_STATE_CONNECTED)
+  if (DoConnection(ipconfig, passphrase) && GetState() == NETWORK_CONNECTION_STATE_CONNECTED)
   {
     // quick update of some internal vars
     m_method  = ipconfig.m_method;
@@ -459,6 +447,10 @@ bool CPosixConnection::Connect(IPassphraseStorage *storage, const CIPConfig &ipc
     m_netmask = ipconfig.m_netmask;
     m_gateway = ipconfig.m_gateway;
     return true;
+  }
+  else
+  {
+    storage->InvalidatePassphrase(m_essid);
   }
 
   return false;
@@ -472,8 +464,6 @@ bool CPosixConnection::PumpNetworkEvents()
   ConnectionState state = GetState();
   if (m_state != state)
   {
-    //printf("CPosixConnection::PumpNetworkEvents, m_connectionName(%s), m_state(%d) -> state(%d)\n",
-    //  m_connectionName.c_str(), m_state, state);
     m_state = state;
     state_changed = true;
   }
@@ -481,7 +471,7 @@ bool CPosixConnection::PumpNetworkEvents()
   return state_changed;
 }
 
-bool CPosixConnection::DoConnection(const CIPConfig &ipconfig)
+bool CPosixConnection::DoConnection(const CIPConfig &ipconfig, std::string passphrase)
 {
   FILE *fr = fopen("/etc/network/interfaces", "r");
   if (!fr)
@@ -576,34 +566,39 @@ bool CPosixConnection::DoConnection(const CIPConfig &ipconfig)
         {
           if (m_encryption == NETWORK_CONNECTION_ENCRYPTION_NONE)
           {
-            tmp = "  wireless-essid \"" + ipconfig.m_essid + "\"\n";
+            tmp = "  wpa-ssid \"" + m_essid + "\"\n";
+            new_interfaces_lines.push_back(tmp);
+            tmp = "  wpa-key-mgmt NONE\n";
             new_interfaces_lines.push_back(tmp);
           }
           else if (m_encryption == NETWORK_CONNECTION_ENCRYPTION_WEP)
           {
             // quote the essid, spaces are legal characters
-            tmp = "  wireless-essid \"" + ipconfig.m_essid + "\"\n";
+            tmp = "  wpa-ssid \"" + m_essid + "\"\n";
             new_interfaces_lines.push_back(tmp);
-            tmp = "  wireless-mode managed\n";
+            tmp = "  wpa-key-mgmt NONE\n";
             new_interfaces_lines.push_back(tmp);
+
             // if ascii, then quote it, if hex, no quotes
-            if (PosixGuessIsHexPassPhrase(ipconfig.m_passphrase))
-              tmp = "  wireless-key " + ipconfig.m_passphrase + "\n";
+            if (PosixGuessIsHexPassPhrase(passphrase, m_encryption))
+              tmp = "  wpa-wep-key0 " + passphrase + "\n";
             else
-              tmp = "  wireless-key \"s:" + ipconfig.m_passphrase + "\"\n";
+              tmp = "  wpa-wep-key0 \"" + passphrase + "\"\n";
+            new_interfaces_lines.push_back(tmp);
+            tmp = "  wpa-wep-tx-keyidx 0\n";
             new_interfaces_lines.push_back(tmp);
           }
           else if (m_encryption == NETWORK_CONNECTION_ENCRYPTION_WPA ||
             m_encryption == NETWORK_CONNECTION_ENCRYPTION_WPA2)
           {
             // quote the essid, spaces are legal characters
-            tmp = "  wpa-ssid \"" + ipconfig.m_essid + "\"\n";
+            tmp = "  wpa-ssid \"" + m_essid + "\"\n";
             new_interfaces_lines.push_back(tmp);
             // if ascii, then quote it, if hex, no quotes
-            if (PosixGuessIsHexPassPhrase(ipconfig.m_passphrase))
-              tmp = "  wpa-psk " + ipconfig.m_passphrase + "\n";
+            if (PosixGuessIsHexPassPhrase(passphrase, m_encryption))
+              tmp = "  wpa-psk " + passphrase + "\n";
             else
-              tmp = "  wpa-psk \"" + ipconfig.m_passphrase + "\"\n";
+              tmp = "  wpa-psk \"" + passphrase + "\"\n";
             new_interfaces_lines.push_back(tmp);
             if (m_encryption == NETWORK_CONNECTION_ENCRYPTION_WPA)
               tmp = "  wpa-proto WPA\n";
@@ -634,7 +629,7 @@ bool CPosixConnection::DoConnection(const CIPConfig &ipconfig)
   for (size_t i = 0; i < ifdown_interfaces.size(); i++)
   {
     // check if interface is actually 'up'
-    if (PosixCheckInterfaceUp(ifdown_interfaces[i]))
+    //if (PosixCheckInterfaceUp(ifdown_interfaces[i]))
     {
       cmd = "/sbin/ifdown " + ifdown_interfaces[i];
       rtn_error = system(cmd.c_str());

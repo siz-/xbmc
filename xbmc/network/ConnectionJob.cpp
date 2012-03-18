@@ -27,6 +27,7 @@
 #include "dialogs/GUIDialogKeyboard.h"
 #include "guilib/GUIWindowManager.h"
 #include "security/KeyringManager.h"
+#include "settings/GUISettings.h"
 #include "settings/AdvancedSettings.h"
 
 CConnectionJob::CConnectionJob(CConnectionPtr connection, const CIPConfig &ipconfig, CKeyringManager *keyringManager)
@@ -45,7 +46,7 @@ bool CConnectionJob::DoWork()
 
   // we need to shutdown network services before changing the connection.
   // The Network Manager's PumpNetworkEvents will take care of starting them back up.
-  g_application.getNetworkManager().StopServices();
+  g_application.getNetworkManager().OnConnectionStateChange(NETWORK_CONNECTION_STATE_DISCONNECTED);
   result = m_connection->Connect((IPassphraseStorage*)this, m_ipconfig);
   if (!result)
   {
@@ -62,16 +63,22 @@ bool CConnectionJob::DoWork()
 void CConnectionJob::InvalidatePassphrase(const std::string &uuid)
 {
   m_keyringManager->EraseSecret("network", uuid);
+  g_guiSettings.SetString("network.passphrase", "");
 }
 
 bool CConnectionJob::GetPassphrase(const std::string &uuid, std::string &passphrase)
 {
+  passphrase = g_guiSettings.GetString("network.passphrase");
+  if (passphrase.size() > 0)
+    return true;
+  /*
   CVariant secret;
   if (m_keyringManager->FindSecret("network", uuid, secret) && secret.isString())
   {
     passphrase = secret.asString();
     return true;
   }
+  */
   else
   {
     bool result;
@@ -82,6 +89,7 @@ bool CConnectionJob::GetPassphrase(const std::string &uuid, std::string &passphr
       result = CGUIDialogKeyboard::ShowAndGetNewPassword(utf8);
 
     passphrase = utf8;
+    StorePassphrase(uuid, passphrase);
     return result;
   }
 }
@@ -89,4 +97,6 @@ bool CConnectionJob::GetPassphrase(const std::string &uuid, std::string &passphr
 void CConnectionJob::StorePassphrase(const std::string &uuid, const std::string &passphrase)
 {
   m_keyringManager->StoreSecret("network", uuid, CVariant(passphrase));
+  // hack until we get keyring storage working
+  g_guiSettings.SetString("network.passphrase", passphrase.c_str());
 }
