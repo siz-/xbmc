@@ -77,7 +77,6 @@ bool CGUIDialogAccessPoints::OnAction(const CAction &action)
       OnMessage(msg);
       int iItem = msg.GetParam1();
 
-      printf("CGUIDialogAccessPoints::OnAction, ACTION_SELECT_ITEM, iItem(%d)\n", iItem);
       ConnectionList  connections = g_application.getNetworkManager().GetConnections();
       CConnectionJob  *connection = new CConnectionJob(connections[iItem],
         m_ipconfig, &g_application.getKeyringManager());
@@ -99,9 +98,6 @@ bool CGUIDialogAccessPoints::OnAction(const CAction &action)
 
 bool CGUIDialogAccessPoints::OnMessage(CGUIMessage& message)
 {
-  if (message.GetMessage() != GUI_MSG_ITEM_SELECT)
-    printf("CGUIDialogAccessPoints::OnMessage: message.GetMessage(%d)\n", message.GetMessage());
-
   bool result = CGUIDialog::OnMessage(message);
   switch (message.GetMessage())
   {
@@ -119,7 +115,6 @@ bool CGUIDialogAccessPoints::OnMessage(CGUIMessage& message)
         // network apply, param contains a description for connecting
         // to an access point. we want to find this access point,
         // disable the others, then inject a OnAction msg to select it.
-        printf("CGUIDialogAccessPoints::OnMessage, %s\n", param.c_str());
         DecodeAccessPointParam(param);
         // change the label to show we are doing a connection.
         CGUIMessage msg(GUI_MSG_LABEL_SET, GetID(), ACCESS_POINT_LABEL);
@@ -130,10 +125,7 @@ bool CGUIDialogAccessPoints::OnMessage(CGUIMessage& message)
       UpdateConnectionList();
       // if we are doing an 'apply', then inject a click on the "selected" item.
       if (m_use_ipconfig)
-      {
-        printf("CGUIDialogAccessPoints::OnMessage:GUI_MSG_WINDOW_INIT, doing ACTION_SELECT_ITEM\n");
         g_application.getApplicationMessenger().SendAction(CAction(ACTION_SELECT_ITEM), GetID());
-      }
       break;
     }
     case GUI_MSG_WINDOW_DEINIT:
