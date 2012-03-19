@@ -105,14 +105,13 @@ bool CWinEGLPlatformAmlogic::ProbeDisplayResolutions(std::vector<CStdString> &re
       if (probe_str[i].Right(1) == "*")
         probe_str[i] = probe_str[i].Left(std::max(0, (int)probe_str[i].size() - 1));
       
-      if (probe_str[i].Equals("480p"))
-        resolutions.push_back("720x480p60Hzp");
-      else if (probe_str[i].Equals("720p"))
-        resolutions.push_back("1280x720p60Hz");
-      else if (probe_str[i].Equals("1080i"))
-        resolutions.push_back("1920x1080i60Hz");
-      else if (probe_str[i].Equals("1080p"))
-        resolutions.push_back("1920x1080p60Hz");
+      if (probe_str[i].Equals("480p"))            resolutions.push_back("720x480p60Hzp");
+      else if (probe_str[i].Equals("720p"))       resolutions.push_back("1280x720p60Hz");
+      else if (probe_str[i].Equals("720p50hz"))   resolutions.push_back("1280x720p50Hz");
+      else if (probe_str[i].Equals("1080i"))      resolutions.push_back("1920x1080i60Hz");
+      else if (probe_str[i].Equals("1080i50hz"))  resolutions.push_back("1920x1080i50Hz");
+      else if (probe_str[i].Equals("1080p"))      resolutions.push_back("1920x1080p60Hz");
+      else if (probe_str[i].Equals("1080p50hz"))  resolutions.push_back("1920x1080p50Hz");
     }
     if (resolutions.size() == 0)
       resolutions.push_back("1280x720p60Hz");
