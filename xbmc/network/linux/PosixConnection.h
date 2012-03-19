@@ -32,7 +32,8 @@ std::string PosixGetDefaultGateway(const std::string &interface);
 class CPosixConnection : public IConnection
 {
 public:
-  CPosixConnection(int socket, const char *interface, const char *macaddress,
+  CPosixConnection(bool managed,
+    int socket, const char *interface, const char *macaddress,
     const char *essid, ConnectionType type, EncryptionType encryption, int signal);
   virtual ~CPosixConnection();
 
@@ -53,8 +54,12 @@ public:
   virtual bool            Connect(IPassphraseStorage *storage, const CIPConfig &ipconfig);
 
   bool PumpNetworkEvents();
+
+  void SetCanManage(bool can_manange);
 private:
   bool DoConnection(const CIPConfig &ipconfig, std::string passphrase);
+
+  bool            m_managed;
 
   std::string     m_essid;
   std::string     m_address;

@@ -196,10 +196,12 @@ std::string PosixGetDefaultGateway(const std::string &interface)
 
 //-----------------------------------------------------------------------
 //-----------------------------------------------------------------------
-CPosixConnection::CPosixConnection(int socket, const char *interface, const char *macaddress,
+CPosixConnection::CPosixConnection(bool managed,
+  int socket, const char *interface, const char *macaddress,
   const char *essid, ConnectionType type, EncryptionType encryption, int signal)
 {
-  m_socket = socket;
+  m_managed = managed;
+  m_socket  = socket;
 
   m_type       = type;
   m_essid      = essid;
@@ -416,6 +418,9 @@ EncryptionType CPosixConnection::GetEncryption() const
 
 bool CPosixConnection::Connect(IPassphraseStorage *storage, const CIPConfig &ipconfig)
 {
+  if (!m_managed)
+    return true;
+
   std::string passphrase("");
 
   if (storage && m_type == NETWORK_CONNECTION_TYPE_WIFI)

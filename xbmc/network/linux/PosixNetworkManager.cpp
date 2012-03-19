@@ -208,6 +208,7 @@ void CPosixNetworkManager::FindNetworkInterfaces()
   char*  line = NULL;
   size_t linel = 0;
   char*  interfaceName;
+  bool   managed = CanManageConnections();
 
   while (getdelim(&line, &linel, '\n', fp) > 0)
   {
@@ -251,8 +252,9 @@ void CPosixNetworkManager::FindNetworkInterfaces()
               ifr.ifr_hwaddr.sa_data[2], ifr.ifr_hwaddr.sa_data[3],
               ifr.ifr_hwaddr.sa_data[4], ifr.ifr_hwaddr.sa_data[5]);
           }
-          m_connections.push_back(CConnectionPtr(new CPosixConnection(m_socket, interfaceName, macaddress,
-            "Wired", NETWORK_CONNECTION_TYPE_WIRED, NETWORK_CONNECTION_ENCRYPTION_NONE, 100)));
+          m_connections.push_back(CConnectionPtr(new CPosixConnection(managed,
+             m_socket, interfaceName, macaddress, "Wired",
+             NETWORK_CONNECTION_TYPE_WIRED, NETWORK_CONNECTION_ENCRYPTION_NONE, 100)));
           //printf("CPosixNetworkManager::GetConnections access_point(%s) \n", access_point);
         }
       }
@@ -265,6 +267,7 @@ void CPosixNetworkManager::FindNetworkInterfaces()
 
 bool CPosixNetworkManager::FindWifiConnections(const char *interfaceName)
 {
+  bool managed = CanManageConnections();
   // Query the wireless extentsions version number. It will help us when we
   // parse the resulting events
   struct iwreq iwr;
@@ -402,8 +405,9 @@ bool CPosixNetworkManager::FindWifiConnections(const char *interfaceName)
         }
         else
         {
-          m_connections.push_back(CConnectionPtr(new CPosixConnection(m_socket, interfaceName, macaddress,
-            essid, NETWORK_CONNECTION_TYPE_WIFI, encryption, quality)));
+          m_connections.push_back(CConnectionPtr(new CPosixConnection(managed,
+            m_socket, interfaceName, macaddress, essid,
+            NETWORK_CONNECTION_TYPE_WIFI, encryption, quality)));
           //printf("CPosixNetworkManager::GetWifiConnections add access_point(%s), quality(%d), signalLevel(%d)\n",
           //  access_point.c_str(), quality, signalLevel);
           memcpy(macaddress, cur_macaddress, sizeof(macaddress));
@@ -465,8 +469,9 @@ bool CPosixNetworkManager::FindWifiConnections(const char *interfaceName)
 
   if (!first)
   {
-    m_connections.push_back(CConnectionPtr(new CPosixConnection(m_socket, interfaceName, macaddress,
-      essid, NETWORK_CONNECTION_TYPE_WIFI, encryption, quality)));
+    m_connections.push_back(CConnectionPtr(new CPosixConnection(managed,
+      m_socket, interfaceName, macaddress, essid,
+      NETWORK_CONNECTION_TYPE_WIFI, encryption, quality)));
     //printf("CPosixNetworkManager::GetWifiConnections add access_point(%s), quality(%d), signalLevel(%d)\n",
     //  access_point.c_str(), quality, signalLevel);
   }
