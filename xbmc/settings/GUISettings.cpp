@@ -709,80 +709,79 @@ void CGUISettings::Initialize()
   AddDefaultAddon(NULL, "scrapers.musicvideosdefault", 21415, "metadata.yahoomusic.com", ADDON_SCRAPER_MUSICVIDEOS);
   AddBool(NULL, "scrapers.langfallback", 21416, false);
 
-  CSettingsCategory* srv = AddCategory(6, "services", 14036);
-  AddString(srv,"services.devicename", 1271, "XBMC", EDIT_CONTROL_INPUT);
-  AddSeparator(srv,"services.sep4");
-  AddBool(srv, "services.upnpserver", 21360, false);
-  AddBool(srv, "services.upnprenderer", 21881, false);
-  AddSeparator(srv,"services.sep3");
-#ifdef HAS_WEB_SERVER
-  AddBool(srv,  "services.webserver",        263, false);
-#ifdef _LINUX
-  AddString(srv,"services.webserverport",    730, (geteuid()==0)?"80":"8080", EDIT_CONTROL_NUMBER_INPUT, false, 730);
-#else
-  AddString(srv,"services.webserverport",    730, "80", EDIT_CONTROL_NUMBER_INPUT, false, 730);
-#endif
-  AddString(srv,"services.webserverusername",1048, "xbmc", EDIT_CONTROL_INPUT);
-  AddString(srv,"services.webserverpassword",733, "", EDIT_CONTROL_HIDDEN_INPUT, true, 733);
-  AddDefaultAddon(srv, "services.webskin",199, DEFAULT_WEB_INTERFACE, ADDON_WEB_INTERFACE);
-#endif
-#ifdef HAS_EVENT_SERVER
-  AddSeparator(srv,"services.sep1");
-  AddBool(srv,  "services.esenabled",         791, true);
-  AddString(NULL,"services.esport",            792, "9777", EDIT_CONTROL_NUMBER_INPUT, false, 792);
-  AddInt(NULL,   "services.esportrange",       793, 10, 1, 1, 100, SPIN_CONTROL_INT);
-  AddInt(NULL,   "services.esmaxclients",      797, 20, 1, 1, 100, SPIN_CONTROL_INT);
-  AddBool(srv,  "services.esallinterfaces",   794, false);
-  AddInt(NULL,   "services.esinitialdelay",    795, 750, 5, 5, 10000, SPIN_CONTROL_INT);
-  AddInt(NULL,   "services.escontinuousdelay", 796, 25, 5, 5, 10000, SPIN_CONTROL_INT);
-#endif
-#ifdef HAS_ZEROCONF
-  AddSeparator(srv, "services.sep2");
-#ifdef TARGET_WINDOWS
-  AddBool(srv, "services.zeroconf", 1260, false);
-#else
-  AddBool(srv, "services.zeroconf", 1260, true);
-#endif
-#endif
-
-#ifdef HAS_AIRPLAY
-  AddSeparator(srv, "services.sep5");
-  AddBool(srv, "services.airplay", 1270, false);
-  AddBool(srv, "services.useairplaypassword", 1272, false);
-  AddString(srv, "services.airplaypassword", 733, "", EDIT_CONTROL_HIDDEN_INPUT, false, 733);
-  AddSeparator(srv, "services.sep6");  
-#endif
-
-#ifndef _WIN32
-  CSettingsCategory* smb = AddCategory(6, "smb", 1200);
-  AddString(smb, "smb.winsserver",  1207,   "",  EDIT_CONTROL_IP_INPUT);
-  AddString(smb, "smb.workgroup",   1202,   "WORKGROUP", EDIT_CONTROL_INPUT, false, 1202);
-#endif
-
-  // network settings
+  // system -> network settings
   AddGroup(6, 705);
   //
   CSettingsCategory* net = AddCategory(6, "network", 705);
-  AddString(net,    "network.connection",            714, "",              BUTTON_CONTROL_STANDARD);
+  AddString(net,    "network.connection",            714, "",               BUTTON_CONTROL_STANDARD);
   map<int, int> networkMethod;
   networkMethod.insert(make_pair(                    716, IP_CONFIG_DHCP));
   networkMethod.insert(make_pair(                    717, IP_CONFIG_STATIC));
   AddInt(   net,    "network.method",                715, IP_CONFIG_DHCP, networkMethod, SPIN_CONTROL_TEXT);
-  AddString(net,    "network.address",               719, "0.0.0.0",       EDIT_CONTROL_IP_INPUT);
-  AddString(net,    "network.netmask",               720, "255.255.255.0", EDIT_CONTROL_IP_INPUT);
-  AddString(net,    "network.gateway",               721, "0.0.0.0",       EDIT_CONTROL_IP_INPUT);
-  AddString(net,    "network.nameserver",            722, "0.0.0.0",       EDIT_CONTROL_IP_INPUT);
-  AddString(net,    "network.apply",                 779, "",              BUTTON_CONTROL_STANDARD);
+  AddString(net,    "network.address",               719, "0.0.0.0",        EDIT_CONTROL_IP_INPUT);
+  AddString(net,    "network.netmask",               720, "255.255.255.0",  EDIT_CONTROL_IP_INPUT);
+  AddString(net,    "network.gateway",               721, "0.0.0.0",        EDIT_CONTROL_IP_INPUT);
+  AddString(net,    "network.nameserver",            722, "0.0.0.0",        EDIT_CONTROL_IP_INPUT);
+  AddString(net,    "network.apply",                 779, "",               BUTTON_CONTROL_STANDARD);
   // add hidden essid/passphrase so we can save/restore it
-  AddString(NULL,   "network.passphrase",            777, "",              EDIT_CONTROL_INPUT);
+  AddString(NULL,   "network.passphrase",            777, "",               EDIT_CONTROL_INPUT);
+  //
+  CSettingsCategory* srv = AddCategory(6, "services", 14036);
+  AddString(srv,    "services.devicename",           1271, "XBMC",          EDIT_CONTROL_INPUT);
+  AddSeparator(srv, "services.sep4");
+  AddBool(srv,      "services.upnpserver",           21360, false);
+  AddBool(srv,      "services.upnprenderer",         21881, false);
+  AddSeparator(srv, "services.sep3");
+#ifdef HAS_WEB_SERVER
+  AddBool(srv,      "services.webserver",            263, false);
+#ifdef _LINUX
+  AddString(srv,    "services.webserverport",        730, (geteuid()==0)?"80":"8080", EDIT_CONTROL_NUMBER_INPUT, false, 730);
+#else
+  AddString(srv,    "services.webserverport",        730, "80",             EDIT_CONTROL_NUMBER_INPUT, false, 730);
+#endif
+  AddString(srv,    "services.webserverusername",    1048, "xbmc",          EDIT_CONTROL_INPUT);
+  AddString(srv,    "services.webserverpassword",    733, "",               EDIT_CONTROL_HIDDEN_INPUT, true, 733);
+  AddDefaultAddon(srv, "services.webskin",           199, DEFAULT_WEB_INTERFACE, ADDON_WEB_INTERFACE);
+#endif
+#ifdef HAS_EVENT_SERVER
+  AddSeparator(srv, "services.sep1");
+  AddBool(srv,      "services.esenabled",            791, true);
+  AddString(NULL,   "services.esport",               792, "9777",           EDIT_CONTROL_NUMBER_INPUT, false, 792);
+  AddInt(NULL,      "services.esportrange",          793, 10, 1, 1, 100,    SPIN_CONTROL_INT);
+  AddInt(NULL,      "services.esmaxclients",         797, 20, 1, 1, 100,    SPIN_CONTROL_INT);
+  AddBool(srv,      "services.esallinterfaces",      794, false);
+  AddInt(NULL,      "services.esinitialdelay",       795, 750, 5, 5, 10000, SPIN_CONTROL_INT);
+  AddInt(NULL,      "services.escontinuousdelay",    796, 25, 5, 5, 10000,  SPIN_CONTROL_INT);
+#endif
+#ifdef HAS_ZEROCONF
+  AddSeparator(srv, "services.sep2");
+#ifdef TARGET_WINDOWS
+  AddBool(srv,      "services.zeroconf",             1260, false);
+#else
+  AddBool(srv,      "services.zeroconf",             1260, true);
+#endif
+#endif
+#ifdef HAS_AIRPLAY
+  AddSeparator(srv, "services.sep5");
+  AddBool(srv,      "services.airplay",              1270, false);
+  AddBool(srv,      "services.useairplaypassword",   1272, false);
+  AddString(srv,    "services.airplaypassword",      733, "",               EDIT_CONTROL_HIDDEN_INPUT, false, 733);
+  AddSeparator(srv, "services.sep6");  
+#endif
+#ifndef _WIN32
+  CSettingsCategory* smb = AddCategory(6, "smb",     1200);
+  AddString(smb,    "smb.winsserver",                1207,   "",            EDIT_CONTROL_IP_INPUT);
+  AddString(smb,    "smb.workgroup",                 1202,   "WORKGROUP",   EDIT_CONTROL_INPUT, false, 1202);
+#endif
   //
   CSettingsCategory* proxy = AddCategory(6, "httpproxy", 713);
   AddBool(proxy,    "httpproxy.usehttpproxy",        708, false);
-  AddString(proxy,  "httpproxy.httpproxyserver",     706, "",              EDIT_CONTROL_INPUT);
-  AddString(proxy,  "httpproxy.httpproxyport",       730, "8080",          EDIT_CONTROL_NUMBER_INPUT, false, 707);
-  AddString(proxy,  "httpproxy.httpproxyusername",   1048, "",             EDIT_CONTROL_INPUT);
-  AddString(proxy,  "httpproxy.httpproxypassword",   733,  "",             EDIT_CONTROL_HIDDEN_INPUT,true,733);
+  AddString(proxy,  "httpproxy.httpproxyserver",     706, "",               EDIT_CONTROL_INPUT);
+  AddString(proxy,  "httpproxy.httpproxyport",       730, "8080",           EDIT_CONTROL_NUMBER_INPUT, false, 707);
+  AddString(proxy,  "httpproxy.httpproxyusername",   1048, "",              EDIT_CONTROL_INPUT);
+  AddString(proxy,  "httpproxy.httpproxypassword",   733,  "",              EDIT_CONTROL_HIDDEN_INPUT,true,733);
   AddInt(proxy,     "httpproxy.bandwidth",           14041, 0, 0, 512, 100*1024, SPIN_CONTROL_INT_PLUS, MASK_KBPS, TEXT_OFF);
+
 
   // appearance settings
   AddGroup(7, 480);
