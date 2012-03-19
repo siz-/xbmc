@@ -75,17 +75,8 @@
 // CPosixNetworkManager and CPosixConnection work by detecting the avaliable network
 // interfaces, then for wlan0, doing a wifi scan for access points using ioctl calls.
 // A CPosixConnection object is created for each wired interface and each wifi access point.
-//
-// The CPosixCOnnection object will get created with a named string that if composed of
-//   several fields with a '.' delimiter. The ".' was chosen as it is an invalid character
-//   for SSIDs. For example:
-//
-//   wire.bc:ae:c5:de:bb:4f.eth0
-//   wifi.00:23:6c:82:9b:33.wlan0.<essid>.none
-//   wifi.00:23:6c:82:9b:33.wlan0.test ap.wpa2
-//
-// After creation, the 1st two fields are retained as the internal connection name for
-//   passphrase look up which is only relevent for wifi conections.
+//  after creation, the 1st two fields are retained as the internal connection name for
+//  passphrase look up which is only relevent for wifi conections.
 //
 // Switching connections is performed by a CPosixConnection method in three steps.
 //  1) use ifdown <interface> take down every interface except loopback.
