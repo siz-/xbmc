@@ -167,9 +167,9 @@ protected:
   virtual void  Process();
 
 private:
-
   int           GetVideoStreamCount();
   void          ShowMainVideo(bool show);
+  void          SetAudioPassThrough(int format);
 
   int           GetPlayerSerializedState(void);
   static int    UpdatePlayerInfo(int pid, player_info_t *info);
@@ -195,6 +195,8 @@ private:
   int                     m_audio_count;
   CStdString              m_audio_info;
   int                     m_audio_delay;
+  bool                    m_audio_passthrough_ac3;
+  bool                    m_audio_passthrough_dts;
 
   int                     m_video_index;
   int                     m_video_count;

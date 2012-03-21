@@ -496,6 +496,8 @@ bool CAMLPlayer::OpenFile(const CFileItem &file, const CPlayerOptions &options)
 
     m_audio_info  = "none";
     m_audio_delay = g_settings.m_currentVideoSettings.m_AudioDelay;
+    m_audio_passthrough_ac3 = g_guiSettings.GetBool("audiooutput.ac3passthrough");
+    m_audio_passthrough_dts = g_guiSettings.GetBool("audiooutput.dtspassthrough");
 
     m_video_info  = "none";
     m_video_width    =  0;
@@ -854,7 +856,7 @@ void CAMLPlayer::GetAudioStreamName(int iStream, CStdString &strStreamName)
   }
 
 }
- 
+
 void CAMLPlayer::SetAudioStream(int SetAudioStream)
 {
   //CLog::Log(LOGDEBUG, "CAMLPlayer::SetAudioStream");
@@ -862,8 +864,9 @@ void CAMLPlayer::SetAudioStream(int SetAudioStream)
 
   if (SetAudioStream > (int)m_audio_streams.size() || SetAudioStream < 0)
     return;
-  
+
   m_audio_index = SetAudioStream;
+  SetAudioPassThrough(m_audio_streams[m_audio_index]->format);
 
   if (check_pid_valid(m_pid))
   {
@@ -1466,10 +1469,20 @@ void CAMLPlayer::ShowMainVideo(bool show)
   m_show_mainvideo = show;
 }
 
+void CAMLPlayer::SetAudioPassThrough(int format)
+{
+  if (m_audio_passthrough_ac3 && format == AFORMAT_AC3)
+    set_sysfs_int("/sys/class/audiodsp/digital_raw", 1);
+  else if (m_audio_passthrough_dts && format == AFORMAT_DTS)
+    set_sysfs_int("/sys/class/audiodsp/digital_raw", 1);
+  else
+    set_sysfs_int("/sys/class/audiodsp/digital_raw", 0);
+}
+
 int CAMLPlayer::GetPlayerSerializedState(void)
 {
   CSingleLock lock(m_aml_state_csection);
-  
+
   int playerstate;
   int dequeue_size = m_aml_state.size();
 
@@ -1681,6 +1694,8 @@ bool CAMLPlayer::WaitForFormatValid(int timeout_ms)
           if (m_audio_index != 0)
             m_audio_index = 0;
           m_audio_count	= media_info.stream_info.total_audio_num;
+
+          SetAudioPassThrough(m_audio_streams[m_audio_index]->format);
         }
 
         // subtitle info
