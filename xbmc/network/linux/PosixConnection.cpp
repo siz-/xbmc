@@ -495,6 +495,13 @@ bool CPosixConnection::DoConnection(const CIPConfig &ipconfig, std::string passp
   {
     printf("CPosixConnection::SetSettings, interfaces_lines:%s", interfaces_lines[i].c_str());
 
+    // comments are always skipped and copied over
+    if (interfaces_lines[i].find("#") != std::string::npos)
+    {
+      new_interfaces_lines.push_back(interfaces_lines[i]);
+      continue;
+    }
+
     // always copy the auto section over
     if (interfaces_lines[i].find("auto") != std::string::npos)
     {
