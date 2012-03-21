@@ -169,6 +169,9 @@ protected:
 private:
   int           GetVideoStreamCount();
   void          ShowMainVideo(bool show);
+  void          SetVideoZoom(float zoom);
+  void          SetVideoContrast(int contrast);
+  void          SetVideoBrightness(int brightness);
   void          SetAudioPassThrough(int format);
 
   int           GetPlayerSerializedState(void);
@@ -218,6 +221,9 @@ private:
   int                     m_show_mainvideo;
   CRect                   m_dst_rect;
   int                     m_view_mode;
+  float                   m_zoom;
+  int                     m_contrast;
+  int                     m_brightness;
 
   CCriticalSection        m_aml_csection;
   CCriticalSection        m_aml_state_csection;

@@ -513,6 +513,9 @@ bool CAMLPlayer::OpenFile(const CFileItem &file, const CPlayerOptions &options)
 
     m_show_mainvideo = -1;
     m_dst_rect.SetRect(0, 0, 0, 0);
+    m_zoom           = -1;
+    m_contrast       = -1;
+    m_brightness     = -1;
 
     ClearStreamInfos();
 
@@ -977,6 +980,30 @@ void CAMLPlayer::GetVideoRect(CRect& SrcRect, CRect& DestRect)
 
 void CAMLPlayer::SetVideoRect(const CRect &SrcRect, const CRect &DestRect)
 {
+  // this routien gets called every video frame.
+
+  // video zoom adjustment.
+  float zoom = g_settings.m_currentVideoSettings.m_CustomZoomAmount;
+  if ((int)(zoom * 1000) != (int)(m_zoom * 1000))
+  {
+    SetVideoZoom(zoom);
+    m_zoom = zoom;
+  }
+  // video contrast adjustment.
+  int contrast = g_settings.m_currentVideoSettings.m_Contrast;
+  if (contrast != m_contrast)
+  {
+    SetVideoContrast(contrast);
+    m_contrast = contrast;
+  }
+  // video brightness adjustment.
+  int brightness = g_settings.m_currentVideoSettings.m_Brightness;
+  if (brightness != m_brightness)
+  {
+    SetVideoBrightness(brightness);
+    m_brightness = brightness;
+  }
+
   // check if destination rect or video view mode has changed
   if ((m_dst_rect != DestRect) || (m_view_mode != g_settings.m_currentVideoSettings.m_ViewMode))
   {
@@ -1469,6 +1496,29 @@ void CAMLPlayer::ShowMainVideo(bool show)
   m_show_mainvideo = show;
 }
 
+void CAMLPlayer::SetVideoZoom(float zoom)
+{
+  // input zoom range is 0.5 to 2.0 with a default of 1.0.
+  // output zoom range is 2 to 300 with default of 100.
+  // we limit that to a range of 50 to 200 with default of 100.
+  set_sysfs_int("/sys/class/video/zoom", (int)(100 * zoom));
+}
+
+void CAMLPlayer::SetVideoContrast(int contrast)
+{
+  // input contrast range is 0 to 100 with default of 50.
+  // output contrast range is -255 to 255 with default of 0.
+  contrast = (255 * (contrast - 50)) / 50;
+  set_sysfs_int("/sys/class/video/contrast", contrast);
+}
+void CAMLPlayer::SetVideoBrightness(int brightness)
+{
+  // input brightness range is 0 to 100 with default of 50.
+  // output brightness range is -127 to 127 with default of 0.
+  brightness = (127 * (brightness - 50)) / 50;
+  set_sysfs_int("/sys/class/video/brightness", brightness);
+}
+
 void CAMLPlayer::SetAudioPassThrough(int format)
 {
   if (m_audio_passthrough_ac3 && format == AFORMAT_AC3)
@@ -1816,6 +1866,9 @@ bool CAMLPlayer::GetStatus()
 
 void CAMLPlayer::GetRenderFeatures(Features* renderFeatures)
 {
+  renderFeatures->push_back(RENDERFEATURE_ZOOM);
+  renderFeatures->push_back(RENDERFEATURE_CONTRAST);
+  renderFeatures->push_back(RENDERFEATURE_BRIGHTNESS);
   renderFeatures->push_back(RENDERFEATURE_STRETCH);
   return;
 }
