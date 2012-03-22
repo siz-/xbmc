@@ -1482,6 +1482,7 @@ void CAMLPlayer::Process()
     m_subtitle_thread = NULL;
     player_stop(m_pid);
     player_exit(m_pid);
+    Sleep(500);
     m_pid = -1;
   }
 
