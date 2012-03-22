@@ -190,6 +190,7 @@ private:
   CEvent                  m_ready;
   CFileItem               m_item;
   CPlayerOptions          m_options;
+  int                     m_log_level;
 
   int64_t                 m_elapsed_ms;
   int64_t                 m_duration_ms;

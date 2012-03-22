@@ -47,6 +47,7 @@
 extern "C"
 {
 #include <player.h>
+#include <log_print.h>
 #include <player_set_sys.h>
 #include <amports/aformat.h>
 #include <amports/vformat.h>
@@ -471,6 +472,11 @@ CAMLPlayer::CAMLPlayer(IPlayerCallback &callback)
   m_pid = -1;
   m_speed = 0;
   m_paused = false;
+#if defined(_DEBUG)
+  m_log_level = 5;
+#else
+  m_log_level = 3;
+#endif
   m_StopPlaying = false;
 }
 
@@ -563,6 +569,9 @@ bool CAMLPlayer::OpenFile(const CFileItem &file, const CPlayerOptions &options)
       return false;
     }
     printf("player init......\n");
+    
+    // change the amplayer log spew level.
+    change_print_level(m_log_level);
 
     // must be after player_init
     av_register_protocol2(&vfs_protocol, sizeof(vfs_protocol));
@@ -595,7 +604,8 @@ bool CAMLPlayer::OpenFile(const CFileItem &file, const CPlayerOptions &options)
     m_pid = player_start(&play_control, 0);
     if (m_pid < 0)
     {
-      printf("player start failed! error = %d\n", m_pid);
+      if (m_log_level > 5)
+        printf("player start failed! error = %d\n", m_pid);
       return false;
     }
 
@@ -919,7 +929,8 @@ void CAMLPlayer::GetSubtitleName(int iStream, CStdString &strStreamName)
     g_LangCodeExpander.Lookup(name, m_subtitle_streams[iStream]->language);
     strStreamName = name;
   }
-  printf("CAMLPlayer::GetSubtitleName, iStream(%d)\n", iStream);
+  if (m_log_level > 5)
+    printf("CAMLPlayer::GetSubtitleName, iStream(%d)\n", iStream);
 }
  
 void CAMLPlayer::SetSubtitle(int iStream)
@@ -1402,7 +1413,8 @@ void CAMLPlayer::Process()
           case PLAYER_INITING:
           case PLAYER_TYPE_REDY:
           case PLAYER_INITOK:
-            printf("CAMLPlayer::Process: %s\n", player_status2str(pstatus));
+            if (m_log_level > 5)
+              printf("CAMLPlayer::Process: %s\n", player_status2str(pstatus));
             // player is parsing file, decoder not running
             break;
 
@@ -1421,25 +1433,31 @@ void CAMLPlayer::Process()
           case PLAYER_FB_END:
           case PLAYER_PLAY_NEXT:
           case PLAYER_BUFFER_OK:
-            printf("CAMLPlayer::Process: %s\n", player_status2str(pstatus));
+            if (m_log_level > 5)
+              printf("CAMLPlayer::Process: %s\n", player_status2str(pstatus));
             break;
 
           case PLAYER_FOUND_SUB:
             // found a NEW subtitle in stream.
             // TODO: reload m_subtitle_streams
-            printf("CAMLPlayer::Process: %s\n", player_status2str(pstatus));
+            if (m_log_level > 5)
+              printf("CAMLPlayer::Process: %s\n", player_status2str(pstatus));
             break;
 
           case PLAYER_PLAYEND:
             GetStatus();
-            printf("CAMLPlayer::Process: %s\n", player_status2str(pstatus));
+            if (m_log_level > 5)
+              printf("CAMLPlayer::Process: %s\n", player_status2str(pstatus));
             break;
 
           case PLAYER_ERROR:
           case PLAYER_STOPED:
           case PLAYER_EXIT:
-            printf("CAMLPlayer::Process PLAYER_STOPED\n");
-            printf("CAMLPlayer::Process: %s\n", player_status2str(pstatus));
+            if (m_log_level > 5)
+            {
+              printf("CAMLPlayer::Process PLAYER_STOPED\n");
+              printf("CAMLPlayer::Process: %s\n", player_status2str(pstatus));
+            }
             m_StopPlaying = true;
             break;
         }
@@ -1456,7 +1474,8 @@ void CAMLPlayer::Process()
     CLog::Log(LOGERROR, "CAMLPlayer::Process Exception thrown");
   }
 
-  printf("CAMLPlayer::Process stopped\n");
+  if (m_log_level > 5)
+    printf("CAMLPlayer::Process stopped\n");
   if (check_pid_valid(m_pid))
   {
     delete m_subtitle_thread;
@@ -1477,7 +1496,8 @@ void CAMLPlayer::Process()
   amlplatform.ShowWindow(true);
 
 
-  printf("CAMLPlayer::Process exit\n");
+  if (m_log_level > 5)
+    printf("CAMLPlayer::Process exit\n");
 }
 
 int CAMLPlayer::GetVideoStreamCount()
@@ -1581,7 +1601,8 @@ bool CAMLPlayer::WaitForStopped(int timeout_ms)
   while (!m_bStop && (timeout_ms > 0))
   {
     player_status pstatus = (player_status)GetPlayerSerializedState();
-    printf("CAMLPlayer::WaitForStopped: %s\n", player_status2str(pstatus));
+    if (m_log_level > 5)
+      printf("CAMLPlayer::WaitForStopped: %s\n", player_status2str(pstatus));
     switch(pstatus)
     {
       default:
@@ -1604,7 +1625,8 @@ bool CAMLPlayer::WaitForSearchOK(int timeout_ms)
   while (!m_bStop && (timeout_ms > 0))
   {
     player_status pstatus = (player_status)GetPlayerSerializedState();
-    printf("CAMLPlayer::WaitForSearchOK: %s\n", player_status2str(pstatus));
+    if (m_log_level > 5)
+      printf("CAMLPlayer::WaitForSearchOK: %s\n", player_status2str(pstatus));
     switch(pstatus)
     {
       default:
@@ -1630,7 +1652,8 @@ bool CAMLPlayer::WaitForPlaying(int timeout_ms)
   while (!m_bStop && (timeout_ms > 0))
   {
     player_status pstatus = (player_status)GetPlayerSerializedState();
-    printf("CAMLPlayer::WaitForPlaying: %s\n", player_status2str(pstatus));
+    if (m_log_level > 5)
+      printf("CAMLPlayer::WaitForPlaying: %s\n", player_status2str(pstatus));
     switch(pstatus)
     {
       default:
@@ -1655,7 +1678,8 @@ bool CAMLPlayer::WaitForFormatValid(int timeout_ms)
   while (!m_bStop && (timeout_ms > 0))
   {
     player_status pstatus = (player_status)GetPlayerSerializedState();
-    printf("CAMLPlayer::WaitForFormatValid: %s\n", player_status2str(pstatus));
+    if (m_log_level > 5)
+      printf("CAMLPlayer::WaitForFormatValid: %s\n", player_status2str(pstatus));
     switch(pstatus)
     {
       default:
@@ -1675,17 +1699,20 @@ bool CAMLPlayer::WaitForFormatValid(int timeout_ms)
         if (res != PLAYER_SUCCESS)
           return false;
 
-        media_info_dump(&media_info);
+        if (m_log_level > 5)
+        {
+          media_info_dump(&media_info);
 
-        // m_video_index, m_audio_index, m_subtitle_index might be -1 eventhough
-        // total_video_xxx is > 0, not sure why, they should be set to zero or
-        // some other sensible value.
-        printf("CAMLPlayer::WaitForFormatValid: "
-          "m_video_index(%d), m_audio_index(%d), m_subtitle_index(%d), m_chapter_count(%d)\n",
-          media_info.stream_info.cur_video_index,
-          media_info.stream_info.cur_audio_index,
-          media_info.stream_info.cur_sub_index,
-          media_info.stream_info.total_chapter_num);
+          // m_video_index, m_audio_index, m_subtitle_index might be -1 eventhough
+          // total_video_xxx is > 0, not sure why, they should be set to zero or
+          // some other sensible value.
+          printf("CAMLPlayer::WaitForFormatValid: "
+            "m_video_index(%d), m_audio_index(%d), m_subtitle_index(%d), m_chapter_count(%d)\n",
+            media_info.stream_info.cur_video_index,
+            media_info.stream_info.cur_audio_index,
+            media_info.stream_info.cur_sub_index,
+            media_info.stream_info.total_chapter_num);
+        }
 
         // video info
         if (media_info.stream_info.has_video && media_info.stream_info.total_video_num > 0)
