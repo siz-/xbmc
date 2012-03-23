@@ -1512,6 +1512,9 @@ void CAMLPlayer::Process()
   CWinEGLPlatformAmlogic amlplatform;
   amlplatform.ShowWindow(true);
 
+  // reset ac3/dts passthough
+  SetAudioPassThrough(AFORMAT_UNKNOWN);
+
   if (m_log_level > 5)
     printf("CAMLPlayer::Process exit\n");
 }
@@ -1947,13 +1950,13 @@ void CAMLPlayer::GetScalingMethods(Features* scalingMethods)
 void CAMLPlayer::GetAudioCapabilities(Features* audioCaps)
 {
   audioCaps->push_back(IPC_AUD_SELECT_STREAM);
-  audioCaps->push_back(IPC_AUD_SELECT_OUTPUT);
   return;
 }
 
 void CAMLPlayer::GetSubtitleCapabilities(Features* subCaps)
 {
-  subCaps->push_back(IPC_SUBS_EXTERNAL);
+  //subCaps->push_back(IPC_SUBS_EXTERNAL);
+  subCaps->push_back(IPC_SUBS_OFFSET);
   subCaps->push_back(IPC_SUBS_SELECT);
   return;
 }
