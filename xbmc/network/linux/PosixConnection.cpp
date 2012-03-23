@@ -493,7 +493,7 @@ bool CPosixConnection::DoConnection(const CIPConfig &ipconfig, std::string passp
   std::vector<std::string> ifdown_interfaces;
   for (size_t i = 0; i < interfaces_lines.size(); i++)
   {
-    printf("CPosixConnection::SetSettings, interfaces_lines:%s", interfaces_lines[i].c_str());
+    //printf("CPosixConnection::SetSettings, interfaces_lines:%s", interfaces_lines[i].c_str());
 
     // comments are always skipped and copied over
     if (interfaces_lines[i].find("#") != std::string::npos)
@@ -630,7 +630,7 @@ bool CPosixConnection::DoConnection(const CIPConfig &ipconfig, std::string passp
     return false;
   for (size_t i = 0; i < new_interfaces_lines.size(); i++)
   {
-    printf("CPosixConnection::SetSettings, new_interfaces_lines:%s", new_interfaces_lines[i].c_str());
+    //printf("CPosixConnection::SetSettings, new_interfaces_lines:%s", new_interfaces_lines[i].c_str());
     fwrite(new_interfaces_lines[i].c_str(), new_interfaces_lines[i].size(), 1, fw);
   }
   fclose(fw);
