@@ -448,12 +448,12 @@ void CAMLSubTitleThread::Process(void)
       }
       else
       {
-        Sleep(100);
+        usleep(100 * 1000);
       }
     }
     else
     {
-      Sleep(250);
+      usleep(250 * 1000);
     }
   }
   m_subtitle_strings.clear();
@@ -497,131 +497,20 @@ bool CAMLPlayer::OpenFile(const CFileItem &file, const CPlayerOptions &options)
 
     m_item = file;
     m_options = options;
-    m_elapsed_ms  =  0;
-    m_duration_ms =  0;
 
-    m_audio_info  = "none";
-    m_audio_delay = g_settings.m_currentVideoSettings.m_AudioDelay;
-    m_audio_passthrough_ac3 = g_guiSettings.GetBool("audiooutput.ac3passthrough");
-    m_audio_passthrough_dts = g_guiSettings.GetBool("audiooutput.dtspassthrough");
-
-    m_video_info  = "none";
-    m_video_width    =  0;
-    m_video_height   =  0;
-    m_video_fps_numerator = 25;
-    m_video_fps_denominator = 1;
-
-    m_subtitle_delay =  0;
-    m_subtitle_thread = NULL;
-
-    m_chapter_index  =  0;
-    m_chapter_count  =  0;
-
-    m_show_mainvideo = -1;
-    m_dst_rect.SetRect(0, 0, 0, 0);
-    m_zoom           = -1;
-    m_contrast       = -1;
-    m_brightness     = -1;
-
-    ClearStreamInfos();
-
-    static URLProtocol vfs_protocol = {
-      "vfs",
-      CFileURLProtocol::Open,
-      CFileURLProtocol::Read,
-      CFileURLProtocol::Write,
-      CFileURLProtocol::Seek,
-      CFileURLProtocol::SeekEx, // url_exseek, an amlogic extension.
-      CFileURLProtocol::Close,
-    };
-
-    CStdString url = m_item.GetPath();
-    if (url.Left(strlen("smb://")).Equals("smb://"))
-    {
-      // the name string needs to persist 
-      static const char *smb_name = "smb";
-      vfs_protocol.name = smb_name;
-    }
-    else if (url.Left(strlen("afp://")).Equals("afp://"))
-    {
-      // the name string needs to persist 
-      static const char *afp_name = "afp";
-      vfs_protocol.name = afp_name;
-    }
-    else if (url.Left(strlen("nfs://")).Equals("nfs://"))
-    {
-      // the name string needs to persist 
-      static const char *nfs_name = "nfs";
-      vfs_protocol.name = nfs_name;
-    }
-    else if (url.Left(strlen("http://")).Equals("http://"))
-    {
-      // the name string needs to persist 
-      static const char *http_name = "xb-http";
-      vfs_protocol.name = http_name;
-      url = "xb-" + url;
-    }
-    printf("CAMLPlayer::OpenFile: URL=%s\n", url.c_str());
-
-    if (player_init() != PLAYER_SUCCESS)
-    {
-      printf("player init failed\n");
-      return false;
-    }
-    printf("player init......\n");
-    
-    // change the amplayer log spew level.
-    change_print_level(m_log_level);
-
-    // must be after player_init
-    av_register_protocol2(&vfs_protocol, sizeof(vfs_protocol));
-
-    static play_control_t  play_control;
-    memset(&play_control, 0, sizeof(play_control_t));
-    // if we do not register a callback,
-    // then the libamplayer will free run checking status.
-    player_register_update_callback(&play_control.callback_fn, &UpdatePlayerInfo, 1000);
-    // leak file_name for now.
-    play_control.file_name = (char*)strdup(url.c_str());
-    //play_control->nosound   = 1; // if disable audio...,must call this api
-    play_control.video_index = -1; //MUST
-    play_control.audio_index = -1; //MUST
-    play_control.sub_index   = -1; //MUST
-    play_control.hassub      =  1;
-    play_control.t_pos       = -1;
-    play_control.need_start  =  1; // if 0,you can omit player_start_play API.
-                                   // just play video/audio immediately.
-                                   // if 1,then need call "player_start_play" API;
-    //play_control.auto_buffing_enable = 1;
-    //play_control.buffing_min        = 0.2;
-    //play_control.buffing_middle     = 0.5;
-    //play_control.buffing_max        = 0.8;
-    //play_control.byteiobufsize      =; // maps to av_open_input_file buffer size
-    //play_control.loopbufsize        =;
-    //play_control.enable_rw_on_pause =;
-    m_aml_state.clear();
-    m_aml_state.push_back(0);
-    m_pid = player_start(&play_control, 0);
-    if (m_pid < 0)
-    {
-      if (m_log_level > 5)
-        printf("player start failed! error = %d\n", m_pid);
-      return false;
-    }
-
+    m_StopPlaying = false;
     // setup to spin the busy dialog until we are playing
     m_ready.Reset();
 
     g_renderManager.PreInit();
 
     // create the playing thread
-    m_StopPlaying = false;
     Create();
     if (!m_ready.WaitMSec(100))
     {
       CGUIDialogBusy *dialog = (CGUIDialogBusy*)g_windowManager.GetWindow(WINDOW_DIALOG_BUSY);
       dialog->Show();
-      while (!m_ready.WaitMSec(1))
+      while (!m_StopPlaying && !m_ready.WaitMSec(1))
         g_windowManager.ProcessRenderLoop(false);
       dialog->Close();
     }
@@ -642,6 +531,8 @@ bool CAMLPlayer::OpenFile(const CFileItem &file, const CPlayerOptions &options)
 bool CAMLPlayer::CloseFile()
 {
   CLog::Log(LOGDEBUG, "CAMLPlayer::CloseFile");
+
+  // set the abort request so that other threads can finish up
   m_StopPlaying = true;
 
   CLog::Log(LOGDEBUG, "CAMLPlayer: waiting for threads to exit");
@@ -651,6 +542,7 @@ bool CAMLPlayer::CloseFile()
   StopThread();
 
   CLog::Log(LOGDEBUG, "CAMLPlayer: finished waiting");
+
   g_renderManager.UnInit();
 
   return true;
@@ -1138,13 +1030,21 @@ float CAMLPlayer::GetActualFPS()
 void CAMLPlayer::SeekTime(__int64 seek_ms)
 {
   CSingleLock lock(m_aml_csection);
+
+  // we cannot seek if paused
+  if (m_paused)
+    return;
+
   if (seek_ms <= 0)
     seek_ms = 100;
 
   // seek here
   if (check_pid_valid(m_pid))
   {
-    player_timesearch(m_pid, seek_ms/1000.0);
+    if (!CheckPlaying())
+      return;
+    // player_timesearch is seconds so round the seek time.
+    player_timesearch(m_pid, (seek_ms + 500)/1000);
     WaitForSearchOK(5000);
     WaitForPlaying(5000);
   }
@@ -1309,7 +1209,8 @@ void CAMLPlayer::OnStartup()
 void CAMLPlayer::OnExit()
 {
   //CLog::Log(LOGNOTICE, "CAMLPlayer::OnExit()");
-  Sleep(100);
+  usleep(500 * 1000);
+
   m_bStop = true;
   // if we didn't stop playing, advance to the next item in xbmc's playlist
   if (m_options.identify == false)
@@ -1319,6 +1220,9 @@ void CAMLPlayer::OnExit()
     else
       m_callback.OnPlayBackEnded();
   }
+  // set event to inform openfile something went wrong
+  // in case openfile is still waiting for this event
+  m_ready.Set();
 }
 
 void CAMLPlayer::Process()
@@ -1326,6 +1230,119 @@ void CAMLPlayer::Process()
   CLog::Log(LOGNOTICE, "CAMLPlayer::Process");
   try
   {
+    m_elapsed_ms  =  0;
+    m_duration_ms =  0;
+
+    m_audio_info  = "none";
+    m_audio_delay = g_settings.m_currentVideoSettings.m_AudioDelay;
+    m_audio_passthrough_ac3 = g_guiSettings.GetBool("audiooutput.ac3passthrough");
+    m_audio_passthrough_dts = g_guiSettings.GetBool("audiooutput.dtspassthrough");
+
+    m_video_info  = "none";
+    m_video_width    =  0;
+    m_video_height   =  0;
+    m_video_fps_numerator = 25;
+    m_video_fps_denominator = 1;
+
+    m_subtitle_delay =  0;
+    m_subtitle_thread = NULL;
+
+    m_chapter_index  =  0;
+    m_chapter_count  =  0;
+
+    m_show_mainvideo = -1;
+    m_dst_rect.SetRect(0, 0, 0, 0);
+    m_zoom           = -1;
+    m_contrast       = -1;
+    m_brightness     = -1;
+
+    ClearStreamInfos();
+
+    static URLProtocol vfs_protocol = {
+      "vfs",
+      CFileURLProtocol::Open,
+      CFileURLProtocol::Read,
+      CFileURLProtocol::Write,
+      CFileURLProtocol::Seek,
+      CFileURLProtocol::SeekEx, // url_exseek, an amlogic extension.
+      CFileURLProtocol::Close,
+    };
+
+    CStdString url = m_item.GetPath();
+    if (url.Left(strlen("smb://")).Equals("smb://"))
+    {
+      // the name string needs to persist
+      static const char *smb_name = "smb";
+      vfs_protocol.name = smb_name;
+    }
+    else if (url.Left(strlen("afp://")).Equals("afp://"))
+    {
+      // the name string needs to persist
+      static const char *afp_name = "afp";
+      vfs_protocol.name = afp_name;
+    }
+    else if (url.Left(strlen("nfs://")).Equals("nfs://"))
+    {
+      // the name string needs to persist
+      static const char *nfs_name = "nfs";
+      vfs_protocol.name = nfs_name;
+    }
+    else if (url.Left(strlen("http://")).Equals("http://"))
+    {
+      // the name string needs to persist
+      static const char *http_name = "xb-http";
+      vfs_protocol.name = http_name;
+      url = "xb-" + url;
+    }
+    printf("CAMLPlayer::Process: URL=%s\n", url.c_str());
+
+    if (player_init() != PLAYER_SUCCESS)
+    {
+      printf("player init failed\n");
+      throw "CAMLPlayer::Process:player init failed";
+    }
+    printf("player init......\n");
+    usleep(250 * 1000);
+
+    // change the amplayer log spew level.
+    change_print_level(m_log_level);
+
+    // must be after player_init
+    av_register_protocol2(&vfs_protocol, sizeof(vfs_protocol));
+
+    static play_control_t  play_control;
+    memset(&play_control, 0, sizeof(play_control_t));
+    // if we do not register a callback,
+    // then the libamplayer will free run checking status.
+    player_register_update_callback(&play_control.callback_fn, &UpdatePlayerInfo, 1000);
+    // leak file_name for now.
+    play_control.file_name = (char*)strdup(url.c_str());
+    //play_control->nosound   = 1; // if disable audio...,must call this api
+    play_control.video_index = -1; //MUST
+    play_control.audio_index = -1; //MUST
+    play_control.sub_index   = -1; //MUST
+    play_control.hassub      =  1;
+    play_control.t_pos       = -1;
+    play_control.need_start  =  1; // if 0,you can omit player_start_play API.
+                                   // just play video/audio immediately.
+                                   // if 1,then need call "player_start_play" API;
+    //play_control.auto_buffing_enable = 1;
+    //play_control.buffing_min        = 0.2;
+    //play_control.buffing_middle     = 0.5;
+    //play_control.buffing_max        = 0.8;
+    //play_control.byteiobufsize      =; // maps to av_open_input_file buffer size
+    //play_control.loopbufsize        =;
+    //play_control.enable_rw_on_pause =;
+    m_aml_state.clear();
+    m_aml_state.push_back(0);
+    m_pid = player_start(&play_control, 0);
+    if (m_pid < 0)
+    {
+      if (m_log_level > 5)
+        printf("player start failed! error = %d\n", m_pid);
+      throw "CAMLPlayer::Process:player start failed";
+    }
+
     // wait for media to open with 30 second timeout.
     if (WaitForFormatValid(30000))
     {
@@ -1405,7 +1422,7 @@ void CAMLPlayer::Process()
       if (m_options.identify == false)
         m_callback.OnPlayBackStarted();
 
-      while (!m_bStop && !m_StopPlaying)
+      while (!m_StopPlaying)
       {
         player_status pstatus = (player_status)GetPlayerSerializedState();
         switch(pstatus)
@@ -1461,7 +1478,7 @@ void CAMLPlayer::Process()
             m_StopPlaying = true;
             break;
         }
-        Sleep(250);
+        usleep(250 * 1000);
       }
     }
   }
@@ -1482,7 +1499,6 @@ void CAMLPlayer::Process()
     m_subtitle_thread = NULL;
     player_stop(m_pid);
     player_exit(m_pid);
-    Sleep(500);
     m_pid = -1;
   }
 
@@ -1495,7 +1511,6 @@ void CAMLPlayer::Process()
   // grrr, something is hiding fb0 on exit.
   CWinEGLPlatformAmlogic amlplatform;
   amlplatform.ShowWindow(true);
-
 
   if (m_log_level > 5)
     printf("CAMLPlayer::Process exit\n");
@@ -1597,9 +1612,14 @@ int CAMLPlayer::UpdatePlayerInfo(int pid, player_info_t *info)
   return 0;
 }
 
+bool CAMLPlayer::CheckPlaying()
+{
+  return ((player_status)GetPlayerSerializedState() == PLAYER_RUNNING);
+}
+
 bool CAMLPlayer::WaitForStopped(int timeout_ms)
 {
-  while (!m_bStop && (timeout_ms > 0))
+  while (!m_StopPlaying && (timeout_ms > 0))
   {
     player_status pstatus = (player_status)GetPlayerSerializedState();
     if (m_log_level > 5)
@@ -1607,12 +1627,14 @@ bool CAMLPlayer::WaitForStopped(int timeout_ms)
     switch(pstatus)
     {
       default:
-        Sleep(100);
+        usleep(100 * 1000);
         timeout_ms -= 100;
         break;
       case PLAYER_PLAYEND:
       case PLAYER_STOPED:
+      case PLAYER_ERROR:
       case PLAYER_EXIT:
+        m_StopPlaying = true;
         return true;
         break;
     }
@@ -1623,7 +1645,7 @@ bool CAMLPlayer::WaitForStopped(int timeout_ms)
 
 bool CAMLPlayer::WaitForSearchOK(int timeout_ms)
 {
-  while (!m_bStop && (timeout_ms > 0))
+  while (!m_StopPlaying && (timeout_ms > 0))
   {
     player_status pstatus = (player_status)GetPlayerSerializedState();
     if (m_log_level > 5)
@@ -1631,12 +1653,14 @@ bool CAMLPlayer::WaitForSearchOK(int timeout_ms)
     switch(pstatus)
     {
       default:
-        Sleep(100);
+        usleep(100 * 1000);
         timeout_ms -= 100;
         break;
       case PLAYER_STOPED:
+        return false;
       case PLAYER_ERROR:
       case PLAYER_EXIT:
+        m_StopPlaying = true;
         return false;
         break;
       case PLAYER_SEARCHOK:
@@ -1650,7 +1674,7 @@ bool CAMLPlayer::WaitForSearchOK(int timeout_ms)
 
 bool CAMLPlayer::WaitForPlaying(int timeout_ms)
 {
-  while (!m_bStop && (timeout_ms > 0))
+  while (!m_StopPlaying && (timeout_ms > 0))
   {
     player_status pstatus = (player_status)GetPlayerSerializedState();
     if (m_log_level > 5)
@@ -1658,11 +1682,12 @@ bool CAMLPlayer::WaitForPlaying(int timeout_ms)
     switch(pstatus)
     {
       default:
-        Sleep(100);
+        usleep(100 * 1000);
         timeout_ms -= 100;
         break;
       case PLAYER_ERROR:
       case PLAYER_EXIT:
+        m_StopPlaying = true;
         return false;
         break;
       case PLAYER_RUNNING:
@@ -1676,7 +1701,7 @@ bool CAMLPlayer::WaitForPlaying(int timeout_ms)
 
 bool CAMLPlayer::WaitForFormatValid(int timeout_ms)
 {
-  while (!m_bStop && (timeout_ms > 0))
+  while (timeout_ms > 0)
   {
     player_status pstatus = (player_status)GetPlayerSerializedState();
     if (m_log_level > 5)
@@ -1684,11 +1709,12 @@ bool CAMLPlayer::WaitForFormatValid(int timeout_ms)
     switch(pstatus)
     {
       default:
-        Sleep(100);
+        usleep(100 * 1000);
         timeout_ms -= 100;
         break;
       case PLAYER_ERROR:
       case PLAYER_EXIT:
+        m_StopPlaying = true;
         return false;
         break;
       case PLAYER_INITOK:
@@ -1772,7 +1798,7 @@ bool CAMLPlayer::WaitForFormatValid(int timeout_ms)
           if (m_audio_index != 0)
             m_audio_index = 0;
           m_audio_count	= media_info.stream_info.total_audio_num;
-
+          // setup ac3/dts passthough if required
           SetAudioPassThrough(m_audio_streams[m_audio_index]->format);
         }
 

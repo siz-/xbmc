@@ -176,6 +176,7 @@ private:
 
   int           GetPlayerSerializedState(void);
   static int    UpdatePlayerInfo(int pid, player_info_t *info);
+  bool          CheckPlaying();
   bool          WaitForStopped(int timeout_ms);
   bool          WaitForSearchOK(int timeout_ms);
   bool          WaitForPlaying(int timeout_ms);
