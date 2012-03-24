@@ -923,7 +923,11 @@ void CAMLPlayer::SetVideoRect(const CRect &SrcRect, const CRect &DestRect)
   CRect gui, display, dst_rect;
   RESOLUTION res = g_graphicsContext.GetVideoResolution();
   gui.SetRect(0, 0, g_settings.m_ResInfo[res].iWidth, g_settings.m_ResInfo[res].iHeight);
-  display.SetRect(0, 0, g_settings.m_ResInfo[res].iScreenWidth, g_settings.m_ResInfo[res].iScreenHeight);
+  // when display is at 1080p, we have freescale enabled
+  // and that scales all layers into 1080p display including video,
+  // so we have to setup video axis for 720p instead of 1080p... Boooo.
+  display.SetRect(0, 0, g_settings.m_ResInfo[res].iWidth, g_settings.m_ResInfo[res].iHeight);
+  //display.SetRect(0, 0, g_settings.m_ResInfo[res].iScreenWidth, g_settings.m_ResInfo[res].iScreenHeight);
   dst_rect = m_dst_rect;
   if (gui != display)
   {
