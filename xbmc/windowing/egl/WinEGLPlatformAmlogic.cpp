@@ -162,6 +162,7 @@ bool CWinEGLPlatformAmlogic::SetDisplayResolution(const char *resolution)
 
   // switch display resolution
   set_sysfs_str("/sys/class/display/mode", modestr.c_str());
+  usleep(250 * 1000);
 
   // setup gui freescale depending on display resolution
   DisableFreeScale();
@@ -175,6 +176,7 @@ void CWinEGLPlatformAmlogic::EnableFreeScale()
 {
   // remove default OSD and video path (default_osd default)
   set_sysfs_str("/sys/class/vfm/map", "rm all");
+  usleep(60 * 1000);
 
   // add OSD path
   set_sysfs_str("/sys/class/vfm/map", "add osdpath osd amvideo");
@@ -187,10 +189,12 @@ void CWinEGLPlatformAmlogic::EnableFreeScale()
   set_sysfs_int("/sys/class/graphics/fb1/scale_height", 720);
   set_sysfs_int("/sys/class/graphics/fb0/free_scale", 1);
   set_sysfs_int("/sys/class/graphics/fb1/free_scale", 1);
+  usleep(60 * 1000);
   // remove OSD path
   set_sysfs_int("/sys/class/graphics/fb0/free_scale", 0);
   set_sysfs_int("/sys/class/graphics/fb1/free_scale", 0);
   set_sysfs_str("/sys/class/vfm/map", "rm osdpath");
+  usleep(60 * 1000);
   // add video path
   set_sysfs_str("/sys/class/vfm/map", "add videopath decoder ppmgr amvideo");
   // enable video free scale (scaling to 1920x1080 with frame buffer size 1280x720)
@@ -199,6 +203,7 @@ void CWinEGLPlatformAmlogic::EnableFreeScale()
   set_sysfs_int("/sys/class/ppmgr/ppscaler", 1);
   set_sysfs_str("/sys/class/ppmgr/ppscaler_rect", "0 0 1919 1079 0");
   set_sysfs_str("/sys/class/ppmgr/disp", "1280 720");
+  usleep(60 * 1000);
   //
   set_sysfs_int("/sys/class/graphics/fb0/free_scale", 0);
   set_sysfs_int("/sys/class/graphics/fb1/free_scale", 0);
@@ -208,6 +213,7 @@ void CWinEGLPlatformAmlogic::EnableFreeScale()
   set_sysfs_int("/sys/class/graphics/fb1/scale_height", 720);
   set_sysfs_int("/sys/class/graphics/fb0/free_scale", 1);
   set_sysfs_int("/sys/class/graphics/fb1/free_scale", 1);
+  usleep(60 * 1000);
   //
   set_sysfs_int("/sys/class/video/disable_video", 2);
   set_sysfs_str("/sys/class/display/axis", "0 0 1279 719");
