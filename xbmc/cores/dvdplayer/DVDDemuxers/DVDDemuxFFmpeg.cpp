@@ -316,8 +316,11 @@ bool CDVDDemuxFFmpeg::Open(CDVDInputStream* pInput)
       bool trySPDIFonly = (m_pInput->GetContent() == "audio/x-spdif-compressed");
 
       if (!trySPDIFonly)
-        m_dllAvFormat.av_probe_input_buffer(m_ioContext, &iformat, strFile.c_str(), NULL, 0, 0);
-
+      {
+        AVFormatContext *logctx = avformat_alloc_context();
+        m_dllAvFormat.av_probe_input_buffer(m_ioContext, &iformat, strFile.c_str(), logctx, 0, 0);
+        avformat_free_context(logctx);
+      }
       // Use the more low-level code in case we have been built against an old
       // FFmpeg without the above av_probe_input_buffer(), or in case we only
       // want to probe for spdif (DTS or IEC 61937) compressed audio
