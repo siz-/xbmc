@@ -152,6 +152,7 @@
     <keyboard>
       <i>info</i>
       <end>XBMC.ShutDown()</end>
+      <m>ActivateWindow(PlayerControls)</m>
     </keyboard>
   </Home>
   <VirtualKeyboard>
@@ -419,8 +420,7 @@
   </MyPictures>
   <ContextMenu>
     <keyboard>
-      <c>Back</c>
-      <menu>Back</menu>
+      <m>Back</m>
     </keyboard>
   </ContextMenu>
   <Scripts>
@@ -461,7 +461,7 @@
   </FileBrowser>
   <ShutdownMenu>
     <keyboard>
-      <s>Back</s>
+      <m>Back</s>
     </keyboard>
   </ShutdownMenu>
   <AddonInformation>
