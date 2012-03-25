@@ -919,7 +919,7 @@ void CGUISettings::AddBool(CSettingsCategory* cat, const char *strSetting, int i
         pSetting->SetOrder(0);
       if (pSetting)
       {
-        pSetting->FromString(i->value.c_str());
+        pSetting->FromString(i->value);
         settingsMap.insert(pair<CStdString, CSetting*>(CStdString(strSetting).ToLower(), pSetting));
         return;
       }
@@ -987,7 +987,7 @@ void CGUISettings::AddFloat(CSettingsCategory* cat, const char *strSetting, int 
         pSetting->SetOrder(0);
       if (pSetting)
       {
-        pSetting->FromString(i->value.c_str());
+        pSetting->FromString(i->value);
         settingsMap.insert(pair<CStdString, CSetting*>(CStdString(strSetting).ToLower(), pSetting));
         return;
       }
@@ -1050,7 +1050,7 @@ void CGUISettings::AddInt(CSettingsCategory* cat, const char *strSetting, int iL
         pSetting->SetOrder(0);
       if (pSetting)
       {
-        pSetting->FromString(i->value.c_str());
+        pSetting->FromString(i->value);
         settingsMap.insert(pair<CStdString, CSetting*>(CStdString(strSetting).ToLower(), pSetting));
         return;
       }
@@ -1076,7 +1076,7 @@ void CGUISettings::AddInt(CSettingsCategory* cat, const char *strSetting, int iL
         pSetting->SetOrder(0);
       if (pSetting)
       {
-        pSetting->FromString(i->value.c_str());
+        pSetting->FromString(i->value);
         settingsMap.insert(pair<CStdString, CSetting*>(CStdString(strSetting).ToLower(), pSetting));
         return;
       }
@@ -1104,7 +1104,7 @@ void CGUISettings::AddInt(CSettingsCategory* cat, const char *strSetting,
         pSetting->SetOrder(0);
       if (pSetting)
       {
-        pSetting->FromString(i->value.c_str());
+        pSetting->FromString(i->value);
         settingsMap.insert(pair<CStdString, CSetting*>(CStdString(strSetting).ToLower(), pSetting));
         return;
       }
@@ -1129,7 +1129,7 @@ void CGUISettings::AddHex(CSettingsCategory* cat, const char *strSetting, int iL
         pSetting->SetOrder(0);
       if (pSetting)
       {
-        pSetting->FromString(i->value.c_str());
+        pSetting->FromString(i->value);
         settingsMap.insert(pair<CStdString, CSetting*>(CStdString(strSetting).ToLower(), pSetting));
         return;
       }
@@ -1181,7 +1181,7 @@ void CGUISettings::AddString(CSettingsCategory* cat, const char *strSetting, int
         pSetting->SetOrder(0);
       if (pSetting)
       {
-        pSetting->FromString(i->value.c_str());
+        pSetting->FromString(i->value);
         settingsMap.insert(pair<CStdString, CSetting*>(CStdString(strSetting).ToLower(), pSetting));
         return;
       }
@@ -1204,7 +1204,7 @@ void CGUISettings::AddPath(CSettingsCategory* cat, const char *strSetting, int i
         pSetting->SetOrder(0);
       if (pSetting)
       {
-        pSetting->FromString(i->value.c_str());
+        pSetting->FromString(i->value);
         settingsMap.insert(pair<CStdString, CSetting*>(CStdString(strSetting).ToLower(), pSetting));
         return;
       }
@@ -1228,7 +1228,7 @@ void CGUISettings::AddDefaultAddon(CSettingsCategory* cat, const char *strSettin
         pSetting->SetOrder(0);
       if (pSetting)
       {
-        pSetting->FromString(i->value.c_str());
+        pSetting->FromString(i->value);
         settingsMap.insert(pair<CStdString, CSetting*>(CStdString(strSetting).ToLower(), pSetting));
         return;
       }
@@ -1274,6 +1274,17 @@ const CStdString &CGUISettings::GetString(const char *strSetting, bool bPrompt /
 void CGUISettings::SetString(const char *strSetting, const char *strData)
 {
   ASSERT(settingsMap.size());
+
+  for (CAdvancedSettings::SettingsOverrideList::iterator i = g_advancedSettings.m_settingsOverride.begin();
+      i != g_advancedSettings.m_settingsOverride.end(); i++)
+  {
+    if (strncmp(strSetting, i->setting.c_str(), i->setting.size()) == 0)
+    {
+      if (i->locked)
+        return;
+    }
+  }
+
   mapIter it = settingsMap.find(CStdString(strSetting).ToLower());
   if (it != settingsMap.end())
   {
@@ -1414,7 +1425,7 @@ void CGUISettings::LoadFromXML(TiXmlElement *pRootElement, mapIter &it, bool adv
             {
                if (i->hidden || i->locked)
                {
-                 (*it).second->FromString(i->value.c_str());
+                 (*it).second->FromString(i->value);
                  return;
                }
              }
