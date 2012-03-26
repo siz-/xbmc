@@ -1333,7 +1333,7 @@ void CApplication::StartAirplayServer()
     {
       CAirPlayServer::SetCredentials(usePassword, password);
       std::map<std::string, std::string> txt;
-      txt["deviceid"] = m_network.GetDefaultConnectionMacAddress;
+      txt["deviceid"] = m_network.GetDefaultConnectionMacAddress();
       if (txt["deviceid"].empty())
         txt["deviceid"] = "FF:FF:FF:FF:FF:F2";
       txt["features"] = "0x77";

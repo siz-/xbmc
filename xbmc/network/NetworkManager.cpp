@@ -289,7 +289,7 @@ void CNetworkManager::StopServices(bool wait)
   g_application.StopJSONRPCServer(wait);
 #endif
 #if defined(HAS_AIRPLAY) || defined(HAS_AIRTUNES)
-  g_application.StopAirplayServer(bWait);
+  g_application.StopAirplayServer(wait);
 #endif
 }
 
