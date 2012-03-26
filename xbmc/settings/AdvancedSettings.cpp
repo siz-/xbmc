@@ -874,54 +874,23 @@ void CAdvancedSettings::ParseSettingsFile(const CStdString &file)
     }
   }
 
-  TiXmlElement* pSettingsOverride = pRootElement->FirstChildElement("settingsoverride");
-  if (pSettingsOverride)
+  TiXmlElement* pHideSettings = pRootElement->FirstChildElement("hidesettings");
+  if (pHideSettings)
   {
-    m_settingsOverride.clear();
-    CLog::Log(LOGDEBUG,"Configuring settings overrides");
-    TiXmlNode* pOverride = pSettingsOverride->FirstChildElement("override");
-    while (pOverride)
+    m_settingsHidden.clear();
+    CLog::Log(LOGDEBUG,"Configuring hidden settings");
+    TiXmlNode* pSetting = pHideSettings->FirstChildElement("setting");
+    CStdString hiddenSetting;
+    while (pSetting)
     {
-      SettingsOverride override;
-      TiXmlNode* pSetting = pOverride->FirstChild("setting");
-      if (pSetting)
-        override.setting = _P(pSetting->FirstChild()->Value()).c_str();
-      TiXmlNode* pValue = pOverride->FirstChild("default");
-      if (pValue)
-        override.value = pValue->FirstChild()->Value();
-
-      override.hidden = false;
-      CStdString StrHidden = pSetting->ToElement()->Attribute("hidden");;
-      if (!StrHidden.IsEmpty() && StrHidden != "0" && !StrHidden.Equals("false"))
-        override.hidden = true;
-
-      override.locked = false;
-      CStdString StrLocked = pSetting->ToElement()->Attribute("locked");
-      if (!StrLocked.IsEmpty() && StrLocked != "0" && !StrLocked.Equals("false"))
-        override.locked = true;
-
-      if (!override.setting.IsEmpty() && !override.value.IsEmpty())
+      hiddenSetting = pSetting->FirstChild()->Value();
+      if (!hiddenSetting.IsEmpty())
       {
-        CLog::Log(LOGDEBUG,"  Overriding:");
-        CLog::Log(LOGDEBUG,"    Setting:  [%s]", override.setting.c_str());
-        CLog::Log(LOGDEBUG,"    Default:    [%s]", override.value.c_str());
-        if (override.hidden)
-          CLog::Log(LOGDEBUG,"    Hidden:   [true]");
-        if (override.locked)
-          CLog::Log(LOGDEBUG,"    Locked:   [true]");
-        m_settingsOverride.push_back(override);
+        CLog::Log(LOGDEBUG,"    Hiding:  [%s]", hiddenSetting.c_str());
+        m_settingsHidden.push_back(hiddenSetting);
       }
-      else
-      {
-        // error message about missing tag
-        if (override.setting.IsEmpty())
-          CLog::Log(LOGERROR,"  Missing <setting> tag");
-        else
-          CLog::Log(LOGERROR,"  Missing <default> tag");
-      }
-
       // get next one
-      pOverride = pOverride->NextSiblingElement("override");
+      pSetting = pSetting->NextSiblingElement("setting");
     }
   }
 

@@ -68,14 +68,6 @@ struct RefreshVideoLatency
   float delay;
 };
 
-struct SettingsOverride
-{
-  CStdString setting;
-  CStdString value;
-  bool hidden;
-  bool locked;
-};
-
 typedef std::vector<TVShowRegexp> SETTINGS_TVSHOWLIST;
 
 class CAdvancedSettings
@@ -200,9 +192,8 @@ class CAdvancedSettings
     SETTINGS_TVSHOWLIST m_tvshowEnumRegExps;
     CStdString m_tvshowMultiPartEnumRegExp;
     typedef std::vector< std::pair<CStdString, CStdString> > StringMapping;
-    typedef std::vector< SettingsOverride > SettingsOverrideList;
+    CStdStringArray m_settingsHidden;
     StringMapping m_pathSubstitutions;
-    SettingsOverrideList m_settingsOverride;
     int m_remoteDelay; ///< \brief number of remote messages to ignore before repeating
     float m_controllerDeadzone;
 

@@ -865,14 +865,11 @@ void CGUISettings::AddGroup(int groupID, int labelID)
 CSettingsCategory* CGUISettings::AddCategory(int groupID, const char *strSetting, int labelID)
 {
 
-  for (CAdvancedSettings::SettingsOverrideList::iterator i = g_advancedSettings.m_settingsOverride.begin();
-      i != g_advancedSettings.m_settingsOverride.end(); i++)
+  for (CStdStringArray::iterator i = g_advancedSettings.m_settingsHidden.begin();
+      i != g_advancedSettings.m_settingsHidden.end(); i++)
   {
-    if (strncmp(strSetting, i->setting.c_str(), i->setting.size()) == 0)
-    {
-      if (i->hidden)
+    if (strncmp(strSetting, i->c_str(), i->size()) == 0)
         return NULL;
-    }
   }
 
   for (unsigned int i = 0; i < settingsGroups.size(); i++)
@@ -910,22 +907,12 @@ void CGUISettings::AddBool(CSettingsCategory* cat, const char *strSetting, int i
   CSettingBool* pSetting = new CSettingBool(iOrder, CStdString(strSetting).ToLower(), iLabel, bData, iControlType);
   if (!pSetting) return ;
 
-  for (CAdvancedSettings::SettingsOverrideList::iterator i = g_advancedSettings.m_settingsOverride.begin();
-      i != g_advancedSettings.m_settingsOverride.end(); i++)
+  for (CStdStringArray::iterator i = g_advancedSettings.m_settingsHidden.begin();
+      i != g_advancedSettings.m_settingsHidden.end(); i++)
   {
-    if (strncmp(strSetting, i->setting.c_str(), i->setting.size()) == 0)
-    {
-      if (i->hidden)
+    if (strncmp(strSetting, i->c_str(), i->size()) == 0)
         pSetting->SetOrder(0);
-      if (pSetting)
-      {
-        pSetting->FromString(i->value);
-        settingsMap.insert(pair<CStdString, CSetting*>(CStdString(strSetting).ToLower(), pSetting));
-        return;
-      }
-    }
   }
-
   settingsMap.insert(pair<CStdString, CSetting*>(CStdString(strSetting).ToLower(), pSetting));
 }
 bool CGUISettings::GetBool(const char *strSetting) const
@@ -978,22 +965,12 @@ void CGUISettings::AddFloat(CSettingsCategory* cat, const char *strSetting, int 
   CSettingFloat* pSetting = new CSettingFloat(iOrder, CStdString(strSetting).ToLower(), iLabel, fData, fMin, fStep, fMax, iControlType);
   if (!pSetting) return ;
 
-  for (CAdvancedSettings::SettingsOverrideList::iterator i = g_advancedSettings.m_settingsOverride.begin();
-      i != g_advancedSettings.m_settingsOverride.end(); i++)
+  for (CStdStringArray::iterator i = g_advancedSettings.m_settingsHidden.begin();
+      i != g_advancedSettings.m_settingsHidden.end(); i++)
   {
-    if (strncmp(strSetting, i->setting.c_str(), i->setting.size()) == 0)
-    {
-      if (i->hidden)
+    if (strncmp(strSetting, i->c_str(), i->size()) == 0)
         pSetting->SetOrder(0);
-      if (pSetting)
-      {
-        pSetting->FromString(i->value);
-        settingsMap.insert(pair<CStdString, CSetting*>(CStdString(strSetting).ToLower(), pSetting));
-        return;
-      }
-    }
   }
-
   settingsMap.insert(pair<CStdString, CSetting*>(CStdString(strSetting).ToLower(), pSetting));
 }
 
@@ -1041,20 +1018,11 @@ void CGUISettings::AddInt(CSettingsCategory* cat, const char *strSetting, int iL
   CSettingInt* pSetting = new CSettingInt(iOrder, CStdString(strSetting).ToLower(), iLabel, iData, iMin, iStep, iMax, iControlType, strFormat);
   if (!pSetting) return ;
 
-  for (CAdvancedSettings::SettingsOverrideList::iterator i = g_advancedSettings.m_settingsOverride.begin();
-      i != g_advancedSettings.m_settingsOverride.end(); i++)
+  for (CStdStringArray::iterator i = g_advancedSettings.m_settingsHidden.begin();
+      i != g_advancedSettings.m_settingsHidden.end(); i++)
   {
-    if (strncmp(strSetting, i->setting.c_str(), i->setting.size()) == 0)
-    {
-      if (i->hidden)
+    if (strncmp(strSetting, i->c_str(), i->size()) == 0)
         pSetting->SetOrder(0);
-      if (pSetting)
-      {
-        pSetting->FromString(i->value);
-        settingsMap.insert(pair<CStdString, CSetting*>(CStdString(strSetting).ToLower(), pSetting));
-        return;
-      }
-    }
   }
 
   settingsMap.insert(pair<CStdString, CSetting*>(CStdString(strSetting).ToLower(), pSetting));
@@ -1066,23 +1034,12 @@ void CGUISettings::AddInt(CSettingsCategory* cat, const char *strSetting, int iL
   CSettingInt* pSetting = new CSettingInt(iOrder, CStdString(strSetting).ToLower(), iLabel, iData, iMin, iStep, iMax, iControlType, iFormat, iLabelMin);
   if (!pSetting) return ;
 
-  //Check for advancedsettings overrides
-  for (CAdvancedSettings::SettingsOverrideList::iterator i = g_advancedSettings.m_settingsOverride.begin();
-      i != g_advancedSettings.m_settingsOverride.end(); i++)
+  for (CStdStringArray::iterator i = g_advancedSettings.m_settingsHidden.begin();
+      i != g_advancedSettings.m_settingsHidden.end(); i++)
   {
-    if (strncmp(strSetting, i->setting.c_str(), i->setting.size()) == 0)
-    {
-      if (i->hidden)
+    if (strncmp(strSetting, i->c_str(), i->size()) == 0)
         pSetting->SetOrder(0);
-      if (pSetting)
-      {
-        pSetting->FromString(i->value);
-        settingsMap.insert(pair<CStdString, CSetting*>(CStdString(strSetting).ToLower(), pSetting));
-        return;
-      }
-    }
   }
-
   settingsMap.insert(pair<CStdString, CSetting*>(CStdString(strSetting).ToLower(), pSetting));
 }
 
@@ -1094,24 +1051,13 @@ void CGUISettings::AddInt(CSettingsCategory* cat, const char *strSetting,
   CSettingInt* pSetting = new CSettingInt(iOrder, CStdString(strSetting).ToLower(), iLabel, iData, entries, iControlType);
   if (!pSetting) return ;
 
-  //Check for advancedsettings overrides
-  for (CAdvancedSettings::SettingsOverrideList::iterator i = g_advancedSettings.m_settingsOverride.begin();
-      i != g_advancedSettings.m_settingsOverride.end(); i++)
+  for (CStdStringArray::iterator i = g_advancedSettings.m_settingsHidden.begin();
+      i != g_advancedSettings.m_settingsHidden.end(); i++)
   {
-    if (strncmp(strSetting, i->setting.c_str(), i->setting.size()) == 0)
-    {
-      if (i->hidden)
+    if (strncmp(strSetting, i->c_str(), i->size()) == 0)
         pSetting->SetOrder(0);
-      if (pSetting)
-      {
-        pSetting->FromString(i->value);
-        settingsMap.insert(pair<CStdString, CSetting*>(CStdString(strSetting).ToLower(), pSetting));
-        return;
-      }
-    }
   }
   settingsMap.insert(pair<CStdString, CSetting*>(CStdString(strSetting).ToLower(), pSetting));
-
 }
 
 void CGUISettings::AddHex(CSettingsCategory* cat, const char *strSetting, int iLabel, int iData, int iMin, int iStep, int iMax, int iControlType, const char *strFormat)
@@ -1120,20 +1066,11 @@ void CGUISettings::AddHex(CSettingsCategory* cat, const char *strSetting, int iL
   CSettingHex* pSetting = new CSettingHex(iOrder, CStdString(strSetting).ToLower(), iLabel, iData, iMin, iStep, iMax, iControlType, strFormat);
   if (!pSetting) return ;
 
-  for (CAdvancedSettings::SettingsOverrideList::iterator i = g_advancedSettings.m_settingsOverride.begin();
-      i != g_advancedSettings.m_settingsOverride.end(); i++)
+  for (CStdStringArray::iterator i = g_advancedSettings.m_settingsHidden.begin();
+      i != g_advancedSettings.m_settingsHidden.end(); i++)
   {
-    if (strncmp(strSetting, i->setting.c_str(), i->setting.size()) == 0)
-    {
-      if (i->hidden)
+    if (strncmp(strSetting, i->c_str(), i->size()) == 0)
         pSetting->SetOrder(0);
-      if (pSetting)
-      {
-        pSetting->FromString(i->value);
-        settingsMap.insert(pair<CStdString, CSetting*>(CStdString(strSetting).ToLower(), pSetting));
-        return;
-      }
-    }
   }
   settingsMap.insert(pair<CStdString, CSetting*>(CStdString(strSetting).ToLower(), pSetting));
 }
@@ -1172,20 +1109,11 @@ void CGUISettings::AddString(CSettingsCategory* cat, const char *strSetting, int
   CSettingString* pSetting = new CSettingString(iOrder, CStdString(strSetting).ToLower(), iLabel, strData, iControlType, bAllowEmpty, iHeadingString);
   if (!pSetting) return ;
 
-  for (CAdvancedSettings::SettingsOverrideList::iterator i = g_advancedSettings.m_settingsOverride.begin();
-      i != g_advancedSettings.m_settingsOverride.end(); i++)
+  for (CStdStringArray::iterator i = g_advancedSettings.m_settingsHidden.begin();
+      i != g_advancedSettings.m_settingsHidden.end(); i++)
   {
-    if (strncmp(strSetting, i->setting.c_str(), i->setting.size()) == 0)
-    {
-      if (i->hidden)
+    if (strncmp(strSetting, i->c_str(), i->size()) == 0)
         pSetting->SetOrder(0);
-      if (pSetting)
-      {
-        pSetting->FromString(i->value);
-        settingsMap.insert(pair<CStdString, CSetting*>(CStdString(strSetting).ToLower(), pSetting));
-        return;
-      }
-    }
   }
   settingsMap.insert(pair<CStdString, CSetting*>(CStdString(strSetting).ToLower(), pSetting));
 }
@@ -1195,20 +1123,12 @@ void CGUISettings::AddPath(CSettingsCategory* cat, const char *strSetting, int i
   int iOrder = cat?++cat->m_entries:0;
   CSettingPath* pSetting = new CSettingPath(iOrder, CStdString(strSetting).ToLower(), iLabel, strData, iControlType, bAllowEmpty, iHeadingString);
   if (!pSetting) return ;
-  for (CAdvancedSettings::SettingsOverrideList::iterator i = g_advancedSettings.m_settingsOverride.begin();
-      i != g_advancedSettings.m_settingsOverride.end(); i++)
+
+  for (CStdStringArray::iterator i = g_advancedSettings.m_settingsHidden.begin();
+      i != g_advancedSettings.m_settingsHidden.end(); i++)
   {
-    if (strncmp(strSetting, i->setting.c_str(), i->setting.size()) == 0)
-    {
-      if (i->hidden)
+    if (strncmp(strSetting, i->c_str(), i->size()) == 0)
         pSetting->SetOrder(0);
-      if (pSetting)
-      {
-        pSetting->FromString(i->value);
-        settingsMap.insert(pair<CStdString, CSetting*>(CStdString(strSetting).ToLower(), pSetting));
-        return;
-      }
-    }
   }
   settingsMap.insert(pair<CStdString, CSetting*>(CStdString(strSetting).ToLower(), pSetting));
 }
@@ -1219,20 +1139,11 @@ void CGUISettings::AddDefaultAddon(CSettingsCategory* cat, const char *strSettin
   CSettingAddon* pSetting = new CSettingAddon(iOrder, CStdString(strSetting).ToLower(), iLabel, strData, type);
   if (!pSetting) return ;
 
-  for (CAdvancedSettings::SettingsOverrideList::iterator i = g_advancedSettings.m_settingsOverride.begin();
-      i != g_advancedSettings.m_settingsOverride.end(); i++)
+  for (CStdStringArray::iterator i = g_advancedSettings.m_settingsHidden.begin();
+      i != g_advancedSettings.m_settingsHidden.end(); i++)
   {
-    if (strncmp(strSetting, i->setting.c_str(), i->setting.size()) == 0)
-    {
-      if (i->hidden)
+    if (strncmp(strSetting, i->c_str(), i->size()) == 0)
         pSetting->SetOrder(0);
-      if (pSetting)
-      {
-        pSetting->FromString(i->value);
-        settingsMap.insert(pair<CStdString, CSetting*>(CStdString(strSetting).ToLower(), pSetting));
-        return;
-      }
-    }
   }
   settingsMap.insert(pair<CStdString, CSetting*>(CStdString(strSetting).ToLower(), pSetting));
 }
@@ -1274,16 +1185,6 @@ const CStdString &CGUISettings::GetString(const char *strSetting, bool bPrompt /
 void CGUISettings::SetString(const char *strSetting, const char *strData)
 {
   ASSERT(settingsMap.size());
-
-  for (CAdvancedSettings::SettingsOverrideList::iterator i = g_advancedSettings.m_settingsOverride.begin();
-      i != g_advancedSettings.m_settingsOverride.end(); i++)
-  {
-    if (strncmp(strSetting, i->setting.c_str(), i->setting.size()) == 0)
-    {
-      if (i->locked)
-        return;
-    }
-  }
 
   mapIter it = settingsMap.find(CStdString(strSetting).ToLower());
   if (it != settingsMap.end())
@@ -1416,21 +1317,6 @@ void CGUISettings::LoadFromXML(TiXmlElement *pRootElement, mapIter &it, bool adv
         CStdString strValue = pGrandChild->FirstChild() ? pGrandChild->FirstChild()->Value() : "";
         if (strValue != "-")
         { // update our item
-
-          // Check for as.xml overrides
-          for (CAdvancedSettings::SettingsOverrideList::iterator i = g_advancedSettings.m_settingsOverride.begin();
-            i != g_advancedSettings.m_settingsOverride.end(); i++)
-          {
-            if (strncmp((*it).first, i->setting.c_str(), i->setting.size()) == 0)
-            {
-               if (i->hidden || i->locked)
-               {
-                 (*it).second->FromString(i->value);
-                 return;
-               }
-             }
-          }
-
           (*it).second->FromString(strValue);
           if (advanced)
             (*it).second->SetAdvanced();
