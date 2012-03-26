@@ -179,8 +179,10 @@
   #undef HAS_SDL_JOYSTICK
   #undef HAS_SDL_WIN_EVENTS
   #undef HAS_DVD_DRIVE
-  #undef HAS_ZEROCONF
-  #undef HAS_AVAHI
+  #if defined(HAVE_LIBAVAHI_COMMON) && defined(HAVE_LIBAVAHI_CLIENT)
+    #define HAS_ZEROCONF
+    #define HAS_AVAHI
+  #endif
   #ifdef HAVE_DBUS
     #define HAS_DBUS
   #endif
@@ -191,7 +193,7 @@
   #define HAS_EGL
   #define HAS_GLES 2
   #define HAS_LINUX_EVENTS
-  #define HAS_LIRC
+  #undef  HAS_LIRC
 #endif
 
 #ifdef HAVE_LIBSSH
