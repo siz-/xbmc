@@ -479,7 +479,6 @@ case $host in
      fi
      ARCH="arm-osx"
      use_arch="arm"
-     AC_SUBST(ARCH_DEFINES, "-D_ARMEL")
      PYTHON_VERSION="2.6"
      PYTHON_LDFLAGS="-L${prefix}/lib -lpython2.6"
      PYTHON_CPPFLAGS="-I${prefix}/include/python2.6"
@@ -516,7 +515,7 @@ case $host in
      use_texturepacker_native=yes
      ARCH="arm"
      use_arch="arm"
-     AC_SUBST(ARCH_DEFINES, "-DTARGET_POSIX -DTARGET_LINUX -D_LINUX -D_ARMEL")
+     AC_SUBST(ARCH_DEFINES, "-DTARGET_POSIX -DTARGET_LINUX -D_LINUX")
 
      #hack. why are we handling this?
      if test "$use_cpu" = "no"; then
@@ -532,7 +531,7 @@ case $use_platform in
   amlogic-m1)
      target_platform=target_amlogic
      use_texturepacker_native=yes
-     AC_SUBST(ARCH_DEFINES, "-DTARGET_POSIX -DTARGET_LINUX -D_LINUX -D_ARMEL -DTARGET_AMLOGIC")
+     AC_SUBST(ARCH_DEFINES, "-DTARGET_POSIX -DTARGET_LINUX -D_LINUX -DTARGET_AMLOGIC")
      use_cpu=cortex-a9
      AC_DEFINE(HAS_EGLGLES, [1], [Define if supporting EGL based GLES Framebuffer])
      CFLAGS="$CFLAGS -Wno-psabi -Wa,-mno-warn-deprecated"
