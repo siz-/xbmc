@@ -150,7 +150,7 @@ bool CGLSLShaderProgram::CompileAndLink()
   {
     m_pVP->Free();
     return false;
-  }q  
+  }
   CLog::Log(LOGDEBUG, "GL: Fragment Shader compiled successfully");
 
   // create program object
