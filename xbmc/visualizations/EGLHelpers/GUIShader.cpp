@@ -22,8 +22,7 @@
 #ifdef HAS_GLES
 
 #include "GUIShader.h"
-#include "../../guilib/MatrixGLES.h"
-#include "utils/log.h"
+#include "guilib/MatrixGLES.h"
 
 CGUIShader::CGUIShader( const std::string& vert, const std::string& frag ) : CGLSLShaderProgram(vert, frag)
 {

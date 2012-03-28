@@ -18,26 +18,23 @@
  *  http://www.gnu.org/copyleft/gpl.html
  *
  */
-
-#ifdef HAS_GLES
-
 #include "Shader.h"
 #include "utils/GLUtils.h"
+#include "utils/log.h"
 #include <stdio.h>
 
 #define LOG_SIZE 1024
+#ifndef GLchar
 #define GLchar char
-
+#endif
+ 
 using namespace VisShaders;
-using namespace std;
 
 //////////////////////////////////////////////////////////////////////
 // CShader
 //////////////////////////////////////////////////////////////////////
-bool CShader::LoadSource(const string& buffer)
+bool CShader::LoadSource(const std::string& buffer)
 {
-  fprintf(stderr, "GL: loadsource\n");
-
   m_source = buffer;
   return true;
 }
@@ -58,24 +55,15 @@ bool CGLSLVertexShader::Compile()
   glCompileShader(m_vertexShader);
   glGetShaderiv(m_vertexShader, GL_COMPILE_STATUS, params);
   VerifyGLState();
+  m_compiled = true;
   if (params[0]!=GL_TRUE)
   {
     GLchar log[LOG_SIZE];
-    fprintf(stderr, "GL: Error compiling vertex shader ");
     glGetShaderInfoLog(m_vertexShader, LOG_SIZE, NULL, log);
-    printf("%s\n", log);
-    m_lastLog = log;
+    CLog::Log(LOGERROR, "GL: Error compiling vertex shader: %s", log);
     m_compiled = false;
   }
-  else
-  {
-    GLchar log[LOG_SIZE];
-    fprintf(stderr, "GL: Vertex Shader compilation log: ");
-    glGetShaderInfoLog(m_vertexShader, LOG_SIZE, NULL, log);
-    printf("%s\n", log);
-    m_lastLog = log;
-    m_compiled = true;
-  }
+
   return m_compiled;
 }
 
@@ -98,7 +86,7 @@ bool CGLSLPixelShader::Compile()
   // Pixel shaders are not mandatory.
   if (m_source.length()==0)
   {
-    fprintf(stderr, "GL: No pixel shader, fixed pipeline in use\n");
+    CLog::Log(LOGERROR, "GL: No pixel shader, fixed pipeline in use");
     return true;
   }
 
@@ -107,24 +95,15 @@ bool CGLSLPixelShader::Compile()
   glShaderSource(m_pixelShader, 1, &ptr, 0);
   glCompileShader(m_pixelShader);
   glGetShaderiv(m_pixelShader, GL_COMPILE_STATUS, params);
+  m_compiled = true;
   if (params[0]!=GL_TRUE)
   {
     GLchar log[LOG_SIZE];
-    fprintf(stderr, "GL: Error compiling pixel shader ");
     glGetShaderInfoLog(m_pixelShader, LOG_SIZE, NULL, log);
-    printf("%s \n", log);
-    m_lastLog = log;
+    CLog::Log(LOGERROR, "GL: Error compiling pixel shader: %s", log);
     m_compiled = false;
   }
-  else
-  {
-    GLchar log[LOG_SIZE];
-    fprintf(stderr, "GL: Pixel Shader compilation log: ");
-    glGetShaderInfoLog(m_pixelShader, LOG_SIZE, NULL, log);
-    fprintf(stderr, "%s \n", log);
-    m_lastLog = log;
-    m_compiled = true;
-  }
+
   return m_compiled;
 }
 
@@ -162,25 +141,22 @@ bool CGLSLShaderProgram::CompileAndLink()
 
   // compiled vertex shader
   if (!m_pVP->Compile())
-  {
-    fprintf(stderr, "GL: Error compiling vertex shader\n");
     return false;
-  }
-  fprintf(stderr, "GL: Vertex Shader compiled successfully\n");
+
+  CLog::Log(LOGDEBUG, "GL: Vertex Shader compiled successfully");
 
   // compile pixel shader
   if (!m_pFP->Compile())
   {
     m_pVP->Free();
-    fprintf(stderr, "GL: Error compiling fragment shader\n");
     return false;
-  }
-  fprintf(stderr, "GL: Fragment Shader compiled successfully\n");
+  }q  
+  CLog::Log(LOGDEBUG, "GL: Fragment Shader compiled successfully");
 
   // create program object
   if (!(m_shaderProgram = glCreateProgram()))
   {
-    fprintf(stderr, "GL: Error creating shader program handle\n");
+    CLog::Log(LOGERROR, "GL: Error creating shader program handle");
     goto error;
   }
 
@@ -202,9 +178,8 @@ bool CGLSLShaderProgram::CompileAndLink()
   if (params[0]!=GL_TRUE)
   {
     GLchar log[LOG_SIZE];
-    fprintf(stderr, "GL: Error linking shader ");
     glGetProgramInfoLog(m_shaderProgram, LOG_SIZE, NULL, log);
-    fprintf(stderr, "%s\n", log);
+    CLog::Log(LOGERROR, "GL: Error linking shader: %s", log);
     goto error;
   }
   VerifyGLState();
@@ -237,9 +212,8 @@ bool CGLSLShaderProgram::Enable()
         if (params[0]!=GL_TRUE)
         {
           GLchar log[LOG_SIZE];
-          fprintf(stderr, "GL: Error validating shader ");
           glGetProgramInfoLog(m_shaderProgram, LOG_SIZE, NULL, log);
-          fprintf(stderr, "%s \n", log);
+          CLog::Log(LOGERROR, "GL: Error validating shader: %s", log);
         }
         m_validated = true;
       }
@@ -264,5 +238,3 @@ void CGLSLShaderProgram::Disable()
     OnDisabled();
   }
 }
-
-#endif

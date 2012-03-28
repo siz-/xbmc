@@ -1,6 +1,4 @@
-#ifndef __SHADER_H__
-#define __SHADER_H__
-
+#pragma once
 /*
  *      Copyright (C) 2005-2008 Team XBMC
  *      http://www.xbmc.org
@@ -37,8 +35,6 @@
 
 namespace VisShaders {
 
-  using namespace std;
-
   //////////////////////////////////////////////////////////////////////
   // CShader - base class
   //////////////////////////////////////////////////////////////////////
@@ -47,21 +43,19 @@ namespace VisShaders {
   public:
     CShader() { m_compiled = false; }
     virtual ~CShader() {}
-    virtual bool Compile() = 0;
-    virtual void Free() = 0;
-    virtual GLuint Handle() = 0;
-    virtual void SetSource(const string& src) { m_source = src; }
-    virtual bool LoadSource(const string& buffer);
-    bool OK() { return m_compiled; }
+
+    virtual bool   Compile() = 0;
+    virtual void   Free()    = 0;
+    virtual GLuint Handle()  = 0;
+    virtual void   SetSource(const std::string& src) { m_source = src; }
+    virtual bool   LoadSource(const std::string& buffer);
+    bool           OK() { return m_compiled; }
 
   protected:
-    string m_source;
-    string m_lastLog;
-    vector<string> m_attr;
-    bool m_compiled;
-
+    std::string    m_source;
+    bool           m_compiled;
+    std::vector<std::string> m_attr;
   };
-
 
   //////////////////////////////////////////////////////////////////////
   // CVertexShader - vertex shader class
@@ -71,18 +65,19 @@ namespace VisShaders {
   public:
     CVertexShader() { m_vertexShader = 0; }
     virtual ~CVertexShader() { Free(); }
-    virtual void Free() {}
+
+    virtual void   Free() {}
     virtual GLuint Handle() { return m_vertexShader; }
 
   protected:
-    GLuint m_vertexShader;
+    GLuint         m_vertexShader;
   };
 
   class CGLSLVertexShader : public CVertexShader
   {
   public:
-    virtual void Free();
-    virtual bool Compile();
+    virtual void   Free();
+    virtual bool   Compile();
   };
 
   //////////////////////////////////////////////////////////////////////
@@ -93,19 +88,20 @@ namespace VisShaders {
   public:
     CPixelShader() { m_pixelShader = 0; }
     virtual ~CPixelShader() { Free(); }
-    virtual void Free() {}
+
+    virtual void   Free() {}
     virtual GLuint Handle() { return m_pixelShader; }
 
   protected:
-    GLuint m_pixelShader;
+    GLuint         m_pixelShader;
   };
 
 
   class CGLSLPixelShader : public CPixelShader
   {
   public:
-    virtual void Free();
-    virtual bool Compile();
+    virtual void   Free();
+    virtual bool   Compile();
   };
 
   //////////////////////////////////////////////////////////////////////
@@ -116,19 +112,19 @@ namespace VisShaders {
   {
   public:
     CShaderProgram()
-      {
-        m_ok = false;
-        m_shaderProgram = 0;
-        m_pFP = NULL;
-        m_pVP = NULL;
-      }
+    {
+      m_ok = false;
+      m_shaderProgram = 0;
+      m_pFP = NULL;
+      m_pVP = NULL;
+    }
 
     virtual ~CShaderProgram()
-      {
-        Free();
-        delete m_pFP;
-        delete m_pVP;
-      }
+    {
+      Free();
+      delete m_pFP;
+      delete m_pVP;
+    }
 
     // enable the shader
     virtual bool Enable() = 0;
@@ -159,7 +155,7 @@ namespace VisShaders {
     // and after it is disabled. Return false in OnDisabled() to
     // disable shader.
     // E.g. setting attributes, disabling texture unites, etc
-    virtual bool OnEnabled() { return true; }
+    virtual bool OnEnabled()  { return true; }
     virtual void OnDisabled() { }
 
     virtual GLuint ProgramHandle() { return m_shaderProgram; }
@@ -177,30 +173,29 @@ namespace VisShaders {
   {
   public:
     CGLSLShaderProgram()
-      {
-        m_pFP = new CGLSLPixelShader();
-        m_pVP = new CGLSLVertexShader();
-      }
-    CGLSLShaderProgram(const std::string& vert
-                     , const std::string& frag)
-      {
-        m_pFP = new CGLSLPixelShader();
-        m_pFP->LoadSource(frag);
-        m_pVP = new CGLSLVertexShader();
-        m_pVP->LoadSource(vert);
-      }
+    {
+      m_pFP = new CGLSLPixelShader();
+      m_pVP = new CGLSLVertexShader();
+    }
+    CGLSLShaderProgram(const std::string& vert, const std::string& frag)
+    {
+      m_pFP = new CGLSLPixelShader();
+      m_pFP->LoadSource(frag);
+      m_pVP = new CGLSLVertexShader();
+      m_pVP->LoadSource(vert);
+    }
 
     // enable the shader
-    virtual bool Enable();
+    virtual bool  Enable();
 
     // disable the shader
-    virtual void Disable();
+    virtual void  Disable();
 
     // free resources
-    virtual void Free();
+    virtual void  Free();
 
     // compile and link the shaders
-    virtual bool CompileAndLink();
+    virtual bool  CompileAndLink();
 
   protected:
     GLint         m_lastProgram;
@@ -210,5 +205,3 @@ namespace VisShaders {
 
 } // close namespace
 #endif
-
-#endif //__SHADER_H__

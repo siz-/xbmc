@@ -1,3 +1,4 @@
+#pragma once
 /*
 *      Copyright (C) 2005-2008 Team XBMC
 *      http://www.xbmc.org
@@ -18,11 +19,6 @@
 *  http://www.gnu.org/copyleft/gpl.html
 *
 */
-
-#ifndef GUI_SHADER_H
-#define GUI_SHADER_H
-
-#pragma once
 
 #include "Shader.h"
 
@@ -56,6 +52,5 @@ protected:
   GLfloat *m_proj;
   GLfloat *m_model;
 };
-#endif
 
-#endif // GUI_SHADER_H
+#endif
