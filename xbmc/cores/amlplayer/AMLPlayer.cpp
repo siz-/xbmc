@@ -39,6 +39,7 @@
 #include "windowing/egl/WinEGLPlatform.h"
 #include "utils/log.h"
 #include "utils/TimeUtils.h"
+#include "utils/JobManager.h"
 #include "utils/URIUtils.h"
 #include "utils/LangCodeExpander.h"
 #include "settings/VideoSettings.h"
@@ -478,6 +479,7 @@ CAMLPlayer::CAMLPlayer(IPlayerCallback &callback)
   m_log_level = 3;
 #endif
   m_StopPlaying = false;
+  m_can_thumbgen = true;
 }
 
 CAMLPlayer::~CAMLPlayer()
@@ -1201,6 +1203,11 @@ bool CAMLPlayer::GetCurrentSubtitle(CStdString& strSubtitle)
   return !strSubtitle.IsEmpty();
 }
 
+bool CAMLPlayer::ConcurrentThumbGen()
+{
+  return m_can_thumbgen;
+}
+
 void CAMLPlayer::OnStartup()
 {
   //m_CurrentVideo.Clear();
@@ -1234,6 +1241,9 @@ void CAMLPlayer::Process()
   CLog::Log(LOGNOTICE, "CAMLPlayer::Process");
   try
   {
+    m_can_thumbgen = false;
+    CJobManager::GetInstance().CancelJobs(false);
+
     m_elapsed_ms  =  0;
     m_duration_ms =  0;
 
@@ -1518,6 +1528,7 @@ void CAMLPlayer::Process()
 
   // reset ac3/dts passthough
   SetAudioPassThrough(AFORMAT_UNKNOWN);
+  m_can_thumbgen = true;
 
   if (m_log_level > 5)
     printf("CAMLPlayer::Process exit\n");

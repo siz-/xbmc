@@ -213,7 +213,7 @@ public:
    Should be called prior to destroying any objects that may be being used as callbacks
    \sa CancelJob(), AddJob()
    */
-  void CancelJobs();
+  void CancelJobs(bool shutdown = true);
 
 protected:
   friend class CJobWorker;

@@ -161,6 +161,8 @@ public:
   virtual void  GetAudioCapabilities(Features* audioCaps);
   virtual void  GetSubtitleCapabilities(Features* subCaps);
 
+  virtual bool  ConcurrentThumbGen();
+
 protected:
   virtual void  OnStartup();
   virtual void  OnExit();
@@ -192,6 +194,7 @@ private:
   CFileItem               m_item;
   CPlayerOptions          m_options;
   int                     m_log_level;
+  bool                    m_can_thumbgen;
 
   int64_t                 m_elapsed_ms;
   int64_t                 m_duration_ms;

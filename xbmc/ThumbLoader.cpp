@@ -21,6 +21,7 @@
 
 #include "filesystem/StackDirectory.h"
 #include "ThumbLoader.h"
+#include "Application.h"
 #include "utils/URIUtils.h"
 #include "URL.h"
 #include "pictures/Picture.h"
@@ -133,6 +134,9 @@ bool CThumbExtractor::DoWork()
     return false;
 
   if (URIUtils::IsRemote(m_path) && !URIUtils::IsOnLAN(m_path))
+    return false;
+
+  if (g_application.m_pPlayer && !g_application.m_pPlayer->ConcurrentThumbGen())
     return false;
 
   bool result=false;
@@ -253,6 +257,9 @@ bool CVideoThumbLoader::LoadItem(CFileItem* pItem)
       else if (!pItem->m_bIsFolder && pItem->IsVideo() && g_guiSettings.GetBool("myvideos.extractthumb") &&
                g_guiSettings.GetBool("myvideos.extractflags"))
       {
+        if (g_application.m_pPlayer && !g_application.m_pPlayer->ConcurrentThumbGen())
+          return false;
+
         CFileItem item(*pItem);
         CStdString path(item.GetPath());
         if (URIUtils::IsInRAR(item.GetPath()))
@@ -273,6 +280,9 @@ bool CVideoThumbLoader::LoadItem(CFileItem* pItem)
        (!pItem->GetVideoInfoTag()->HasStreamDetails() ||
          pItem->GetVideoInfoTag()->m_streamDetails.GetVideoDuration() <= 0))
   {
+    if (g_application.m_pPlayer && !g_application.m_pPlayer->ConcurrentThumbGen())
+      return false;
+
     CFileItem item(*pItem);
     CStdString path(item.GetPath());
     if (URIUtils::IsInRAR(item.GetPath()))

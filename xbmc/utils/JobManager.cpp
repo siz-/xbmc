@@ -150,7 +150,7 @@ CJobManager::CJobManager()
   m_running = true;
 }
 
-void CJobManager::CancelJobs()
+void CJobManager::CancelJobs(bool shutdown)
 {
   CSingleLock lock(m_section);
   m_running = false;
@@ -163,7 +163,8 @@ void CJobManager::CancelJobs()
   }
 
   // cancel any callbacks on jobs still processing
-  for_each(m_processing.begin(), m_processing.end(), mem_fun_ref(&CWorkItem::Cancel));
+  if (shutdown)
+    for_each(m_processing.begin(), m_processing.end(), mem_fun_ref(&CWorkItem::Cancel));
 
   // tell our workers to finish
   while (m_workers.size())
