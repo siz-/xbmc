@@ -25,7 +25,7 @@
 #include "windowing/WindowingFactory.h"
 
 void _VerifyGLState(const char* szfile, const char* szfunction, int lineno){
-#if defined(HAS_GL) && defined(_DEBUG)
+#if (defined(HAS_GL) || defined(HAS_GLES)) && defined(_DEBUG)
 #define printMatrix(matrix)                                             \
   {                                                                     \
     for (int ixx = 0 ; ixx<4 ; ixx++)                                   \
@@ -35,11 +35,17 @@ void _VerifyGLState(const char* szfile, const char* szfunction, int lineno){
                   matrix[ixx*4+3]);                                     \
       }                                                                 \
   }
-  if (g_advancedSettings.m_logLevel < LOG_LEVEL_DEBUG_FREEMEM)
+  if (g_advancedSettings.m_logLevel < LOG_LEVEL_DEBUG)
     return;
   GLenum err = glGetError();
   if (err==GL_NO_ERROR)
     return;
+#if defined(HAS_GLES)
+  CLog::Log(LOGERROR, "GL ERROR: %d\n", err);
+  if (szfile && szfunction)
+      CLog::Log(LOGERROR, "In file:%s function:%s line:%d", szfile, szfunction, lineno);
+
+#else
   CLog::Log(LOGERROR, "GL ERROR: %s\n", gluErrorString(err));
   if (szfile && szfunction)
       CLog::Log(LOGERROR, "In file:%s function:%s line:%d", szfile, szfunction, lineno);
@@ -57,6 +63,7 @@ void _VerifyGLState(const char* szfile, const char* szfunction, int lineno){
   glGetFloatv(GL_MODELVIEW_MATRIX, matrix);
   CLog::Log(LOGDEBUG, "Modelview Matrix:");
   printMatrix(matrix);
+#endif
 //  abort();
 #endif
 }
