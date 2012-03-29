@@ -8,7 +8,6 @@ ifeq (@USE_OPENGLES@,1)
   DEFINES += -DHAS_GLES=2
   OBJS += @abs_top_srcdir@/xbmc/visualizations/EGLHelpers/GUIShader.o
   OBJS += @abs_top_srcdir@/xbmc/visualizations/EGLHelpers/Shader.o
-  OBJS += @abs_top_srcdir@/xbmc/guilib/MatrixGLES.o
   ifeq ($(findstring osx,$(ARCH)), osx)
     LDFLAGS += -framework OpenGLES
   else
