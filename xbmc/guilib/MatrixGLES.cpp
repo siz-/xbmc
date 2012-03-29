@@ -42,12 +42,10 @@ CMatrixGLES::CMatrixGLES()
   }
   m_matrixMode = (EMATRIXMODE)-1;
   m_pMatrix    = NULL;
-  printf("CMatrixGLES::CMatrixGLES\n");
 }
 
 CMatrixGLES::~CMatrixGLES()
 {
-  printf("CMatrixGLES::~CMatrixGLES\n");
 }
 
 GLfloat* CMatrixGLES::GetMatrix(EMATRIXMODE mode)
