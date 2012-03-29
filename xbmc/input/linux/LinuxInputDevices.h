@@ -50,6 +50,7 @@ private:
   bool AbsEvent(const struct input_event& levt, XBMC_Event& devt);
   bool TranslateEvent(const struct input_event& levt, XBMC_Event& devt);
   void SetLed(int led, int state);
+  void SetupKeyboardAutoRepeat(int fd);
   void GetInfo(int fd);
   bool Open();
   void Close();

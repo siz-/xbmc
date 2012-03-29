@@ -130,10 +130,10 @@ typedef unsigned long kernel_ulong_t;
 static const
 XBMCKey basic_keycodes[] = { XBMCK_UNKNOWN, XBMCK_ESCAPE, XBMCK_1, XBMCK_2, XBMCK_3,
     XBMCK_4, XBMCK_5, XBMCK_6, XBMCK_7, XBMCK_8, XBMCK_9, XBMCK_0, XBMCK_MINUS,
-    XBMCK_EQUALS, XBMCK_BACKSPACE,
+    XBMCK_EQUALS, XBMCK_BACKSPACE, //15
 
     XBMCK_TAB, XBMCK_q, XBMCK_w, XBMCK_e, XBMCK_r, XBMCK_t, XBMCK_y, XBMCK_u, XBMCK_i,
-    XBMCK_o, XBMCK_p, XBMCK_LEFTBRACKET, XBMCK_RIGHTBRACKET, XBMCK_RETURN,
+    XBMCK_o, XBMCK_p, XBMCK_LEFTBRACKET, XBMCK_RIGHTBRACKET, XBMCK_RETURN, //30
 
     XBMCK_LCTRL, XBMCK_a, XBMCK_s, XBMCK_d, XBMCK_f, XBMCK_g, XBMCK_h, XBMCK_j,
     XBMCK_k, XBMCK_l, XBMCK_SEMICOLON, XBMCK_QUOTE, XBMCK_BACKQUOTE,
@@ -216,7 +216,7 @@ XBMCKey basic_keycodes[] = { XBMCK_UNKNOWN, XBMCK_ESCAPE, XBMCK_1, XBMCK_2, XBMC
 
     /*KEY_ISO,*/XBMCK_UNKNOWN,
     /*KEY_CONFIG,*/XBMCK_UNKNOWN,
-    /*KEY_HOMEPAGE, KEY_REFRESH,*/XBMCK_UNKNOWN, XBMCK_SHUFFLE,
+    /*KEY_HOMEPAGE, KEY_REFRESH,*/XBMCK_HOME, XBMCK_SHUFFLE,
 
     /*DIKS_EXIT*/XBMCK_UNKNOWN, /*KEY_MOVE,*/XBMCK_UNKNOWN, /*DIKS_EDITOR*/XBMCK_UNKNOWN,
 
@@ -234,7 +234,7 @@ XBMCKey basic_keycodes[] = { XBMCK_UNKNOWN, XBMCK_ESCAPE, XBMCK_1, XBMCK_2, XBMC
     DFB_FUNCTION_KEY(19), DFB_FUNCTION_KEY(20), DFB_FUNCTION_KEY(21),
     DFB_FUNCTION_KEY(22), DFB_FUNCTION_KEY(23), DFB_FUNCTION_KEY(24),
 */
-    XBMCK_UNKNOWN, XBMCK_UNKNOWN, XBMCK_UNKNOWN,
+    XBMCK_F13, XBMCK_F14, XBMCK_F15,
     XBMCK_UNKNOWN, XBMCK_UNKNOWN, XBMCK_UNKNOWN,
     XBMCK_UNKNOWN, XBMCK_UNKNOWN, XBMCK_UNKNOWN,
     XBMCK_UNKNOWN, XBMCK_UNKNOWN, XBMCK_UNKNOWN,
@@ -353,6 +353,7 @@ CLinuxInputDevice::~CLinuxInputDevice()
  */
 XBMCKey CLinuxInputDevice::TranslateKey(unsigned short code)
 {
+
   if (code < D_ARRAY_SIZE(basic_keycodes))
     return basic_keycodes[code];
 
@@ -645,10 +646,6 @@ bool CLinuxInputDevice::AbsEvent(const struct input_event& levt, XBMC_Event& dev
     m_mouseY = levt.value;
     break;
   
-  case ABS_MISC:
-    remoteStatus = levt.value & 0xFF;
-    break;
-
   case ABS_Z:
   default:
     return false;
@@ -669,8 +666,7 @@ bool CLinuxInputDevice::AbsEvent(const struct input_event& levt, XBMC_Event& dev
 /*
  * Translates a Linux input event into a DirectFB input event.
  */
-bool CLinuxInputDevice::TranslateEvent(const struct input_event& levt,
-    XBMC_Event& devt)
+bool CLinuxInputDevice::TranslateEvent(const struct input_event& levt, XBMC_Event& devt)
 {
   switch (levt.type)
   {
@@ -680,7 +676,8 @@ bool CLinuxInputDevice::TranslateEvent(const struct input_event& levt,
   case EV_REL:
     if (m_bSkipNonKeyEvents)
     {
-      CLog::Log(LOGINFO, "read a relative event which will be ignored (device name %s) (file name %s)", m_deviceName, m_fileName.c_str());
+      CLog::Log(LOGINFO, "CLinuxInputDevice: read a relative event which will be ignored (device name %s) (file name %s)",
+        m_deviceName, m_fileName.c_str());
       return false;
     }
 
@@ -689,11 +686,19 @@ bool CLinuxInputDevice::TranslateEvent(const struct input_event& levt,
   case EV_ABS:
     if (m_bSkipNonKeyEvents)
     {
-      CLog::Log(LOGINFO, "read an absolute event which will be ignored (device name %s) (file name %s)", m_deviceName, m_fileName.c_str());
+      CLog::Log(LOGINFO, "CLinuxInputDevice: read an absolute event which will be ignored (device name %s) (file name %s)",
+        m_deviceName, m_fileName.c_str());
       return false;
     }
 
     return AbsEvent(levt, devt);
+
+  case EV_LED:
+    if(levt.code == LED_MISC)
+    {
+      remoteStatus = levt.value & 0xFF;
+    }
+    return false;
 
   default:
     ;
@@ -760,6 +765,52 @@ XBMC_Event CLinuxInputDevice::ReadEvent()
   return devt;
 }
 
+void CLinuxInputDevice::SetupKeyboardAutoRepeat(int fd)
+{
+  bool enable = true;
+
+#if defined(TARGET_AMLOGIC)
+  // turn off keyboard autorepeat, there is a kernel bug
+  // where if the cpu is max'ed then key up is missed and
+  // we get a flood of EV_REP that never stop until next
+  // key down/up. Very nasty when seeking during video playback.
+  enable = false;
+  // ignore the native aml driver named 'key_input',
+  //  it is the dedicated power key handler (am_key_input)
+  if (strncmp(m_deviceName, "key_input", strlen("key_input")) == 0)
+    enable = true;
+  // ignore the native aml driver named 'aml_keypad',
+  //  it is the dedicated IR remote handler (amremote)
+  else if (strncmp(m_deviceName, "aml_keypad", strlen("aml_keypad")) == 0)
+    enable = true;
+#endif
+
+  if (enable)
+  {
+    int kbdrep[2] = { 400, 80 };
+    ioctl(fd, EVIOCSREP, kbdrep);
+  }
+  else
+  {
+    struct input_event event;
+    memset(&event, 0, sizeof(event));
+
+    gettimeofday(&event.time, NULL);
+    event.type  = EV_REP;
+    event.code  = REP_DELAY;
+    event.value = 0;
+    write(fd, &event, sizeof(event));
+
+    gettimeofday(&event.time, NULL);
+    event.type  = EV_REP;
+    event.code  = REP_PERIOD;
+    event.value = 0;
+    write(fd, &event, sizeof(event));
+
+    CLog::Log(LOGINFO, "CLinuxInputDevice: auto key repeat disabled on device '%s'\n", m_deviceName);
+  }
+}
+
 /*
  * Fill device information.
  * Queries the input device and tries to classify it.
@@ -774,6 +825,8 @@ void CLinuxInputDevice::GetInfo(int fd)
 
   unsigned long evbit[NBITS(EV_CNT)];
   unsigned long keybit[NBITS(KEY_CNT)];
+  unsigned long relbit[NBITS(REL_CNT)];
+  unsigned long absbit[NBITS(ABS_CNT)];
 
   /* get device name */
   bzero(m_deviceName, sizeof(m_deviceName));
@@ -787,7 +840,7 @@ void CLinuxInputDevice::GetInfo(int fd)
   {
     m_bSkipNonKeyEvents = false;
   }
-  CLog::Log(LOGINFO, "opened device '%s' (file name %s), m_bSkipNonKeyEvents %d\n", m_deviceName, m_fileName.c_str(), m_bSkipNonKeyEvents);
+  CLog::Log(LOGINFO, "CLinuxInputDevice: opened device '%s' (file name %s), m_bSkipNonKeyEvents %d\n", m_deviceName, m_fileName.c_str(), m_bSkipNonKeyEvents);
 
   /* get event type bits */
   ioctl(fd, EVIOCGBIT(0, sizeof(evbit)), evbit);
@@ -812,10 +865,6 @@ void CLinuxInputDevice::GetInfo(int fd)
       if (test_bit( i, keybit ))
         num_buttons++;
   }
-
-#ifndef HAS_INTELCE
-  unsigned long relbit[NBITS(REL_CNT)];
-  unsigned long absbit[NBITS(ABS_CNT)];
 
   if (test_bit( EV_REL, evbit ))
   {
@@ -848,7 +897,6 @@ void CLinuxInputDevice::GetInfo(int fd)
     m_deviceType |= LI_DEVICE_MOUSE;
   else if (num_abs && num_buttons) /* Or a Joystick? */
     m_deviceType |= LI_DEVICE_JOYSTICK;
-#endif
 
   /* A Keyboard, do we have at least some letters? */
   if (num_keys > 20)
@@ -902,7 +950,7 @@ bool CLinuxInputDevices::CheckDevice(const char *device)
 {
   int fd;
 
-  //CLog::Log(LOGDEBUG, "Checking device: %s\n", device);
+  //CLog::Log(LOGDEBUG, "CLinuxInputDevice: Checking device: %s\n", device);
   /* Check if we are able to open the device */
   fd = open(device, O_RDWR);
   if (fd < 0)
@@ -948,7 +996,7 @@ void CLinuxInputDevices::InitAvailable()
     snprintf(buf, 32, "/dev/input/event%d", i);
     if (CheckDevice(buf))
     {
-      CLog::Log(LOGINFO, "Found input device %s", buf);
+      CLog::Log(LOGINFO, "CLinuxInputDevice: Found input device %s", buf);
       m_devices.push_back(new CLinuxInputDevice(buf, deviceId));
       ++deviceId;
     }
@@ -981,9 +1029,6 @@ bool CLinuxInputDevice::Open()
     return false;
   }
 
-  int kbdrep[2] = { 400, 80 };
-  ioctl(fd, EVIOCSREP, kbdrep);
-
   // Set the socket to non-blocking
   int opts = 0;
   if ((opts = fcntl(fd, F_GETFL)) < 0)
@@ -1004,6 +1049,9 @@ bool CLinuxInputDevice::Open()
   /* fill device info structure */
   GetInfo(fd);
 
+  if (m_deviceType & LI_DEVICE_KEYBOARD)
+    SetupKeyboardAutoRepeat(fd);
+
   m_fd = fd;
   m_vt_fd = -1;
 
@@ -1013,13 +1061,13 @@ bool CLinuxInputDevice::Open()
       m_vt_fd = open("/dev/tty0", O_RDWR | O_NOCTTY);
 
     if (m_vt_fd < 0)
-      CLog::Log(LOGWARNING, "no keymap support (requires /dev/tty0 - CONFIG_VT)");
+      CLog::Log(LOGWARNING, "CLinuxInputDevice: no keymap support (requires /dev/tty0 - CONFIG_VT)");
   }
 
   /* check if the device has LEDs */
   ret = ioctl(fd, EVIOCGBIT(EV_LED, sizeof(ledbit)), ledbit);
   if (ret < 0)
-	  CLog::Log(LOGWARNING, "DirectFB/linux_input: could not get LED bits" );
+	  CLog::Log(LOGWARNING, "CLinuxInputDevice: DirectFB/linux_input: could not get LED bits" );
   else
     m_hasLeds = test_bit( LED_SCROLLL, ledbit ) || test_bit( LED_NUML, ledbit )
         || test_bit( LED_CAPSL, ledbit );
@@ -1030,7 +1078,7 @@ bool CLinuxInputDevice::Open()
     ret = ioctl(fd, EVIOCGLED(sizeof(m_ledState)), m_ledState);
     if (ret < 0)
     {
-      CLog::Log(LOGERROR, "DirectFB/linux_input: could not get LED state");
+      CLog::Log(LOGERROR, "CLinuxInputDevice: DirectFB/linux_input: could not get LED state");
       goto driver_open_device_error;
     }
 
@@ -1068,12 +1116,6 @@ bool CLinuxInputDevice::GetKeymapEntry(KeymapEntry& entry)
   if (m_vt_fd < 0)
     return false;
 
-  // to support '+'  and '/' with Boxee's remote control we do something ugly like this for now
-  if (KVAL(code) == 98)
-  {
-    code = K(KTYP(code),53);
-  }
-
   /* fetch the base level */
   value = KeyboardGetSymbol(KeyboardReadValue(K_NORMTAB, code));
   //printf("base=%d typ=%d code %d\n", KVAL(value), KTYP(value), code);
@@ -1087,14 +1129,6 @@ bool CLinuxInputDevice::GetKeymapEntry(KeymapEntry& entry)
 
   /* write shifted base level symbol to entry */
   entry.shift = value; //KeyboardGetSymbol(code, value, LI_KEYLEVEL_SHIFT);
-
-  // to support '+'  and '/' with Boxee's remote control we could do ugly something like this for now
-  if (KVAL(code) == 78)
-  {
-    //code = K(KTYP(code),13);
-    //entry.code = K(KTYP(code),13);
-    entry.base = K(KTYP(code),43);
-  }
 
   /* fetch the alternative level */
   value = KeyboardGetSymbol(KeyboardReadValue(K_ALTTAB, entry.code));
