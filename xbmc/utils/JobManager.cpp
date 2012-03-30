@@ -244,7 +244,7 @@ CJob *CJobManager::PopJob()
       // skip adding any paused types
       if (priority <= CJob::PRIORITY_LOW)
       {
-        CStdStringArray::iterator i = find(m_pausedTypes.begin(), m_pausedTypes.end(), CStdString(job.m_job->GetType()));
+        CStdStringArray::iterator i = find(m_pausedTypes.begin(), m_pausedTypes.end(), job.m_job->GetType());
         if (i != m_pausedTypes.end())
           return NULL;
       }
@@ -289,7 +289,7 @@ int CJobManager::IsProcessing(CStdString pausedType)
   CSingleLock lock(m_section);
   for(Processing::iterator it = m_processing.begin(); it < m_processing.end(); it++)
   {
-    if (pausedType.Equals(CStdString(it->m_job->GetType())));
+    if (pausedType.Equals(it->m_job->GetType()))
       jobsMatched++;
   }
   return jobsMatched;
