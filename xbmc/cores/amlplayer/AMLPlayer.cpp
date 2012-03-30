@@ -1851,7 +1851,7 @@ bool CAMLPlayer::WaitForFormatValid(int timeout_ms)
             memset(info, 0x00, sizeof(AMLPlayerStreamInfo));
 
             info->id = media_info.sub_info[i]->id;
-            if (media_info.sub_info[i]->sub_language[0] != 0)
+            if (media_info.sub_info[i]->sub_language && media_info.sub_info[i]->sub_language[0] != 0)
               strncpy(info->language, media_info.sub_info[i]->sub_language, 3);
             m_subtitle_streams.push_back(info);
           }
