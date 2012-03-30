@@ -244,7 +244,7 @@ CJob *CJobManager::PopJob()
       // skip adding any paused types
       if (priority <= CJob::PRIORITY_LOW)
       {
-        CStdStringArray::iterator i = find(m_pausedTypes.begin(), m_pausedTypes.end(), job.m_job->GetType());
+        std::vector<std::string>::iterator i = find(m_pausedTypes.begin(), m_pausedTypes.end(), job.m_job->GetType());
         if (i != m_pausedTypes.end())
           return NULL;
       }
@@ -259,37 +259,37 @@ CJob *CJobManager::PopJob()
   return NULL;
 }
 
-void CJobManager::Pause(CStdString pausedType)
+void CJobManager::Pause(std::string pausedType)
 {
   CSingleLock lock(m_section);
-  CStdStringArray::iterator i = find(m_pausedTypes.begin(), m_pausedTypes.end(), pausedType);
+  std::vector<std::string>::iterator i = find(m_pausedTypes.begin(), m_pausedTypes.end(), pausedType);
   if (i != m_pausedTypes.end())
     return;
   m_pausedTypes.push_back(pausedType);
 }
 
-void CJobManager::UnPause(CStdString pausedType)
+void CJobManager::UnPause(std::string pausedType)
 {
   CSingleLock lock(m_section);
-  CStdStringArray::iterator i = find(m_pausedTypes.begin(), m_pausedTypes.end(), pausedType);
+  std::vector<std::string>::iterator i = find(m_pausedTypes.begin(), m_pausedTypes.end(), pausedType);
   if (i != m_pausedTypes.end())
     m_pausedTypes.erase(i);
 }
 
-bool CJobManager::IsPaused(CStdString pausedType)
+bool CJobManager::IsPaused(std::string pausedType)
 {
   CSingleLock lock(m_section);
-  CStdStringArray::iterator i = find(m_pausedTypes.begin(), m_pausedTypes.end(), pausedType);
+  std::vector<std::string>::iterator i = find(m_pausedTypes.begin(), m_pausedTypes.end(), pausedType);
   return (i != m_pausedTypes.end());
 }
 
-int CJobManager::IsProcessing(CStdString pausedType)
+int CJobManager::IsProcessing(std::string pausedType)
 {
   int jobsMatched = 0;
   CSingleLock lock(m_section);
   for(Processing::iterator it = m_processing.begin(); it < m_processing.end(); it++)
   {
-    if (pausedType.Equals(it->m_job->GetType()))
+    if (pausedType == std::string(it->m_job->GetType()))
       jobsMatched++;
   }
   return jobsMatched;

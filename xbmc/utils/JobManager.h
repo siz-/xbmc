@@ -26,7 +26,6 @@
 #include "threads/CriticalSection.h"
 #include "threads/Thread.h"
 #include "Job.h"
-#include "StdString.h"
 
 class CJobManager;
 
@@ -224,21 +223,21 @@ public:
    \param pausedType only jobs of this type will be affected
    \sa UnPause(), IsPaused(), IsProcessing()
    */
-  void Pause(CStdString pausedType);
+  void Pause(std::string pausedType);
 
   /*!
    \brief Resumes queueing of the specified type
    \param pausedType only jobs of this type will be affected
    \sa Pause(), IsPaused(), IsProcessing()
    */
-  void UnPause(CStdString pausedType);
+  void UnPause(std::string pausedType);
 
   /*!
    \brief Checks if jobs of specified type are paused.
    \param pausedType only jobs of this type will be affected
    \sa Pause(), UnPause(), IsProcessing()
    */
-  bool IsPaused(CStdString pausedType);
+  bool IsPaused(std::string pausedType);
 
   /*!
    \brief Checks to see if any jobs of a specific type are currently processing.
@@ -246,7 +245,7 @@ public:
    \return Number of matching jobs
    \sa Pause(), UnPause(), IsPaused()
    */
-  int IsProcessing(CStdString pausedType);
+  int IsProcessing(std::string pausedType);
 
 protected:
   friend class CJobWorker;
@@ -308,5 +307,5 @@ private:
   CCriticalSection m_section;
   CEvent           m_jobEvent;
   bool             m_running;
-  CStdStringArray  m_pausedTypes;
+  std::vector<std::string>  m_pausedTypes;
 };
