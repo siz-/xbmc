@@ -21,6 +21,7 @@
 */
 
 #include <vector>
+#include <string.h>
 
 enum EMATRIXMODE
 {
