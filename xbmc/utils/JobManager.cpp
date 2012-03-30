@@ -262,9 +262,9 @@ CJob *CJobManager::PopJob()
 void CJobManager::Pause(std::string pausedType)
 {
   CSingleLock lock(m_section);
-  std::vector<std::string>::iterator i = find(m_pausedTypes.begin(), m_pausedTypes.end(), pausedType);
-  if (i != m_pausedTypes.end())
-    return;
+  // just push it in so we get ref counting,
+  // the queue will resume when all Pause requests
+  // for a given type have been UnPaused.
   m_pausedTypes.push_back(pausedType);
 }
 
