@@ -240,6 +240,15 @@ CJob *CJobManager::PopJob()
     if (m_jobQueue[priority].size() && m_processing.size() < GetMaxWorkers(CJob::PRIORITY(priority)))
     {
       CWorkItem job = m_jobQueue[priority].front();
+
+      // skip adding any paused types
+      if (priority <= CJob::PRIORITY_LOW)
+      {
+        CStdStringArray::iterator i = find(m_pausedTypes.begin(), m_pausedTypes.end(), CStdString(job.m_job->GetType()));
+        if (i != m_pausedTypes.end())
+          return NULL;
+      }
+
       m_jobQueue[priority].pop_front();
       // add to the processing vector
       m_processing.push_back(job);
@@ -248,6 +257,42 @@ CJob *CJobManager::PopJob()
     }
   }
   return NULL;
+}
+
+void CJobManager::Pause(CStdString pausedType)
+{
+  CSingleLock lock(m_section);
+  CStdStringArray::iterator i = find(m_pausedTypes.begin(), m_pausedTypes.end(), pausedType);
+  if (i != m_pausedTypes.end())
+    return;
+  m_pausedTypes.push_back(pausedType);
+}
+
+void CJobManager::UnPause(CStdString pausedType)
+{
+  CSingleLock lock(m_section);
+  CStdStringArray::iterator i = find(m_pausedTypes.begin(), m_pausedTypes.end(), pausedType);
+  if (i != m_pausedTypes.end())
+    m_pausedTypes.erase(i);
+}
+
+bool CJobManager::IsPaused(CStdString pausedType)
+{
+  CSingleLock lock(m_section);
+  CStdStringArray::iterator i = find(m_pausedTypes.begin(), m_pausedTypes.end(), pausedType);
+  return (i != m_pausedTypes.end());
+}
+
+int CJobManager::IsProcessing(CStdString pausedType)
+{
+  int jobsMatched = 0;
+  CSingleLock lock(m_section);
+  for(Processing::iterator it = m_processing.begin(); it < m_processing.end(); it++)
+  {
+    if (pausedType.Equals(CStdString(it->m_job->GetType())));
+      jobsMatched++;
+  }
+  return jobsMatched;
 }
 
 CJob *CJobManager::GetNextJob(const CJobWorker *worker)

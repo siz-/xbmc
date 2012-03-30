@@ -1,6 +1,6 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2012 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -26,6 +26,7 @@
 #include "threads/CriticalSection.h"
 #include "threads/Thread.h"
 #include "Job.h"
+#include "StdString.h"
 
 class CJobManager;
 
@@ -215,6 +216,38 @@ public:
    */
   void CancelJobs(bool shutdown = true);
 
+  /*!
+   \brief Suspends queueing of the specified type until unpaused
+   Useful to (for ex) stop queuing thumb jobs during video playback. Only affects PRIORITY_LOW or lower.
+   Does not affect currently processing jobs, use CheckTypeProcessing to see if any need to be waited on
+   Types accumulate, so more than one can be set at a time.
+   \param pausedType only jobs of this type will be affected
+   \sa UnPause(), IsPaused(), IsProcessing()
+   */
+  void Pause(CStdString pausedType);
+
+  /*!
+   \brief Resumes queueing of the specified type
+   \param pausedType only jobs of this type will be affected
+   \sa Pause(), IsPaused(), IsProcessing()
+   */
+  void UnPause(CStdString pausedType);
+
+  /*!
+   \brief Checks if jobs of specified type are paused.
+   \param pausedType only jobs of this type will be affected
+   \sa Pause(), UnPause(), IsProcessing()
+   */
+  bool IsPaused(CStdString pausedType);
+
+  /*!
+   \brief Checks to see if any jobs of a specific type are currently processing.
+   \param pausedType Job type to search for
+   \return Number of matching jobs
+   \sa Pause(), UnPause(), IsPaused()
+   */
+  int IsProcessing(CStdString pausedType);
+
 protected:
   friend class CJobWorker;
   friend class CJob;
@@ -275,4 +308,5 @@ private:
   CCriticalSection m_section;
   CEvent           m_jobEvent;
   bool             m_running;
+  CStdStringArray  m_pausedTypes;
 };
