@@ -500,6 +500,34 @@ bool CAMLPlayer::OpenFile(const CFileItem &file, const CPlayerOptions &options)
     m_item = file;
     m_options = options;
 
+    m_elapsed_ms  =  0;
+    m_duration_ms =  0;
+
+    m_audio_info  = "none";
+    m_audio_delay = g_settings.m_currentVideoSettings.m_AudioDelay;
+    m_audio_passthrough_ac3 = g_guiSettings.GetBool("audiooutput.ac3passthrough");
+    m_audio_passthrough_dts = g_guiSettings.GetBool("audiooutput.dtspassthrough");
+
+    m_video_info  = "none";
+    m_video_width    =  0;
+    m_video_height   =  0;
+    m_video_fps_numerator = 25;
+    m_video_fps_denominator = 1;
+
+    m_subtitle_delay =  0;
+    m_subtitle_thread = NULL;
+
+    m_chapter_index  =  0;
+    m_chapter_count  =  0;
+
+    m_show_mainvideo = -1;
+    m_dst_rect.SetRect(0, 0, 0, 0);
+    m_zoom           = -1;
+    m_contrast       = -1;
+    m_brightness     = -1;
+
+    ClearStreamInfos();
+
     m_StopPlaying = false;
     // setup to spin the busy dialog until we are playing
     m_ready.Reset();
@@ -1248,34 +1276,6 @@ void CAMLPlayer::Process()
         throw "CAMLPlayer::Process:thumbgen jobs still running !!!";
       }
     }
-
-    m_elapsed_ms  =  0;
-    m_duration_ms =  0;
-
-    m_audio_info  = "none";
-    m_audio_delay = g_settings.m_currentVideoSettings.m_AudioDelay;
-    m_audio_passthrough_ac3 = g_guiSettings.GetBool("audiooutput.ac3passthrough");
-    m_audio_passthrough_dts = g_guiSettings.GetBool("audiooutput.dtspassthrough");
-
-    m_video_info  = "none";
-    m_video_width    =  0;
-    m_video_height   =  0;
-    m_video_fps_numerator = 25;
-    m_video_fps_denominator = 1;
-
-    m_subtitle_delay =  0;
-    m_subtitle_thread = NULL;
-
-    m_chapter_index  =  0;
-    m_chapter_count  =  0;
-
-    m_show_mainvideo = -1;
-    m_dst_rect.SetRect(0, 0, 0, 0);
-    m_zoom           = -1;
-    m_contrast       = -1;
-    m_brightness     = -1;
-
-    ClearStreamInfos();
 
     static URLProtocol vfs_protocol = {
       "vfs",
