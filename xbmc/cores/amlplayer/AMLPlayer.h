@@ -161,8 +161,6 @@ public:
   virtual void  GetAudioCapabilities(Features* audioCaps);
   virtual void  GetSubtitleCapabilities(Features* subCaps);
 
-  virtual bool  ConcurrentThumbGen();
-
 protected:
   virtual void  OnStartup();
   virtual void  OnExit();
@@ -175,6 +173,7 @@ private:
   void          SetVideoContrast(int contrast);
   void          SetVideoBrightness(int brightness);
   void          SetAudioPassThrough(int format);
+  bool          WaitForPausedThumbJobs(int timeout_ms);
 
   int           GetPlayerSerializedState(void);
   static int    UpdatePlayerInfo(int pid, player_info_t *info);
@@ -194,7 +193,6 @@ private:
   CFileItem               m_item;
   CPlayerOptions          m_options;
   int                     m_log_level;
-  bool                    m_can_thumbgen;
 
   int64_t                 m_elapsed_ms;
   int64_t                 m_duration_ms;

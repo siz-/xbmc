@@ -27,9 +27,11 @@
 #include "FileItem.h"
 #include "FileURLProtocol.h"
 #include "GUIInfoManager.h"
+#include "ThumbLoader.h"
 #include "Util.h"
 #include "cores/VideoRenderers/RenderManager.h"
 #include "filesystem/SpecialProtocol.h"
+#include "dialogs/GUIDialogKaiToast.h"
 #include "guilib/GUIWindowManager.h"
 #include "settings/AdvancedSettings.h"
 #include "settings/GUISettings.h"
@@ -39,7 +41,6 @@
 #include "windowing/egl/WinEGLPlatform.h"
 #include "utils/log.h"
 #include "utils/TimeUtils.h"
-#include "utils/JobManager.h"
 #include "utils/URIUtils.h"
 #include "utils/LangCodeExpander.h"
 #include "settings/VideoSettings.h"
@@ -479,7 +480,6 @@ CAMLPlayer::CAMLPlayer(IPlayerCallback &callback)
   m_log_level = 3;
 #endif
   m_StopPlaying = false;
-  m_can_thumbgen = true;
 }
 
 CAMLPlayer::~CAMLPlayer()
@@ -1203,11 +1203,6 @@ bool CAMLPlayer::GetCurrentSubtitle(CStdString& strSubtitle)
   return !strSubtitle.IsEmpty();
 }
 
-bool CAMLPlayer::ConcurrentThumbGen()
-{
-  return m_can_thumbgen;
-}
-
 void CAMLPlayer::OnStartup()
 {
   //m_CurrentVideo.Clear();
@@ -1241,8 +1236,18 @@ void CAMLPlayer::Process()
   CLog::Log(LOGNOTICE, "CAMLPlayer::Process");
   try
   {
-    m_can_thumbgen = false;
-    CJobManager::GetInstance().CancelJobs(false);
+    CJobManager::GetInstance().Pause(kThumbExtractorJobType);
+
+    if (CJobManager::GetInstance().IsProcessing(kThumbExtractorJobType) > 0)
+    {
+      //CGUIDialogKaiToast::QueueNotification(CGUIDialogKaiToast::Info, "Waiting for ThumbGen to stop", "Hello");
+
+      if (!WaitForPausedThumbJobs(20000))
+      {
+        CJobManager::GetInstance().UnPause(kThumbExtractorJobType);
+        throw "CAMLPlayer::Process:thumbgen jobs still running !!!";
+      }
+    }
 
     m_elapsed_ms  =  0;
     m_duration_ms =  0;
@@ -1528,7 +1533,7 @@ void CAMLPlayer::Process()
 
   // reset ac3/dts passthough
   SetAudioPassThrough(AFORMAT_UNKNOWN);
-  m_can_thumbgen = true;
+  CJobManager::GetInstance().UnPause(kThumbExtractorJobType);
 
   if (m_log_level > 5)
     printf("CAMLPlayer::Process exit\n");
@@ -1581,6 +1586,23 @@ void CAMLPlayer::SetAudioPassThrough(int format)
     set_sysfs_int("/sys/class/audiodsp/digital_raw", 1);
   else
     set_sysfs_int("/sys/class/audiodsp/digital_raw", 0);
+}
+
+bool CAMLPlayer::WaitForPausedThumbJobs(int timeout_ms)
+{
+  // use m_bStop and Sleep so we can get canceled.
+  while (!m_bStop && (timeout_ms > 0))
+  {
+    if (CJobManager::GetInstance().IsProcessing(kThumbExtractorJobType) > 0)
+    {
+      Sleep(100);
+      timeout_ms -= 100;
+    }
+    else
+      return true;
+  }
+
+  return false;
 }
 
 int CAMLPlayer::GetPlayerSerializedState(void)

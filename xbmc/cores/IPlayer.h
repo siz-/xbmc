@@ -198,8 +198,6 @@ public:
   virtual void GetAudioCapabilities(Features* audioCaps) { audioCaps->assign(1,IPC_AUD_ALL); };
   virtual void GetSubtitleCapabilities(Features* subCaps) { subCaps->assign(1,IPC_SUBS_ALL); };
 
-  virtual bool ConcurrentThumbGen() { return true;};
-
 protected:
   IPlayerCallback& m_callback;
 };
