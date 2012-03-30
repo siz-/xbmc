@@ -138,7 +138,7 @@ public:
    \return a unique character string describing the job.
    \sa CJobManager
    */
-  virtual const char *GetType() const { return ""; };
+  virtual const char *GetType() const { return "generic"; };
 
   virtual bool operator==(const CJob* job) const
   {
