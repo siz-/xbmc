@@ -26,10 +26,10 @@
 
 using namespace VisShaders;
 
-class CGUIShader : public CGLSLShaderProgram
+class CVisShader : public CGLSLShaderProgram
 {
 public:
-  CGUIShader( const std::string& vert, const std::string& frag);
+  CVisShader( const std::string& vert, const std::string& frag);
   void OnCompiledAndLinked();
   bool OnEnabled();
   void Free();

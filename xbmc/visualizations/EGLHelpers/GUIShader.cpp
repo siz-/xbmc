@@ -24,7 +24,7 @@
 #include "GUIShader.h"
 #include "guilib/MatrixGLES.h"
 
-CGUIShader::CGUIShader( const std::string& vert, const std::string& frag ) : CGLSLShaderProgram(vert, frag)
+CVisShader::CVisShader( const std::string& vert, const std::string& frag ) : CGLSLShaderProgram(vert, frag)
 {
   // Initialise values
   m_hTex0   = 0;
@@ -40,7 +40,7 @@ CGUIShader::CGUIShader( const std::string& vert, const std::string& frag ) : CGL
   m_model  = NULL;
 }
 
-void CGUIShader::OnCompiledAndLinked()
+void CVisShader::OnCompiledAndLinked()
 {
   // This is called after CompileAndLink()
 
@@ -62,7 +62,7 @@ void CGUIShader::OnCompiledAndLinked()
   glUseProgram( 0 );
 }
 
-bool CGUIShader::OnEnabled()
+bool CVisShader::OnEnabled()
 {
   // This is called after glUseProgram()
 
@@ -72,7 +72,7 @@ bool CGUIShader::OnEnabled()
   return true;
 }
 
-void CGUIShader::Free()
+void CVisShader::Free()
 {
   // Do Cleanup here
   CGLSLShaderProgram::Free();

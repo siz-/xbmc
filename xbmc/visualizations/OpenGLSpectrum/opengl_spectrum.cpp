@@ -93,7 +93,7 @@ std::string vert = "attribute vec4 m_attrpos;\n"
                    "  m_cord1     = m_attrcord1;\n"
                    "}\n";
 
-CGUIShader *m_shader = NULL;
+CVisShader *m_shader = NULL;
 
 #elif defined(HAS_SDL_OPENGL)
 #include <GL/glew.h>
@@ -278,7 +278,7 @@ ADDON_STATUS ADDON_Create(void* hdl, void* props)
   scale = 1.0 / log(256.0);
 
 #if defined(HAS_GLES)
-  m_shader = new CGUIShader(vert, frag);
+  m_shader = new CVisShader(vert, frag);
 
   if(!m_shader)
     return ADDON_STATUS_UNKNOWN;

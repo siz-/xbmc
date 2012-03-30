@@ -84,7 +84,7 @@ std::string vert = "attribute vec4 m_attrpos;\n"
                    "  m_cord1     = m_attrcord1;\n"
                    "}\n";
 
-CGUIShader *m_shader = NULL;
+CVisShader *m_shader = NULL;
 
 //-- Create -------------------------------------------------------------------
 // Called on load. Addon should fully initalize or return error status
@@ -94,7 +94,7 @@ ADDON_STATUS ADDON_Create(void* hdl, void* props)
   if (!props)
     return ADDON_STATUS_UNKNOWN;
 
-  m_shader = new CGUIShader(vert, frag);
+  m_shader = new CVisShader(vert, frag);
 
   if(!m_shader)
     return ADDON_STATUS_UNKNOWN;
