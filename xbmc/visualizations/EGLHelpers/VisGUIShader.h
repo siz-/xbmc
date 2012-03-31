@@ -1,6 +1,6 @@
 #pragma once
 /*
-*      Copyright (C) 2005-2008 Team XBMC
+*      Copyright (C) 2005-2012 Team XBMC
 *      http://www.xbmc.org
 *
 *  This Program is free software; you can redistribute it and/or modify
@@ -20,16 +20,14 @@
 *
 */
 
-#include "Shader.h"
+#include "VisShader.h"
+#include "VisMatrixGLES.h"
 
-#ifdef HAS_GLES
-
-using namespace VisShaders;
-
-class CVisShader : public CGLSLShaderProgram
+class CVisGUIShader : public CVisGLSLShaderProgram, public CVisMatrixGLES
 {
 public:
-  CVisShader( const std::string& vert, const std::string& frag);
+  CVisGUIShader(const char *vert, const char *frag);
+
   void OnCompiledAndLinked();
   bool OnEnabled();
   void Free();
@@ -38,7 +36,7 @@ public:
   GLint GetColLoc()   { return m_hCol;   }
   GLint GetCord0Loc() { return m_hCord0; }
   GLint GetCord1Loc() { return m_hCord1; }
-  
+
 protected:
   GLint m_hTex0;
   GLint m_hTex1;
@@ -52,5 +50,3 @@ protected:
   GLfloat *m_proj;
   GLfloat *m_model;
 };
-
-#endif
