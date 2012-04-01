@@ -1306,6 +1306,12 @@ void CAMLPlayer::Process()
       static const char *nfs_name = "nfs";
       vfs_protocol.name = nfs_name;
     }
+    else if (url.Left(strlen("rar://")).Equals("rar://"))
+    {
+      // the name string needs to persist
+      static const char *rar_name = "rar";
+      vfs_protocol.name = rar_name;
+    }
     else if (url.Left(strlen("http://")).Equals("http://"))
     {
       // the name string needs to persist
