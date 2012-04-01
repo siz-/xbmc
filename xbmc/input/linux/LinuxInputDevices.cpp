@@ -778,11 +778,11 @@ void CLinuxInputDevice::SetupKeyboardAutoRepeat(int fd)
   // ignore the native aml driver named 'key_input',
   //  it is the dedicated power key handler (am_key_input)
   if (strncmp(m_deviceName, "key_input", strlen("key_input")) == 0)
-    enable = true;
+    return;
   // ignore the native aml driver named 'aml_keypad',
   //  it is the dedicated IR remote handler (amremote)
   else if (strncmp(m_deviceName, "aml_keypad", strlen("aml_keypad")) == 0)
-    enable = true;
+    return;
 #endif
 
   if (enable)
