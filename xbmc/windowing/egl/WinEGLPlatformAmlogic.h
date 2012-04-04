@@ -23,10 +23,13 @@
 #if defined(TARGET_AMLOGIC)
 
 #include "WinEGLPlatformGeneric.h"
+#include <string>
 
 class CWinEGLPlatformAmlogic : public CWinEGLPlatformGeneric
 {
 public:
+  CWinEGLPlatformAmlogic();
+
   virtual EGLNativeWindowType InitWindowSystem(int width, int height, int bpp);
   virtual void DestroyWindowSystem(EGLNativeWindowType native_window);
   virtual bool SetDisplayResolution(int width, int height, float refresh, bool interlace);
@@ -35,10 +38,14 @@ public:
   virtual bool ShowWindow(bool show);
 
   // amlogic specific functions
+  void ProbeHDMIAudio();
   int  GetDisplayResolutionMode();
   bool SetDisplayResolution(const char* resolution);
   void EnableFreeScale();
   void DisableFreeScale();
+
+private:
+  std::string m_framebuffer_name;
 };
 
 #endif

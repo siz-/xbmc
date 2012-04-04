@@ -35,6 +35,20 @@ extern "C"
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////
+CWinEGLPlatformAmlogic::CWinEGLPlatformAmlogic()
+{
+  const char *env_framebuffer = getenv("FRAMEBUFFER");
+
+  // default to framebuffer 0
+  m_framebuffer_name = "/dev/fb0";
+  if (env_framebuffer)
+  {
+    std::string framebuffer(env_framebuffer);
+    std::string::size_type start = framebuffer.find("fb");
+    m_framebuffer_name = framebuffer.substr(start);
+  }
+}
+
 EGLNativeWindowType CWinEGLPlatformAmlogic::InitWindowSystem(int width, int height, int bpp)
 {
   fbdev_window *native_window;
@@ -122,11 +136,78 @@ bool CWinEGLPlatformAmlogic::ProbeDisplayResolutions(std::vector<CStdString> &re
 
 bool CWinEGLPlatformAmlogic::ShowWindow(bool show)
 {
+  std::string blank_framebuffer = "/sys/class/graphics/" + m_framebuffer_name + "/blank";
   if (show)
-    set_sysfs_int("/sys/class/graphics/fb0/blank", 0);
+    set_sysfs_int(blank_framebuffer.c_str(), 0);
   else
-    set_sysfs_int("/sys/class/graphics/fb0/blank", 1);
+    set_sysfs_int(blank_framebuffer.c_str(), 1);
   return true;
+}
+
+void CWinEGLPlatformAmlogic::ProbeHDMIAudio()
+{
+  std::vector<CStdString> audio_formats;
+  // Audio {format, channel, freq, cce}
+  // {1, 7, 7f, 7}
+  // {7, 5, 1e, 0}
+  // {2, 5, 7, 0}
+  // {11, 7, 7e, 1}
+  // {10, 7, 6, 0}
+  // {12, 7, 7e, 0}
+
+  int fd = open("/sys/class/amhdmitx/amhdmitx0/edid", O_RDONLY);
+  if (fd >= 0)
+  {
+    char valstr[1024] = {0};
+
+    read(fd, valstr, sizeof(valstr) - 1);
+    valstr[strlen(valstr)] = '\0';
+    close(fd);
+
+    std::vector<CStdString> probe_str;
+    StringUtils::SplitString(valstr, "\n", probe_str);
+
+    for (size_t i = 0; i < probe_str.size(); i++)
+    {
+      if (probe_str[i].find("Audio") == std::string::npos)
+      {
+        for (size_t j = i+1; j < probe_str.size(); j++)
+        {
+          if      (probe_str[i].find("{1,")  != std::string::npos)
+            printf(" PCM found {1,\n");
+          else if (probe_str[i].find("{2,")  != std::string::npos)
+            printf(" AC3 found {2,\n");
+          else if (probe_str[i].find("{3,")  != std::string::npos)
+            printf(" MPEG1 found {3,\n");
+          else if (probe_str[i].find("{4,")  != std::string::npos)
+            printf(" MP3 found {4,\n");
+          else if (probe_str[i].find("{5,")  != std::string::npos)
+            printf(" MPEG2 found {5,\n");
+          else if (probe_str[i].find("{6,")  != std::string::npos)
+            printf(" AAC found {6,\n");
+          else if (probe_str[i].find("{7,")  != std::string::npos)
+            printf(" DTS found {7,\n");
+          else if (probe_str[i].find("{8,")  != std::string::npos)
+            printf(" ATRAC found {8,\n");
+          else if (probe_str[i].find("{9,")  != std::string::npos)
+            printf(" One_Bit_Audio found {9,\n");
+          else if (probe_str[i].find("{10,") != std::string::npos)
+            printf(" Dolby found {10,\n");
+          else if (probe_str[i].find("{11,") != std::string::npos)
+            printf(" DTS_HD found {11,\n");
+          else if (probe_str[i].find("{12,") != std::string::npos)
+            printf(" MAT found {12,\n");
+          else if (probe_str[i].find("{13,") != std::string::npos)
+            printf(" ATRAC found {13,\n");
+          else if (probe_str[i].find("{14,") != std::string::npos)
+            printf(" WMA found {14,\n");
+          else
+            break;
+        }
+        break;
+      }
+    }
+  }
 }
 
 int CWinEGLPlatformAmlogic::GetDisplayResolutionMode()
