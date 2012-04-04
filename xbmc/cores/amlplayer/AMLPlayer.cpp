@@ -1533,12 +1533,9 @@ void CAMLPlayer::Process()
 
   ClearStreamInfos();
 
-  // grrr, something is hiding fb0 on exit.
-  CWinEGLPlatformAmlogic amlplatform;
-  amlplatform.ShowWindow(true);
-
   // reset ac3/dts passthough
   SetAudioPassThrough(AFORMAT_UNKNOWN);
+  // let thumbgen jobs resume.
   CJobManager::GetInstance().UnPause(kThumbExtractorJobType);
 
   if (m_log_level > 5)
