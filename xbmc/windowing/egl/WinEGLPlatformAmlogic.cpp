@@ -40,7 +40,7 @@ CWinEGLPlatformAmlogic::CWinEGLPlatformAmlogic()
   const char *env_framebuffer = getenv("FRAMEBUFFER");
 
   // default to framebuffer 0
-  m_framebuffer_name = "/dev/fb0";
+  m_framebuffer_name = "fb0";
   if (env_framebuffer)
   {
     std::string framebuffer(env_framebuffer);
@@ -316,7 +316,9 @@ void CWinEGLPlatformAmlogic::DisableFreeScale()
 
   // revert display axis
   int fd0;
-  if ((fd0 = open("/dev/fb0", O_RDWR)) >= 0)
+  std::string framebuffer = "/dev/" + m_framebuffer_name;
+
+  if ((fd0 = open(framebuffer.c_str(), O_RDWR)) >= 0)
   {
     struct fb_var_screeninfo vinfo;
     if (ioctl(fd0, FBIOGET_VSCREENINFO, &vinfo) == 0)
