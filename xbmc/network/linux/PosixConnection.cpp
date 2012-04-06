@@ -118,9 +118,11 @@ bool PosixGuessIsHexPassPhrase(const std::string &passphrase, EncryptionType enc
 bool IsWireless(int socket, const char *interface)
 {
   struct iwreq wrq;
-   strcpy(wrq.ifr_name, interface);
-   if (ioctl(socket, SIOCGIWNAME, &wrq) < 0)
-      return false;
+  memset(&wrq, 0x00, sizeof(iwreq));
+
+  strcpy(wrq.ifr_name, interface);
+  if (ioctl(socket, SIOCGIWNAME, &wrq) < 0)
+    return false;
 
    return true;
 }
