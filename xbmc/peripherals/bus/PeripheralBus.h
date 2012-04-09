@@ -185,6 +185,7 @@ namespace PERIPHERALS
     std::vector<CPeripheral *> m_peripherals;
     int                        m_iRescanTime;
     bool                       m_bInitialised;
+    bool                       m_bIsStarted;
     bool                       m_bNeedsPolling; /*!< true when this bus needs to be polled for new devices, false when it uses callbacks to notify this bus of changed */
     CPeripherals *             m_manager;
     PeripheralBusType          m_type;
