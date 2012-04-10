@@ -241,6 +241,9 @@ bool CXBMCRenderManager::Configure(unsigned int width, unsigned int height, unsi
       g_application.getApplicationMessenger().SwitchToFullscreen();
       lock.Enter();
     }
+    if( flags & CONF_FLAGS_FORMAT_BYPASS )
+      m_presentmethod = PRESENT_METHOD_BYPASS;
+
     m_pRenderer->Update(false);
     m_bIsStarted = true;
     m_bReconfigured = true;
@@ -249,6 +252,11 @@ bool CXBMCRenderManager::Configure(unsigned int width, unsigned int height, unsi
   }
 
   return result;
+}
+
+bool CXBMCRenderManager::RendererHandlesPresent()
+{
+  return IsConfigured() && m_presentmethod != PRESENT_METHOD_BYPASS;
 }
 
 bool CXBMCRenderManager::IsConfigured()

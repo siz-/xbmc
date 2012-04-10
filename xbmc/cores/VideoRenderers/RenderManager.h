@@ -159,6 +159,8 @@ public:
 
   void UpdateResolution();
 
+  bool RendererHandlesPresent();
+
   unsigned int GetProcessorSize()
   {
     CSharedLock lock(m_sharedSection);
@@ -215,6 +217,7 @@ protected:
     PRESENT_METHOD_BLEND,
     PRESENT_METHOD_WEAVE,
     PRESENT_METHOD_BOB,
+    PRESENT_METHOD_BYPASS,
   };
 
   double m_displayLatency;
