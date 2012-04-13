@@ -457,7 +457,8 @@ bool CPosixConnection::Connect(IPassphraseStorage *storage, const CIPConfig &ipc
   }
   else
   {
-    storage->InvalidatePassphrase(m_essid);
+    if (storage)
+      storage->InvalidatePassphrase(m_essid);
   }
 
   return false;
