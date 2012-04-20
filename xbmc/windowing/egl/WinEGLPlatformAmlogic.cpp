@@ -51,6 +51,11 @@ CWinEGLPlatformAmlogic::CWinEGLPlatformAmlogic()
 
 EGLNativeWindowType CWinEGLPlatformAmlogic::InitWindowSystem(int width, int height, int bpp)
 {
+  // hack the cpu min limit here, InitWindowSystem/DestroyWindowSystem
+  // are only called once and we can adjust the min cpu freq and reset
+  // it on quit.
+  SetCpuMinLimit(true);
+
   fbdev_window *native_window;
   native_window = (fbdev_window*)calloc(1, sizeof(fbdev_window));
   if (width == 1920 && height == 1080)
@@ -66,6 +71,8 @@ EGLNativeWindowType CWinEGLPlatformAmlogic::InitWindowSystem(int width, int heig
 
 void CWinEGLPlatformAmlogic::DestroyWindowSystem(EGLNativeWindowType native_window)
 {
+  SetCpuMinLimit(false);
+
   free(native_window);
   DisableFreeScale();
 }
@@ -142,6 +149,27 @@ bool CWinEGLPlatformAmlogic::ShowWindow(bool show)
   else
     set_sysfs_int(blank_framebuffer.c_str(), 1);
   return true;
+}
+
+void CWinEGLPlatformAmlogic::SetCpuMinLimit(bool limit)
+{
+  // when playing hw decoded audio, we cannot drop below 600MHz
+  // or risk hw audio issues. AML code does a 2X scaling based off
+  // /sys/class/audiodsp/codec_mips but tests show that this is
+  // seems risky so we just clamp to 600Mhz to be safe.
+
+  // only adjust if we are running "ondemand"
+  char scaling_governor[256] = {0};
+  get_sysfs_str("/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor", scaling_governor, 255);
+  if (strncmp(scaling_governor, "ondemand", 255))
+    return;
+
+  int freq;
+  if (limit)
+    freq = 600000;
+  else
+    freq = get_sysfs_int("/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_min_freq");
+  set_sysfs_int("/sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq", freq);
 }
 
 void CWinEGLPlatformAmlogic::ProbeHDMIAudio()
