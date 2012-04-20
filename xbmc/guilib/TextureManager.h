@@ -47,7 +47,7 @@ public:
   void Reset();
 
   void Add(CBaseTexture *texture, int delay);
-  void Set(CBaseTexture *texture, int width, int height, int originalWidth, int originalHeight);
+  void Set(CBaseTexture *texture, int width, int height);
   void Free();
   unsigned int size() const;
 
@@ -60,8 +60,6 @@ public:
   int m_texWidth;
   int m_texHeight;
   bool m_texCoordsArePixels;
-  int m_originalWidth;
-  int m_originalHeight;
 };
 
 /*!

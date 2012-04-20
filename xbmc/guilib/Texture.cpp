@@ -174,7 +174,7 @@ bool CBaseTexture::LoadFromFile(const CStdString& texturePath, unsigned int maxW
   if (URIUtils::GetExtension(texturePath).Equals(".jpg") || URIUtils::GetExtension(texturePath).Equals(".tbn"))
   {
     CJpegIO jpegfile;
-    if (jpegfile.Open(texturePath, maxWidth, maxHeight, &m_originalImageWidth, &m_originalImageHeight))
+    if (jpegfile.Open(texturePath))
     {
       if (jpegfile.Width() > 0 && jpegfile.Height() > 0)
       {
@@ -184,10 +184,6 @@ bool CBaseTexture::LoadFromFile(const CStdString& texturePath, unsigned int maxW
           if (autoRotate && jpegfile.Orientation())
             m_orientation = jpegfile.Orientation() - 1;
           m_hasAlpha=false;
-          if (originalWidth)
-            *originalWidth = m_originalImageWidth;
-          if (originalHeight)
-            *originalHeight = m_originalImageHeight;
           return true;
         }
       }
@@ -215,12 +211,10 @@ bool CBaseTexture::LoadFromFile(const CStdString& texturePath, unsigned int maxW
   Allocate(image.width, image.height, XB_FMT_A8R8G8B8);
   if (autoRotate && image.exifInfo.Orientation)
     m_orientation = image.exifInfo.Orientation - 1;
-  m_originalImageWidth = image.originalwidth;
-  m_originalImageHeight = image.originalheight;
   if (originalWidth)
-    *originalWidth = m_originalImageWidth;
+    *originalWidth = image.originalwidth;
   if (originalHeight)
-    *originalHeight = m_originalImageHeight;
+    *originalHeight = image.originalheight;
 
   unsigned int dstPitch = GetPitch();
   unsigned int srcPitch = ((image.width + 1)* 3 / 4) * 4; // bitmap row length is aligned to 4 bytes

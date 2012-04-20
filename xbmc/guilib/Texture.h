@@ -82,8 +82,6 @@ public:
   unsigned int GetTextureHeight() const { return m_textureHeight; }
   unsigned int GetWidth() const { return m_imageWidth; }
   unsigned int GetHeight() const { return m_imageHeight; }
-  unsigned int GetOriginalImageWidth() const { return m_originalImageWidth; }
-  unsigned int GetOriginalImageHeight() const { return m_originalImageHeight; }
   int GetOrientation() const { return m_orientation; }
 
   void Update(unsigned int width, unsigned int height, unsigned int pitch, unsigned int format, const unsigned char *pixels, bool loadToGPU);
@@ -103,8 +101,6 @@ protected:
   unsigned int m_imageHeight;
   unsigned int m_textureWidth;
   unsigned int m_textureHeight;
-  unsigned int m_originalImageWidth;
-  unsigned int m_originalImageHeight;
 #ifdef HAS_DX
   CD3DTexture m_texture;
 #else
