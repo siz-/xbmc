@@ -61,7 +61,6 @@ CSMB::CSMB()
   m_IdleTimeout = 0;
 #endif
   m_context = NULL;
-  smbc_init(xb_smbc_auth, 0);
 }
 
 CSMB::~CSMB()
@@ -115,6 +114,8 @@ void CSMB::Init()
     {
       fprintf(f, "[global]\n");
 
+      fprintf(f, "\tlog level = 3\n");
+
       // make sure we're not acting like a server
       fprintf(f, "\tpreferred master = no\n");
       fprintf(f, "\tlocal master = no\n");
@@ -149,10 +150,13 @@ void CSMB::Init()
     }
 #endif
 
+    smbc_init(xb_smbc_auth, 0);
+
 #ifdef TARGET_WINDOWS
     // set the log function
     set_log_callback(xb_smbc_log);
 #endif
+
 
     // setup our context
     m_context = smbc_new_context();
