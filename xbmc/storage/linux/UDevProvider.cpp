@@ -104,7 +104,7 @@ void CUDevProvider::Stop()
   udev_unref(m_udev);
 }
 
-void CUDevProvider::GetDisks(VECSOURCES& devices, bool removable)
+void CUDevProvider::GetDisks(VECSOURCES& disks, bool removable)
 {
   // enumerate existing block devices
   struct udev_enumerate *u_enum = udev_enumerate_new(m_udev);
@@ -159,7 +159,8 @@ void CUDevProvider::GetDisks(VECSOURCES& devices, bool removable)
       share.strName  = label;
       share.strPath  = mountpoint;
       share.m_ignore = true;
-      devices.push_back(share);
+      share.m_iDriveType = CMediaSource::SOURCE_TYPE_REMOVABLE;
+      AddOrReplace(disks, share);
     }
     udev_device_unref(device);
   }
