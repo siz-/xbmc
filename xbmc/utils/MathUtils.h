@@ -48,8 +48,8 @@ namespace MathUtils
    */
   inline int round_int (double x)
   {
-    assert(x > static_cast<double>(INT_MIN / 2) - 1.0);
-    assert(x < static_cast <double>(INT_MAX / 2) + 1.0);
+    //assert(x > static_cast<double>(INT_MIN / 2) - 1.0);
+    //assert(x < static_cast <double>(INT_MAX / 2) + 1.0);
     const float round_to_nearest = 0.5f;
     int i;
     
@@ -125,8 +125,8 @@ namespace MathUtils
    */
   inline int truncate_int(double x)
   {
-    assert(x > static_cast<double>(INT_MIN / 2) - 1.0);
-    assert(x < static_cast <double>(INT_MAX / 2) + 1.0);
+    //assert(x > static_cast<double>(INT_MIN / 2) - 1.0);
+    //assert(x < static_cast <double>(INT_MAX / 2) + 1.0);
 
 #if !defined(__powerpc__) && !defined(__ppc__) && !defined(__arm__)
     const float round_towards_m_i = -0.5f;
