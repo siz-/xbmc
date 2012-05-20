@@ -325,7 +325,7 @@ void CWinEGLPlatformAmlogic::EnableFreeScale()
   usleep(60 * 1000);
   //
   set_sysfs_int("/sys/class/video/disable_video", 2);
-  set_sysfs_str("/sys/class/display/axis", "0 0 1279 719");
+  set_sysfs_str("/sys/class/display/axis", "0 0 1279 719 0 0 0 0");
   set_sysfs_str("/sys/class/ppmgr/ppscaler_rect", "0 0 1279 719 1");
 }
 
@@ -352,7 +352,7 @@ void CWinEGLPlatformAmlogic::DisableFreeScale()
     if (ioctl(fd0, FBIOGET_VSCREENINFO, &vinfo) == 0)
     {
       char daxis_str[255] = {0};
-      sprintf(daxis_str, "%d %d %d %d", 0, 0, vinfo.xres, vinfo.yres);
+      sprintf(daxis_str, "%d %d %d %d 0 0 0 0", 0, 0, vinfo.xres, vinfo.yres);
       set_sysfs_str("/sys/class/display/axis", daxis_str);
     }
     close(fd0);
