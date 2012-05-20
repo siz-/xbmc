@@ -30,9 +30,11 @@
 #include "ThumbLoader.h"
 #include "Util.h"
 #include "cores/VideoRenderers/RenderManager.h"
+#include "filesystem/File.h"
 #include "filesystem/SpecialProtocol.h"
 #include "dialogs/GUIDialogKaiToast.h"
 #include "guilib/GUIWindowManager.h"
+#include "guilib/LocalizeStrings.h"
 #include "settings/AdvancedSettings.h"
 #include "settings/GUISettings.h"
 #include "settings/Settings.h"
@@ -44,6 +46,11 @@
 #include "utils/URIUtils.h"
 #include "utils/LangCodeExpander.h"
 #include "settings/VideoSettings.h"
+
+// for external subtitles
+#include "xbmc/cores/dvdplayer/DVDClock.h"
+#include "xbmc/cores/dvdplayer/DVDPlayerSubtitle.h"
+#include "xbmc/cores/dvdplayer/DVDDemuxers/DVDDemuxVobsub.h"
 
 // amlogic libplayer
 extern "C"
@@ -63,19 +70,45 @@ struct AMLChapterInfo
 
 struct AMLPlayerStreamInfo
 {
-  int   id;
-  int   width;
-  int   height;
-  int   aspect_ratio_num;
-  int   aspect_ratio_den;
-  int   frame_rate_num;
-  int   frame_rate_den;
-  int   bit_rate;
-  int   duration;
-  int   channel;
-  int   sample_rate;
-  int   format;
-  char  language[4];
+  void Clear()
+  {
+    id                = 0;
+    width             = 0;
+    height            = 0;
+    aspect_ratio_num  = 0;
+    aspect_ratio_den  = 0;
+    frame_rate_num    = 0;
+    frame_rate_den    = 0;
+    bit_rate          = 0;
+    duration          = 0;
+    channel           = 0;
+    sample_rate       = 0;
+    language          = "";
+    type              = STREAM_NONE;
+    source            = STREAM_SOURCE_NONE;
+    name              = "";
+    filename          = "";
+    filename2         = "";
+  }
+
+  int           id;
+  StreamType    type;
+  StreamSource  source;
+  int           width;
+  int           height;
+  int           aspect_ratio_num;
+  int           aspect_ratio_den;
+  int           frame_rate_num;
+  int           frame_rate_den;
+  int           bit_rate;
+  int           duration;
+  int           channel;
+  int           sample_rate;
+  int           format;
+  std::string   language;
+  std::string   name;
+  std::string   filename;
+  std::string   filename2;  // for vobsub subtitles, 2 files are necessary (idx/sub) 
 };
 
 
@@ -480,11 +513,18 @@ CAMLPlayer::CAMLPlayer(IPlayerCallback &callback)
   m_log_level = 3;
 #endif
   m_StopPlaying = false;
+
+  // for external subtitles
+  m_dvdOverlayContainer = new CDVDOverlayContainer;
+  m_dvdPlayerSubtitle = new CDVDPlayerSubtitle(m_dvdOverlayContainer);
 }
 
 CAMLPlayer::~CAMLPlayer()
 {
   CloseFile();
+
+  delete m_dvdPlayerSubtitle;
+  delete m_dvdOverlayContainer;
 }
 
 bool CAMLPlayer::OpenFile(const CFileItem &file, const CPlayerOptions &options)
@@ -783,7 +823,7 @@ void CAMLPlayer::GetAudioStreamName(int iStream, CStdString &strStreamName)
   if (iStream > (int)m_audio_streams.size() || iStream < 0)
     return;
 
-  if ( m_audio_streams[iStream]->language[0] != 0)
+  if ( m_audio_streams[iStream]->language.size())
   {
     CStdString name;
     g_LangCodeExpander.Lookup( name, m_audio_streams[iStream]->language);
@@ -840,16 +880,28 @@ void CAMLPlayer::GetSubtitleName(int iStream, CStdString &strStreamName)
 {
   CSingleLock lock(m_aml_csection);
 
-  strStreamName.Format("Undefined");
+  strStreamName = "";
 
   if (iStream > (int)m_subtitle_streams.size() || iStream < 0)
     return;
 
-  if ( m_subtitle_streams[iStream]->language[0] != 0)
+  if (m_subtitle_streams[m_subtitle_index]->source == STREAM_SOURCE_NONE)
   {
-    CStdString name;
-    g_LangCodeExpander.Lookup(name, m_subtitle_streams[iStream]->language);
-    strStreamName = name;
+    if ( m_subtitle_streams[iStream]->language.size())
+    {
+      CStdString name;
+      g_LangCodeExpander.Lookup(name, m_subtitle_streams[iStream]->language);
+      strStreamName = name;
+    }
+    else
+      strStreamName = g_localizeStrings.Get(13205); // Unknown
+  }
+  else
+  {
+    if(m_subtitle_streams[m_subtitle_index]->name.length() > 0)
+      strStreamName = m_subtitle_streams[m_subtitle_index]->name;
+    else
+      strStreamName = g_localizeStrings.Get(13205); // Unknown
   }
   if (m_log_level > 5)
     printf("CAMLPlayer::GetSubtitleName, iStream(%d)\n", iStream);
@@ -870,8 +922,13 @@ void CAMLPlayer::SetSubtitle(int iStream)
   if (!m_subtitle_show)
     return;
 
-  if (check_pid_valid(m_pid))
+  if (check_pid_valid(m_pid) && m_subtitle_streams[m_subtitle_index]->source == STREAM_SOURCE_NONE)
     player_sid(m_pid, m_subtitle_streams[m_subtitle_index]->id);
+  else
+  {
+    m_dvdPlayerSubtitle->CloseStream(true);
+    OpenSubtitleStream(m_subtitle_index);
+  }
 }
 
 bool CAMLPlayer::GetSubtitleVisible()
@@ -884,14 +941,16 @@ void CAMLPlayer::SetSubtitleVisible(bool bVisible)
   m_subtitle_show = (bVisible && m_subtitle_count);
   g_settings.m_currentVideoSettings.m_SubtitleOn = bVisible;
 
-  if (m_subtitle_show)
+  if (m_subtitle_show  && m_subtitle_count)
   {
     // on startup, if asked to show subs and SetSubtitle has not
     // been called, we are expected to switch/show the 1st subtitle
-    if (m_subtitle_index < 0 && m_subtitle_count)
+    if (m_subtitle_index < 0)
       m_subtitle_index = 0;
-    if (check_pid_valid(m_pid))
+    if (check_pid_valid(m_pid) && m_subtitle_streams[m_subtitle_index]->source == STREAM_SOURCE_NONE)
       player_sid(m_pid, m_subtitle_streams[m_subtitle_index]->id);
+    else
+      OpenSubtitleStream(m_subtitle_index);
   }
 }
 
@@ -1221,11 +1280,20 @@ bool CAMLPlayer::GetCurrentSubtitle(CStdString& strSubtitle)
 {
   strSubtitle = "";
 
-  if (m_subtitle_thread)
+  if (m_subtitle_count)
   {
     // force updated to m_elapsed_ms.
     GetStatus();
-    m_subtitle_thread->UpdateSubtitle(strSubtitle, m_elapsed_ms - m_subtitle_delay);
+    if (m_subtitle_streams[m_subtitle_index]->source == STREAM_SOURCE_NONE && m_subtitle_thread)
+    {
+      m_subtitle_thread->UpdateSubtitle(strSubtitle, m_elapsed_ms - m_subtitle_delay);
+    }
+    else
+    {
+      double pts = DVD_MSEC_TO_TIME(m_elapsed_ms) - DVD_MSEC_TO_TIME(m_subtitle_delay);
+      m_dvdOverlayContainer->CleanUp(pts);
+      m_dvdPlayerSubtitle->GetCurrentSubtitle(strSubtitle, pts);
+    }
   }
 
   return !strSubtitle.IsEmpty();
@@ -1542,6 +1610,48 @@ void CAMLPlayer::Process()
     printf("CAMLPlayer::Process exit\n");
 }
 
+void CAMLPlayer::GetRenderFeatures(Features* renderFeatures)
+{
+  renderFeatures->push_back(RENDERFEATURE_ZOOM);
+  renderFeatures->push_back(RENDERFEATURE_CONTRAST);
+  renderFeatures->push_back(RENDERFEATURE_BRIGHTNESS);
+  renderFeatures->push_back(RENDERFEATURE_STRETCH);
+  return;
+}
+
+void CAMLPlayer::GetDeinterlaceMethods(Features* deinterlaceMethods)
+{
+  deinterlaceMethods->push_back(VS_INTERLACEMETHOD_DEINTERLACE);
+  return;
+}
+
+void CAMLPlayer::GetDeinterlaceModes(Features* deinterlaceModes)
+{
+  deinterlaceModes->push_back(VS_DEINTERLACEMODE_AUTO);
+  return;
+}
+
+void CAMLPlayer::GetScalingMethods(Features* scalingMethods)
+{
+  return;
+}
+
+void CAMLPlayer::GetAudioCapabilities(Features* audioCaps)
+{
+  audioCaps->push_back(IPC_AUD_SELECT_STREAM);
+  return;
+}
+
+void CAMLPlayer::GetSubtitleCapabilities(Features* subCaps)
+{
+  //subCaps->push_back(IPC_SUBS_EXTERNAL);
+  subCaps->push_back(IPC_SUBS_OFFSET);
+  subCaps->push_back(IPC_SUBS_SELECT);
+  return;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////
 int CAMLPlayer::GetVideoStreamCount()
 {
   //CLog::Log(LOGDEBUG, "CAMLPlayer::GetVideoStreamCount(%d)", m_video_count);
@@ -1789,10 +1899,11 @@ bool CAMLPlayer::WaitForFormatValid(int timeout_ms)
         {
           for (int i = 0; i < media_info.stream_info.total_video_num; i++)
           {
-            AMLPlayerStreamInfo *info = (AMLPlayerStreamInfo *) malloc(sizeof(AMLPlayerStreamInfo));
-            memset(info, 0x00, sizeof(AMLPlayerStreamInfo));
+            AMLPlayerStreamInfo *info = new AMLPlayerStreamInfo;
+            info->Clear();
 
             info->id              = media_info.video_info[i]->id;
+            info->type            = STREAM_VIDEO;
             info->width           = media_info.video_info[i]->width;
             info->height          = media_info.video_info[i]->height;
             info->frame_rate_num  = media_info.video_info[i]->frame_rate_num;
@@ -1823,17 +1934,18 @@ bool CAMLPlayer::WaitForFormatValid(int timeout_ms)
         {
           for (int i = 0; i < media_info.stream_info.total_audio_num; i++)
           {
-            AMLPlayerStreamInfo *info = (AMLPlayerStreamInfo*)malloc(sizeof(AMLPlayerStreamInfo));
-            memset(info, 0x00, sizeof(AMLPlayerStreamInfo));
+            AMLPlayerStreamInfo *info = new AMLPlayerStreamInfo;
+            info->Clear();
 
             info->id              = media_info.audio_info[i]->id;
+            info->type            = STREAM_AUDIO;
             info->channel         = media_info.audio_info[i]->channel;
             info->sample_rate     = media_info.audio_info[i]->sample_rate;
             info->bit_rate        = media_info.audio_info[i]->bit_rate;
             info->duration        = media_info.audio_info[i]->duration;
             info->format          = media_info.audio_info[i]->aformat;
             if (media_info.audio_info[i]->audio_language[0] != 0)
-              strncpy(info->language, media_info.audio_info[i]->audio_language, 3);
+              info->language = std::string(media_info.audio_info[i]->audio_language, 3);
             m_audio_streams.push_back(info);
           }
 
@@ -1850,20 +1962,23 @@ bool CAMLPlayer::WaitForFormatValid(int timeout_ms)
         {
           for (int i = 0; i < media_info.stream_info.total_sub_num; i++)
           {
-            AMLPlayerStreamInfo *info = (AMLPlayerStreamInfo*)malloc(sizeof(AMLPlayerStreamInfo));
-            memset(info, 0x00, sizeof(AMLPlayerStreamInfo));
+            AMLPlayerStreamInfo *info = new AMLPlayerStreamInfo;
+            info->Clear();
 
-            info->id = media_info.sub_info[i]->id;
+            info->id   = media_info.sub_info[i]->id;
+            info->type = STREAM_SUBTITLE;
             if (media_info.sub_info[i]->sub_language && media_info.sub_info[i]->sub_language[0] != 0)
-              strncpy(info->language, media_info.sub_info[i]->sub_language, 3);
+              info->language = std::string(media_info.sub_info[i]->sub_language, 3);
             m_subtitle_streams.push_back(info);
           }
-
           m_subtitle_index = media_info.stream_info.cur_sub_index;
-          if (m_subtitle_index != 0)
-            m_subtitle_index = 0;
-          m_subtitle_count = media_info.stream_info.total_sub_num;
         }
+        // find any external subs
+        FindSubtitleFiles();
+        // setup count and index
+        m_subtitle_count = m_subtitle_streams.size();
+        if (m_subtitle_count && m_subtitle_index != 0)
+          m_subtitle_index = 0;
 
         // chapter info
         if (media_info.stream_info.total_chapter_num > 0)
@@ -1896,10 +2011,7 @@ void CAMLPlayer::ClearStreamInfos()
   if (!m_audio_streams.empty())
   {
     for (unsigned int i = 0; i < m_audio_streams.size(); i++)
-    {
-      AMLPlayerStreamInfo *info = m_audio_streams[i];
-      free(info);
-    }
+      delete m_audio_streams[i];
     m_audio_streams.clear();
   }
   m_audio_count = 0;
@@ -1908,10 +2020,7 @@ void CAMLPlayer::ClearStreamInfos()
   if (!m_video_streams.empty())
   {
     for (unsigned int i = 0; i < m_video_streams.size(); i++)
-    {
-      AMLPlayerStreamInfo *info = m_video_streams[i];
-      free(info);
-    }
+      delete m_video_streams[i];
     m_video_streams.clear();
   }
   m_video_count = 0;
@@ -1920,10 +2029,7 @@ void CAMLPlayer::ClearStreamInfos()
   if (!m_subtitle_streams.empty())
   {
     for (unsigned int i = 0; i < m_subtitle_streams.size(); i++)
-    {
-      AMLPlayerStreamInfo *info = m_subtitle_streams[i];
-      free(info);
-    }
+      delete m_subtitle_streams[i];
     m_subtitle_streams.clear();
   }
   m_subtitle_count = 0;
@@ -1932,10 +2038,7 @@ void CAMLPlayer::ClearStreamInfos()
   if (!m_chapters.empty())
   {
     for (unsigned int i = 0; i < m_chapters.size(); i++)
-    {
-      AMLChapterInfo *info = m_chapters[i];
-      delete info;
-    }
+      delete m_chapters[i];
     m_chapters.clear();
   }
   m_chapter_count = 0;
@@ -1961,44 +2064,146 @@ bool CAMLPlayer::GetStatus()
   return true;
 }
 
-void CAMLPlayer::GetRenderFeatures(Features* renderFeatures)
+void CAMLPlayer::FindSubtitleFiles()
 {
-  renderFeatures->push_back(RENDERFEATURE_ZOOM);
-  renderFeatures->push_back(RENDERFEATURE_CONTRAST);
-  renderFeatures->push_back(RENDERFEATURE_BRIGHTNESS);
-  renderFeatures->push_back(RENDERFEATURE_STRETCH);
-  return;
+  // find any available external subtitles
+  std::vector<CStdString> filenames;
+  CUtil::ScanForExternalSubtitles(m_item.GetPath(), filenames);
+
+  // find any upnp subtitles
+  CStdString key("upnp:subtitle:1");
+  for(unsigned s = 1; m_item.HasProperty(key); key.Format("upnp:subtitle:%u", ++s))
+    filenames.push_back(m_item.GetProperty(key).asString());
+
+  for(unsigned int i=0;i<filenames.size();i++)
+  {
+    // if vobsub subtitle:		
+    if (URIUtils::GetExtension(filenames[i]) == ".idx")
+    {
+      CStdString strSubFile;
+      if ( CUtil::FindVobSubPair( filenames, filenames[i], strSubFile ) )
+        AddSubtitleFile(filenames[i], strSubFile);
+    }
+    else 
+    {
+      if ( !CUtil::IsVobSub(filenames, filenames[i] ) )
+      {
+        AddSubtitleFile(filenames[i]);
+      }
+    }   
+  }
 }
 
-void CAMLPlayer::GetDeinterlaceMethods(Features* deinterlaceMethods)
+int CAMLPlayer::AddSubtitleFile(const std::string &filename, const std::string &subfilename)
 {
-  deinterlaceMethods->push_back(VS_INTERLACEMETHOD_DEINTERLACE);
-  return;
+  std::string ext = URIUtils::GetExtension(filename);
+  std::string vobsubfile = subfilename;
+
+  if(ext == ".idx")
+  {
+    /*
+    if (vobsubfile.empty())
+      vobsubfile = URIUtils::ReplaceExtension(filename, ".sub");
+
+    CDVDDemuxVobsub v;
+    if(!v.Open(filename, vobsubfile))
+      return -1;
+    m_SelectionStreams.Update(NULL, &v);
+    int index = m_SelectionStreams.IndexOf(STREAM_SUBTITLE, m_SelectionStreams.Source(STREAM_SOURCE_DEMUX_SUB, filename), 0);
+    m_SelectionStreams.Get(STREAM_SUBTITLE, index).flags = flags;
+    m_SelectionStreams.Get(STREAM_SUBTITLE, index).filename2 = vobsubfile;
+    return index;
+    */
+    return -1;
+  }
+  if(ext == ".sub")
+  {
+    /*
+    CStdString strReplace(URIUtils::ReplaceExtension(filename,".idx"));
+    if (XFILE::CFile::Exists(strReplace))
+      return -1;
+    */
+    return -1;
+  }
+  AMLPlayerStreamInfo *info = new AMLPlayerStreamInfo;
+  info->Clear();
+
+  info->id       = 0;
+  info->type     = STREAM_SUBTITLE;
+  info->source   = STREAM_SOURCE_TEXT;
+  info->filename = filename;
+  info->name     = URIUtils::GetFileName(filename);
+  info->frame_rate_num = m_video_fps_numerator;
+  info->frame_rate_den = m_video_fps_denominator;
+
+  printf("CAMLPlayer::AddSubtitleFile, sub filename = %s\n", info->name.c_str());
+  m_subtitle_streams.push_back(info);
+  return m_subtitle_streams.size();
 }
 
-void CAMLPlayer::GetDeinterlaceModes(Features* deinterlaceModes)
+bool CAMLPlayer::OpenSubtitleStream(int index)
 {
-  deinterlaceModes->push_back(VS_DEINTERLACEMODE_AUTO);
-  return;
-}
+  CLog::Log(LOGNOTICE, "Opening external subtitle stream: %i", index);
 
-void CAMLPlayer::GetScalingMethods(Features* scalingMethods)
-{
-  return;
-}
+  CDemuxStream* pStream = NULL;
+  std::string filename;
+  CDVDStreamInfo hint;
 
-void CAMLPlayer::GetAudioCapabilities(Features* audioCaps)
-{
-  audioCaps->push_back(IPC_AUD_SELECT_STREAM);
-  return;
-}
+  if (m_subtitle_streams[index]->source == STREAM_SOURCE_DEMUX_SUB)
+  {
+    /*
+    int index = m_SelectionStreams.IndexOf(STREAM_SUBTITLE, source, iStream);
+    if(index < 0)
+      return false;
+    SelectionStream st = m_SelectionStreams.Get(STREAM_SUBTITLE, index);
 
-void CAMLPlayer::GetSubtitleCapabilities(Features* subCaps)
-{
-  //subCaps->push_back(IPC_SUBS_EXTERNAL);
-  subCaps->push_back(IPC_SUBS_OFFSET);
-  subCaps->push_back(IPC_SUBS_SELECT);
-  return;
+    if(!m_pSubtitleDemuxer || m_pSubtitleDemuxer->GetFileName() != st.filename)
+    {
+      CLog::Log(LOGNOTICE, "Opening Subtitle file: %s", st.filename.c_str());
+      auto_ptr<CDVDDemuxVobsub> demux(new CDVDDemuxVobsub());
+      if(!demux->Open(st.filename, st.filename2))
+        return false;
+      m_pSubtitleDemuxer = demux.release();
+    }
+
+    pStream = m_pSubtitleDemuxer->GetStream(iStream);
+    if(!pStream || pStream->disabled)
+      return false;
+    pStream->SetDiscard(AVDISCARD_NONE);
+    double pts = m_dvdPlayerVideo.GetCurrentPts();
+    if(pts == DVD_NOPTS_VALUE)
+      pts = m_CurrentVideo.dts;
+    if(pts == DVD_NOPTS_VALUE)
+      pts = 0;
+    pts += m_offset_pts;
+    m_pSubtitleDemuxer->SeekTime((int)(1000.0 * pts / (double)DVD_TIME_BASE));
+
+    hint.Assign(*pStream, true);
+    */
+    return false;
+  }
+  else if (m_subtitle_streams[index]->source == STREAM_SOURCE_TEXT)
+  {
+    filename = m_subtitle_streams[index]->filename;
+
+    hint.Clear();
+    hint.fpsscale = m_subtitle_streams[index]->frame_rate_den;
+    hint.fpsrate  = m_subtitle_streams[index]->frame_rate_num;
+  }
+
+  m_dvdPlayerSubtitle->CloseStream(true);
+  if (!m_dvdPlayerSubtitle->OpenStream(hint, filename))
+  {
+    CLog::Log(LOGWARNING, "%s - Unsupported stream %d. Stream disabled.", __FUNCTION__, index);
+    if(pStream)
+    {
+      pStream->disabled = true;
+      pStream->SetDiscard(AVDISCARD_ALL);
+    }
+    return false;
+  }
+
+  return true;
 }
 
 #endif

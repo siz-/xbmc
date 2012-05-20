@@ -28,7 +28,6 @@
 typedef struct AMLChapterInfo AMLChapterInfo;
 typedef struct AMLPlayerStreamInfo AMLPlayerStreamInfo;
 typedef struct player_info player_info_t;
-typedef std::vector<int> Features;
 
 struct AMLSubtitle
 {
@@ -51,6 +50,9 @@ protected:
   std::deque<AMLSubtitle*>  m_subtitle_strings;
   CCriticalSection          m_subtitle_csection;
 };
+
+class CDVDPlayerSubtitle;
+class CDVDOverlayContainer;
 
 class CAMLPlayer : public IPlayer, public CThread
 {
@@ -186,6 +188,10 @@ private:
   void          ClearStreamInfos();
   bool          GetStatus();
 
+  void          FindSubtitleFiles();
+  int           AddSubtitleFile(const std::string& filename, const std::string& subfilename = "");
+  bool          OpenSubtitleStream(int index);
+
   int                     m_speed;
   bool                    m_paused;
   bool                    m_StopPlaying;
@@ -217,6 +223,8 @@ private:
   bool                    m_subtitle_show;
   int                     m_subtitle_delay;
   CAMLSubTitleThread     *m_subtitle_thread;
+  CDVDPlayerSubtitle     *m_dvdPlayerSubtitle;
+  CDVDOverlayContainer   *m_dvdOverlayContainer;
 
   int                     m_chapter_index;
   int                     m_chapter_count;
