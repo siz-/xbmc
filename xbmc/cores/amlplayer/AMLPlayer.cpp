@@ -2101,7 +2101,7 @@ int CAMLPlayer::AddSubtitleFile(const std::string &filename, const std::string &
 
   if(ext == ".idx")
   {
-    /*
+    /* TODO: we do not handle idx/sub binary subs yet.
     if (vobsubfile.empty())
       vobsubfile = URIUtils::ReplaceExtension(filename, ".sub");
 
@@ -2118,13 +2118,12 @@ int CAMLPlayer::AddSubtitleFile(const std::string &filename, const std::string &
   }
   if(ext == ".sub")
   {
-    /*
+    // check for texual sub, if this is a idx/sub pair, ignore it.
     CStdString strReplace(URIUtils::ReplaceExtension(filename,".idx"));
     if (XFILE::CFile::Exists(strReplace))
       return -1;
-    */
-    return -1;
   }
+
   AMLPlayerStreamInfo *info = new AMLPlayerStreamInfo;
   info->Clear();
 
@@ -2135,9 +2134,8 @@ int CAMLPlayer::AddSubtitleFile(const std::string &filename, const std::string &
   info->name     = URIUtils::GetFileName(filename);
   info->frame_rate_num = m_video_fps_numerator;
   info->frame_rate_den = m_video_fps_denominator;
-
-  printf("CAMLPlayer::AddSubtitleFile, sub filename = %s\n", info->name.c_str());
   m_subtitle_streams.push_back(info);
+
   return m_subtitle_streams.size();
 }
 
