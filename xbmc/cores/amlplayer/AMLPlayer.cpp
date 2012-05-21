@@ -956,8 +956,9 @@ void CAMLPlayer::SetSubtitleVisible(bool bVisible)
 
 int CAMLPlayer::AddSubtitle(const CStdString& strSubPath)
 {
-  // this waits until we can stop/restart video stream.
-  return -1;
+  CSingleLock lock(m_aml_csection);
+
+  return AddSubtitleFile(strSubPath);
 }
 
 void CAMLPlayer::Update(bool bPauseDrawing)
@@ -1644,7 +1645,7 @@ void CAMLPlayer::GetAudioCapabilities(Features* audioCaps)
 
 void CAMLPlayer::GetSubtitleCapabilities(Features* subCaps)
 {
-  //subCaps->push_back(IPC_SUBS_EXTERNAL);
+  subCaps->push_back(IPC_SUBS_EXTERNAL);
   subCaps->push_back(IPC_SUBS_OFFSET);
   subCaps->push_back(IPC_SUBS_SELECT);
   return;
