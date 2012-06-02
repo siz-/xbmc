@@ -764,17 +764,12 @@ void CAMLPlayer::SetVolume(long nVolume)
   CLog::Log(LOGDEBUG, "CAMLPlayer::SetVolume(%ld)", nVolume);
   CSingleLock lock(m_aml_csection);
   // nVolume is a milliBels from -6000 (-60dB or mute) to 0 (0dB or full volume)
-  // 0db is represented by Volume = 0x10000000
-  // bit shifts adjust by 6db.
-  // Maximum gain is 0xFFFFFFFF ~=24db
-  //uint32_t volume = (1.0f + (nVolume / 6000.0f)) * (float)0x10000000;
   if (check_pid_valid(m_pid))
   {
-    //int min, max;
-    //float volume =
-    // int audio_set_mute(m_pid, int mute_on);
-    //audio_get_volume_range(m_pid, &min, &max)
-    //audio_set_volume(m_pid, volume);
+    float volume = (double)nVolume / -10000.0f;
+    // Convert what XBMC gives into 0.0 -> 1.0 scale
+    volume = ((1.0f - volume) - 0.4f) * (5.0f/3.0f); // 5/3 = 1.666666f;
+    audio_set_volume(m_pid, volume);
   }
 }
 
