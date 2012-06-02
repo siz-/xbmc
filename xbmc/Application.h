@@ -283,7 +283,7 @@ public:
   void Minimize();
   bool ToggleDPMS(bool manual);
 
-  float GetDimScreenSaverLevel() const;
+  int GetDimScreenSaverLevel() const;
 protected:
   bool LoadSkin(const CStdString& skinID);
   void LoadSkin(const boost::shared_ptr<ADDON::CSkinInfo>& skin);

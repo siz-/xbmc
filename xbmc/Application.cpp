@@ -1943,7 +1943,7 @@ bool CApplication::RenderNoPresent()
   return hasRendered;
 }
 
-float CApplication::GetDimScreenSaverLevel() const
+int CApplication::GetDimScreenSaverLevel() const
 {
   if (!m_bScreenSave || !m_screenSaver ||
       (m_screenSaver->ID() != "screensaver.xbmc.builtin.dim" &&
@@ -1952,8 +1952,8 @@ float CApplication::GetDimScreenSaverLevel() const
     return 0;
 
   if (!m_screenSaver->GetSetting("level").IsEmpty())
-    return 100.0f - (float)atof(m_screenSaver->GetSetting("level"));
-  return 100.0f;
+    return 100 - atoi(m_screenSaver->GetSetting("level"));
+  return 100;
 }
 
 bool CApplication::WaitFrame(unsigned int timeout)

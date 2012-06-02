@@ -41,7 +41,8 @@ CGUIWindowScreensaverDim::~CGUIWindowScreensaverDim(void)
 
 void CGUIWindowScreensaverDim::UpdateVisibility()
 {
-  float level = g_application.GetDimScreenSaverLevel();
+  // GetDimScreenSaverLevel returns a (0.0 to 100.x) percent.
+  int level = g_application.GetDimScreenSaverLevel();
   if (level)
   {
     m_dimLevel = level;
