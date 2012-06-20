@@ -65,12 +65,6 @@ struct DVDVideoPicture
     struct {
       VAAPI::CHolder* vaapi;
     };
-
-#ifdef TARGET_AMLOGIC
-    struct {
-      CAmlogic* amlcodec;
-    };
-#endif
     struct {
       COpenMax *openMax;
       OpenMaxVideoBuffer *openMaxBuffer;

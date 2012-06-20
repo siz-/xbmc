@@ -32,14 +32,6 @@
 
 #include <setjmp.h>
 
-#if 0
-//#if defined(TARGET_AMLOGIC)
-#include "filesystem/SpecialProtocol.h"
-#include <amljpeg.h>
-// we need this to serialize access to hw image decoder.
-static CCriticalSection gHWLoaderSection;
-#endif
-
 #define EXIF_TAG_ORIENTATION    0x0112
 
 struct my_error_mgr
@@ -232,95 +224,8 @@ bool CJpegIO::Open(const CStdString &texturePath, unsigned int minx, unsigned in
   }
 }
 
-bool CJpegIO::HWDecode(const unsigned char *pixels, unsigned int pitch, unsigned int format)
-{
-  bool rtn = false;
-#if 0
-//#if defined(TARGET_AMLOGIC)
-  CSingleLock lock(gHWLoaderSection);
-
-  aml_image_info_t *image_info;
-
-  amljpeg_init();
-  // mode 0 = keep ratio
-  //      1 = crop image
-  //      2 = stretch image
-  int mode = 0;
-  // flag 0 = disable display
-  //      1 = enable display with antiflicking disabled
-  //      2 = enable display with antiflicking enabled
-  int flag = 0;
-  image_info = read_jpeg_image((char*)CSpecialProtocol::TranslatePath(m_texturePath).c_str(),
-    m_width, m_height, mode, flag);
-  if (image_info)
-  {
-    printf("output image width is %d\n",          image_info->width);
-    printf("output image height is %d\n",         image_info->height);
-    printf("output image depth is %d\n",          image_info->depth);
-    printf("output image bytes_per_line is %d\n", image_info->bytes_per_line);
-    printf("output image nbytes   is %d\n",       image_info->nbytes);
-
-    if (format == XB_FMT_RGB8)
-    {
-      unsigned char *src = (unsigned char*)image_info->data;
-      unsigned char *dst = (unsigned char*)pixels;
-      for (unsigned int y = 0; y < m_height; y++)
-      {
-        unsigned char *dst2 = dst;
-        unsigned char *src2 = src;
-        for (unsigned int x = 0; x < m_width; x++)
-        {
-          *dst2++ = *src2++;
-          *dst2++ = *src2++;
-          *dst2++ = *src2++;
-          src2++;
-        }
-        src += image_info->bytes_per_line;
-        dst += pitch;
-      }
-      rtn = true;
-    }
-    else if (format == XB_FMT_A8R8G8B8)
-    {
-      if (image_info->bytes_per_line == (int)pitch)
-      {
-        memcpy((void*)pixels, image_info->data, pitch * m_height);
-      }
-      else
-      {
-        unsigned char *src = (unsigned char*)image_info->data;
-        unsigned char *dst = (unsigned char*)pixels;
-        for (unsigned int y = 0; y < m_height; y++)
-        {
-          memcpy(dst, src, pitch);
-          src += image_info->bytes_per_line;
-          dst += pitch;
-        }
-      }
-      rtn = true;
-    }
-    else
-    {
-      CLog::Log(LOGWARNING, "JpegIO: Incorrect output format specified");
-    }
-    free(image_info->data);
-    free(image_info);
-  }
-  amljpeg_exit();
-#endif
-  return(rtn);
-}
-
 bool CJpegIO::Decode(const unsigned char *pixels, unsigned int pitch, unsigned int format)
 {
-#if 0
-//#if defined(TARGET_AMLOGIC)
-  if (HWDecode(pixels, pitch, format))
-  {
-    jpeg_destroy_decompress(&m_cinfo);
-    return true;
-  }
-#endif
   unsigned char *dst = (unsigned char*)pixels;
 
   struct my_error_mgr jerr;

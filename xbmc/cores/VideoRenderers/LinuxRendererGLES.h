@@ -155,9 +155,6 @@ public:
 
   virtual EINTERLACEMETHOD AutoInterlaceMethod();
 
-#ifdef TARGET_AMLOGIC
-  virtual void         AddProcessor(CAmlogic* amlcodec, DVDVideoPicture *picture);
-#endif
 #ifdef HAVE_LIBOPENMAX
   virtual void         AddProcessor(COpenMax* openMax, DVDVideoPicture *picture);
 #endif
@@ -246,9 +243,6 @@ protected:
     YV12Image image;
     unsigned  flipindex; /* used to decide if this has been uploaded */
 
-#ifdef TARGET_AMLOGIC
-    CAmlogic* amlcodec;
-#endif
 #ifdef HAVE_LIBOPENMAX
     OpenMaxVideoBuffer *openMaxBuffer;
 #endif

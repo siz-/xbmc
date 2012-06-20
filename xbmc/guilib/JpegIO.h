@@ -49,7 +49,6 @@ protected:
   static  void   jpeg_error_exit(j_common_ptr cinfo);
 
   bool           GetExif();
-  bool           HWDecode(const unsigned char *pixels, unsigned int pitch, unsigned int format);
   unsigned int   findExifMarker( unsigned char *jpegData, 
                                  unsigned int dataSize, 
                                  unsigned char *&exifPtr);
