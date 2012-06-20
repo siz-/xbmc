@@ -36,16 +36,19 @@ struct AMLSubtitle
   CStdString  string;
 };
 
+class DllLibAmplayer;
+
 class CAMLSubTitleThread : public CThread
 {
 public:
-  CAMLSubTitleThread();
+  CAMLSubTitleThread(DllLibAmplayer* dll);
   virtual ~CAMLSubTitleThread();
 
   void         UpdateSubtitle(CStdString &subtitle, int64_t elapsed_ms);
 protected:
   virtual void Process(void);
 
+  DllLibAmplayer           *m_dll;
   int                       m_subtitle_codec;
   std::deque<AMLSubtitle*>  m_subtitle_strings;
   CCriticalSection          m_subtitle_csection;
@@ -192,6 +195,7 @@ private:
   int           AddSubtitleFile(const std::string& filename, const std::string& subfilename = "");
   bool          OpenSubtitleStream(int index);
 
+  DllLibAmplayer         *m_dll;
   int                     m_speed;
   bool                    m_paused;
   bool                    m_StopPlaying;

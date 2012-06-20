@@ -21,7 +21,7 @@
 
 #include "system.h"
 
-#if defined (TARGET_AMLOGIC)
+#if defined(TARGET_AMLOGIC)
 #include "AMLPlayer.h"
 #include "Application.h"
 #include "FileItem.h"
@@ -53,14 +53,7 @@
 #include "xbmc/cores/dvdplayer/DVDDemuxers/DVDDemuxVobsub.h"
 
 // amlogic libplayer
-extern "C"
-{
-#include <player.h>
-#include <log_print.h>
-#include <player_set_sys.h>
-#include <amports/aformat.h>
-#include <amports/vformat.h>
-}
+#include "DllLibamplayer.h"
 
 struct AMLChapterInfo
 {
@@ -301,8 +294,9 @@ static const char* AudioCodecName(int aformat)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////
-CAMLSubTitleThread::CAMLSubTitleThread() :
+CAMLSubTitleThread::CAMLSubTitleThread(DllLibAmplayer *dll) :
   CThread(),
+  m_dll(dll),
   m_subtitle_codec(-1)
 {
 }
@@ -348,7 +342,7 @@ void CAMLSubTitleThread::Process(void)
 {
   CLog::Log(LOGDEBUG, "CAMLSubTitleThread::Process begin");
 
-  m_subtitle_codec = codec_open_sub_read();
+  m_subtitle_codec = m_dll->codec_open_sub_read();
   if (m_subtitle_codec < 0)
     CLog::Log(LOGERROR, "CAMLSubTitleThread::Process: codec_open_sub_read failed");
 
@@ -360,13 +354,13 @@ void CAMLSubTitleThread::Process(void)
       // TODO: codec_poll_sub_fd has a bug in kernel driver, it trashes
       // subs in certain conditions so we read garbage, manual poll for now.
       //codec_poll_sub_fd(m_subtitle_codec, 1000);
-      int sub_size = codec_get_sub_size_fd(m_subtitle_codec);
+      int sub_size = m_dll->codec_get_sub_size_fd(m_subtitle_codec);
       if (sub_size > 0)
       {
         int sub_type = 0, sub_pts = 0;
         // calloc sub_size + 1 so we auto terminate the string
         char *sub_buffer = (char*)calloc(sub_size + 1, 1);
-        codec_read_sub_data_fd(m_subtitle_codec, sub_buffer, sub_size);
+        m_dll->codec_read_sub_data_fd(m_subtitle_codec, sub_buffer, sub_size);
 
         // check subtitle header stamp
         if ((sub_buffer[0] == 0x41) && (sub_buffer[1] == 0x4d) &&
@@ -493,7 +487,7 @@ void CAMLSubTitleThread::Process(void)
   }
   m_subtitle_strings.clear();
   if (m_subtitle_codec > 0)
-    codec_close_sub_fd(m_subtitle_codec);
+    m_dll->codec_close_sub_fd(m_subtitle_codec);
   m_subtitle_codec = -1;
 
   CLog::Log(LOGDEBUG, "CAMLSubTitleThread::Process end");
@@ -504,6 +498,8 @@ CAMLPlayer::CAMLPlayer(IPlayerCallback &callback)
   CThread(),
   m_ready(true)
 {
+  m_dll = new DllLibAmplayer;
+  m_dll->Load();
   m_pid = -1;
   m_speed = 0;
   m_paused = false;
@@ -525,6 +521,7 @@ CAMLPlayer::~CAMLPlayer()
 
   delete m_dvdPlayerSubtitle;
   delete m_dvdOverlayContainer;
+  delete m_dll, m_dll = NULL;
 }
 
 bool CAMLPlayer::OpenFile(const CFileItem &file, const CPlayerOptions &options)
@@ -632,9 +629,9 @@ void CAMLPlayer::Pause()
     return;
 
   if (m_paused)
-    player_resume(m_pid);
+    m_dll->player_resume(m_pid);
   else
-    player_pause(m_pid);
+    m_dll->player_pause(m_pid);
 
   m_paused = !m_paused;
 }
@@ -764,12 +761,12 @@ void CAMLPlayer::SetVolume(long nVolume)
   CLog::Log(LOGDEBUG, "CAMLPlayer::SetVolume(%ld)", nVolume);
   CSingleLock lock(m_aml_csection);
   // nVolume is a milliBels from -6000 (-60dB or mute) to 0 (0dB or full volume)
-  if (check_pid_valid(m_pid))
+  if (m_dll->check_pid_valid(m_pid))
   {
     float volume = (double)nVolume / -10000.0f;
     // Convert what XBMC gives into 0.0 -> 1.0 scale
     volume = ((1.0f - volume) - 0.4f) * (5.0f/3.0f); // 5/3 = 1.666666f;
-    audio_set_volume(m_pid, volume);
+    m_dll->audio_set_volume(m_pid, volume);
   }
 }
 
@@ -838,9 +835,9 @@ void CAMLPlayer::SetAudioStream(int SetAudioStream)
   m_audio_index = SetAudioStream;
   SetAudioPassThrough(m_audio_streams[m_audio_index]->format);
 
-  if (check_pid_valid(m_pid))
+  if (m_dll->check_pid_valid(m_pid))
   {
-    player_aid(m_pid, m_audio_streams[m_audio_index]->id);
+    m_dll->player_aid(m_pid, m_audio_streams[m_audio_index]->id);
   }
 }
 
@@ -917,8 +914,8 @@ void CAMLPlayer::SetSubtitle(int iStream)
   if (!m_subtitle_show)
     return;
 
-  if (check_pid_valid(m_pid) && m_subtitle_streams[m_subtitle_index]->source == STREAM_SOURCE_NONE)
-    player_sid(m_pid, m_subtitle_streams[m_subtitle_index]->id);
+  if (m_dll->check_pid_valid(m_pid) && m_subtitle_streams[m_subtitle_index]->source == STREAM_SOURCE_NONE)
+    m_dll->player_sid(m_pid, m_subtitle_streams[m_subtitle_index]->id);
   else
   {
     m_dvdPlayerSubtitle->CloseStream(true);
@@ -942,8 +939,8 @@ void CAMLPlayer::SetSubtitleVisible(bool bVisible)
     // been called, we are expected to switch/show the 1st subtitle
     if (m_subtitle_index < 0)
       m_subtitle_index = 0;
-    if (check_pid_valid(m_pid) && m_subtitle_streams[m_subtitle_index]->source == STREAM_SOURCE_NONE)
-      player_sid(m_pid, m_subtitle_streams[m_subtitle_index]->id);
+    if (m_dll->check_pid_valid(m_pid) && m_subtitle_streams[m_subtitle_index]->source == STREAM_SOURCE_NONE)
+      m_dll->player_sid(m_pid, m_subtitle_streams[m_subtitle_index]->id);
     else
       OpenSubtitleStream(m_subtitle_index);
   }
@@ -1031,7 +1028,7 @@ void CAMLPlayer::SetVideoRect(const CRect &SrcRect, const CRect &DestRect)
 
   ShowMainVideo(false);
   int coordinates[4] = {(int)dst_rect.x1, (int)dst_rect.y1, (int)dst_rect.x2, (int)dst_rect.y2};
-  set_video_axis(coordinates);
+  m_dll->set_video_axis(coordinates);
 /*
   CStdString rectangle;
   rectangle.Format("%i,%i,%i,%i",
@@ -1128,12 +1125,12 @@ void CAMLPlayer::SeekTime(__int64 seek_ms)
     seek_ms = 100;
 
   // seek here
-  if (check_pid_valid(m_pid))
+  if (m_dll->check_pid_valid(m_pid))
   {
     if (!CheckPlaying())
       return;
     // player_timesearch is seconds (float).
-    player_timesearch(m_pid, (float)seek_ms/1000.0);
+    m_dll->player_timesearch(m_pid, (float)seek_ms/1000.0);
     WaitForSearchOK(5000);
     WaitForPlaying(5000);
   }
@@ -1242,7 +1239,7 @@ void CAMLPlayer::ToFFRW(int iSpeed)
   CLog::Log(LOGDEBUG, "CAMLPlayer::ToFFRW: iSpeed(%d), m_speed(%d)", iSpeed, m_speed);
   CSingleLock lock(m_aml_csection);
 
-  if (!check_pid_valid(m_pid) && m_StopPlaying)
+  if (!m_dll->check_pid_valid(m_pid) && m_StopPlaying)
     return;
 
   if (m_speed != iSpeed)
@@ -1256,15 +1253,15 @@ void CAMLPlayer::ToFFRW(int iSpeed)
     {
       // regular playback
       case  0:
-        player_forward(m_pid, 0);
+        m_dll->player_forward(m_pid, 0);
         break;
       default:
         // N x fast forward/rewind (I-frames)
         // speed playback 1,2,4,8
         if (iSpeed > 0)
-          player_forward(m_pid,   iSpeed);
+          m_dll->player_forward(m_pid,   iSpeed);
         else
-          player_backward(m_pid, -iSpeed);
+          m_dll->player_backward(m_pid, -iSpeed);
         break;
     }
 
@@ -1385,7 +1382,7 @@ void CAMLPlayer::Process()
     }
     printf("CAMLPlayer::Process: URL=%s\n", url.c_str());
 
-    if (player_init() != PLAYER_SUCCESS)
+    if (m_dll->player_init() != PLAYER_SUCCESS)
     {
       printf("player init failed\n");
       throw "CAMLPlayer::Process:player init failed";
@@ -1400,7 +1397,7 @@ void CAMLPlayer::Process()
     memset(&play_control, 0, sizeof(play_control_t));
     // if we do not register a callback,
     // then the libamplayer will free run checking status.
-    player_register_update_callback(&play_control.callback_fn, &UpdatePlayerInfo, 1000);
+    m_dll->player_register_update_callback(&play_control.callback_fn, &UpdatePlayerInfo, 1000);
     // leak file_name for now.
     play_control.file_name = (char*)strdup(url.c_str());
     //play_control->nosound   = 1; // if disable audio...,must call this api
@@ -1421,7 +1418,7 @@ void CAMLPlayer::Process()
     //play_control.enable_rw_on_pause =;
     m_aml_state.clear();
     m_aml_state.push_back(0);
-    m_pid = player_start(&play_control, 0);
+    m_pid = m_dll->player_start(&play_control, 0);
     if (m_pid < 0)
     {
       if (m_log_level > 5)
@@ -1433,7 +1430,7 @@ void CAMLPlayer::Process()
     if (WaitForFormatValid(30000))
     {
       // start the playback.
-      int res = player_start_play(m_pid);
+      int res = m_dll->player_start_play(m_pid);
       if (res != PLAYER_SUCCESS)
         throw "CAMLPlayer::Process:player_start_play() failed";
     }
@@ -1501,7 +1498,7 @@ void CAMLPlayer::Process()
           CLog::Log(LOGERROR, "%s - renderer not started", __FUNCTION__);
         }
 
-        m_subtitle_thread = new CAMLSubTitleThread();
+        m_subtitle_thread = new CAMLSubTitleThread(m_dll);
         m_subtitle_thread->Create();
       }
 
@@ -1517,7 +1514,7 @@ void CAMLPlayer::Process()
           case PLAYER_TYPE_REDY:
           case PLAYER_INITOK:
             if (m_log_level > 5)
-              printf("CAMLPlayer::Process: %s\n", player_status2str(pstatus));
+              printf("CAMLPlayer::Process: %s\n", m_dll->player_status2str(pstatus));
             // player is parsing file, decoder not running
             break;
 
@@ -1537,20 +1534,20 @@ void CAMLPlayer::Process()
           case PLAYER_PLAY_NEXT:
           case PLAYER_BUFFER_OK:
             if (m_log_level > 5)
-              printf("CAMLPlayer::Process: %s\n", player_status2str(pstatus));
+              printf("CAMLPlayer::Process: %s\n", m_dll->player_status2str(pstatus));
             break;
 
           case PLAYER_FOUND_SUB:
             // found a NEW subtitle in stream.
             // TODO: reload m_subtitle_streams
             if (m_log_level > 5)
-              printf("CAMLPlayer::Process: %s\n", player_status2str(pstatus));
+              printf("CAMLPlayer::Process: %s\n", m_dll->player_status2str(pstatus));
             break;
 
           case PLAYER_PLAYEND:
             GetStatus();
             if (m_log_level > 5)
-              printf("CAMLPlayer::Process: %s\n", player_status2str(pstatus));
+              printf("CAMLPlayer::Process: %s\n", m_dll->player_status2str(pstatus));
             break;
 
           case PLAYER_ERROR:
@@ -1559,7 +1556,7 @@ void CAMLPlayer::Process()
             if (m_log_level > 5)
             {
               printf("CAMLPlayer::Process PLAYER_STOPED\n");
-              printf("CAMLPlayer::Process: %s\n", player_status2str(pstatus));
+              printf("CAMLPlayer::Process: %s\n", m_dll->player_status2str(pstatus));
             }
             m_StopPlaying = true;
             break;
@@ -1579,12 +1576,12 @@ void CAMLPlayer::Process()
 
   if (m_log_level > 5)
     printf("CAMLPlayer::Process stopped\n");
-  if (check_pid_valid(m_pid))
+  if (m_dll->check_pid_valid(m_pid))
   {
     delete m_subtitle_thread;
     m_subtitle_thread = NULL;
-    player_stop(m_pid);
-    player_exit(m_pid);
+    m_dll->player_stop(m_pid);
+    m_dll->player_exit(m_pid);
     m_pid = -1;
   }
 
@@ -1656,7 +1653,7 @@ void CAMLPlayer::ShowMainVideo(bool show)
   if (m_show_mainvideo == show)
     return;
 
-  set_sysfs_int("/sys/class/video/disable_video", show ? 0:1);
+  m_dll->set_sysfs_int("/sys/class/video/disable_video", show ? 0:1);
 
   m_show_mainvideo = show;
 }
@@ -1666,7 +1663,7 @@ void CAMLPlayer::SetVideoZoom(float zoom)
   // input zoom range is 0.5 to 2.0 with a default of 1.0.
   // output zoom range is 2 to 300 with default of 100.
   // we limit that to a range of 50 to 200 with default of 100.
-  set_sysfs_int("/sys/class/video/zoom", (int)(100 * zoom));
+  m_dll->set_sysfs_int("/sys/class/video/zoom", (int)(100 * zoom));
 }
 
 void CAMLPlayer::SetVideoContrast(int contrast)
@@ -1674,24 +1671,24 @@ void CAMLPlayer::SetVideoContrast(int contrast)
   // input contrast range is 0 to 100 with default of 50.
   // output contrast range is -255 to 255 with default of 0.
   contrast = (255 * (contrast - 50)) / 50;
-  set_sysfs_int("/sys/class/video/contrast", contrast);
+  m_dll->set_sysfs_int("/sys/class/video/contrast", contrast);
 }
 void CAMLPlayer::SetVideoBrightness(int brightness)
 {
   // input brightness range is 0 to 100 with default of 50.
   // output brightness range is -127 to 127 with default of 0.
   brightness = (127 * (brightness - 50)) / 50;
-  set_sysfs_int("/sys/class/video/brightness", brightness);
+  m_dll->set_sysfs_int("/sys/class/video/brightness", brightness);
 }
 
 void CAMLPlayer::SetAudioPassThrough(int format)
 {
   if (m_audio_passthrough_ac3 && format == AFORMAT_AC3)
-    set_sysfs_int("/sys/class/audiodsp/digital_raw", 1);
+    m_dll->set_sysfs_int("/sys/class/audiodsp/digital_raw", 1);
   else if (m_audio_passthrough_dts && format == AFORMAT_DTS)
-    set_sysfs_int("/sys/class/audiodsp/digital_raw", 1);
+    m_dll->set_sysfs_int("/sys/class/audiodsp/digital_raw", 1);
   else
-    set_sysfs_int("/sys/class/audiodsp/digital_raw", 0);
+    m_dll->set_sysfs_int("/sys/class/audiodsp/digital_raw", 0);
 }
 
 bool CAMLPlayer::WaitForPausedThumbJobs(int timeout_ms)
@@ -1732,7 +1729,7 @@ int CAMLPlayer::GetPlayerSerializedState(void)
     // if queue is empty (only at startup),
     // pull the player state directly. this should
     // really never happen but we need to cover it.
-    playerstate = player_get_state(m_pid);
+    playerstate = m_dll->player_get_state(m_pid);
     m_aml_state.push_back(playerstate);
   }
 
@@ -1769,7 +1766,7 @@ bool CAMLPlayer::WaitForStopped(int timeout_ms)
   {
     player_status pstatus = (player_status)GetPlayerSerializedState();
     if (m_log_level > 5)
-      printf("CAMLPlayer::WaitForStopped: %s\n", player_status2str(pstatus));
+      printf("CAMLPlayer::WaitForStopped: %s\n", m_dll->player_status2str(pstatus));
     switch(pstatus)
     {
       default:
@@ -1795,7 +1792,7 @@ bool CAMLPlayer::WaitForSearchOK(int timeout_ms)
   {
     player_status pstatus = (player_status)GetPlayerSerializedState();
     if (m_log_level > 5)
-      printf("CAMLPlayer::WaitForSearchOK: %s\n", player_status2str(pstatus));
+      printf("CAMLPlayer::WaitForSearchOK: %s\n", m_dll->player_status2str(pstatus));
     switch(pstatus)
     {
       default:
@@ -1824,7 +1821,7 @@ bool CAMLPlayer::WaitForPlaying(int timeout_ms)
   {
     player_status pstatus = (player_status)GetPlayerSerializedState();
     if (m_log_level > 5)
-      printf("CAMLPlayer::WaitForPlaying: %s\n", player_status2str(pstatus));
+      printf("CAMLPlayer::WaitForPlaying: %s\n", m_dll->player_status2str(pstatus));
     switch(pstatus)
     {
       default:
@@ -1851,7 +1848,7 @@ bool CAMLPlayer::WaitForFormatValid(int timeout_ms)
   {
     player_status pstatus = (player_status)GetPlayerSerializedState();
     if (m_log_level > 5)
-      printf("CAMLPlayer::WaitForFormatValid: %s\n", player_status2str(pstatus));
+      printf("CAMLPlayer::WaitForFormatValid: %s\n", m_dll->player_status2str(pstatus));
     switch(pstatus)
     {
       default:
@@ -1868,7 +1865,7 @@ bool CAMLPlayer::WaitForFormatValid(int timeout_ms)
         ClearStreamInfos();
 
         media_info_t media_info;
-        int res = player_get_media_info(m_pid, &media_info);
+        int res = m_dll->player_get_media_info(m_pid, &media_info);
         if (res != PLAYER_SUCCESS)
           return false;
 
@@ -2041,11 +2038,11 @@ bool CAMLPlayer::GetStatus()
 {
   CSingleLock lock(m_aml_csection);
 
-  if (!check_pid_valid(m_pid))
+  if (!m_dll->check_pid_valid(m_pid))
     return false;
 
   player_info_t player_info;
-  int res = player_get_play_info(m_pid, &player_info);
+  int res = m_dll->player_get_play_info(m_pid, &player_info);
   if (res != PLAYER_SUCCESS)
     return false;
 

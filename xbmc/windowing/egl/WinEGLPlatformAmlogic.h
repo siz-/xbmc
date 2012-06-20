@@ -25,6 +25,8 @@
 #include "WinEGLPlatformGeneric.h"
 #include <string>
 
+class DllLibAmplayer;
+
 class CWinEGLPlatformAmlogic : public CWinEGLPlatformGeneric
 {
 public:
@@ -46,6 +48,7 @@ public:
   void DisableFreeScale();
 
 private:
+  DllLibAmplayer *m_dll;
   std::string m_framebuffer_name;
 };
 
