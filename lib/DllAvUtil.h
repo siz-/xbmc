@@ -27,6 +27,8 @@
 #include "DynamicDll.h"
 #include "utils/log.h"
 
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
 #ifndef __GNUC__
 #pragma warning(push)
 #pragma warning(disable:4244)
@@ -213,3 +215,5 @@ public:
     return false;
   }
 };
+
+#pragma GCC diagnostic warning "-Wdeprecated-declarations"

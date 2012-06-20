@@ -26,6 +26,8 @@
 #include "DynamicDll.h"
 #include "utils/log.h"
 
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
 extern "C" {
 #define HAVE_MMX
 #ifndef __STDC_CONSTANT_MACROS
@@ -134,3 +136,5 @@ class DllPostProc : public DllDynamic, DllPostProcInterface
 };
 
 #endif
+
+#pragma GCC diagnostic warning "-Wdeprecated-declarations"

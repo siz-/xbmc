@@ -27,6 +27,8 @@
 #include "DllAvCodec.h"
 #include "utils/log.h"
 
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
 extern "C" {
 #ifndef HAVE_MMX
 #define HAVE_MMX
@@ -337,3 +339,5 @@ public:
   }
 };
 #endif
+
+#pragma GCC diagnostic warning "-Wdeprecated-declarations"

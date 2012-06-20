@@ -19,13 +19,14 @@
  *  http://www.gnu.org/copyleft/gpl.html
  *
  */
-
 #if (defined HAVE_CONFIG_H) && (!defined WIN32)
   #include "config.h"
 #endif
 #include "DynamicDll.h"
 #include "DllAvUtil.h"
 #include "utils/log.h"
+
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
 extern "C" {
 #ifndef HAVE_MMX
