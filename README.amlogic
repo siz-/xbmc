@@ -14,7 +14,7 @@ sudo /etc/init.d/nfs-kernel-server restart
 # The bootable rootfs is assumed to be going to /opt/aml-root.
 
  git clone git@github.com:Pivosgroup/buildroot-linux.git
- make amlogic_atv300-xbmc_defconfig
+ make amlogic_xios-xbmc_defconfig
  make
  sudo cp output/images/uImage /var/lib/tftpboot/
  sudo tar -C /opt/aml-rootfs -xf output/images/rootfs.tar.gz
