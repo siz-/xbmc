@@ -1132,8 +1132,8 @@ void CAMLPlayer::SeekTime(__int64 seek_ms)
   {
     if (!CheckPlaying())
       return;
-    // player_timesearch is seconds so round the seek time.
-    player_timesearch(m_pid, (seek_ms + 500)/1000);
+    // player_timesearch is seconds (float).
+    player_timesearch(m_pid, (float)seek_ms/1000.0);
     WaitForSearchOK(5000);
     WaitForPlaying(5000);
   }
@@ -1392,9 +1392,6 @@ void CAMLPlayer::Process()
     }
     printf("player init......\n");
     usleep(250 * 1000);
-
-    // change the amplayer log spew level.
-    change_print_level(m_log_level);
 
     // must be after player_init
     av_register_protocol2(&vfs_protocol, sizeof(vfs_protocol));
