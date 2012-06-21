@@ -25,7 +25,7 @@
 #include "PlayerCoreFactory.h"
 #include "cores/dvdplayer/DVDPlayer.h"
 #include "cores/paplayer/PAPlayer.h"
-#if defined (TARGET_AMLOGIC)
+#if defined(TARGET_AMLOGIC) || defined(ANDROID)
 #include "cores/amlplayer/AMLPlayer.h"
 #endif
 #include "cores/ExternalPlayer/ExternalPlayer.h"
@@ -77,7 +77,7 @@ public:
       case EPC_DVDPLAYER: pPlayer = new CDVDPlayer(callback); break;
       case EPC_PAPLAYER:  pPlayer = new PAPlayer(callback); break;
       case EPC_EXTPLAYER: pPlayer = new CExternalPlayer(callback); break;
-#if defined (TARGET_AMLOGIC)
+#if defined(TARGET_AMLOGIC) || defined(ANDROID)
       case EPC_AMLPLAYER: pPlayer = new CAMLPlayer(callback); break;
 #endif
       default: return NULL;

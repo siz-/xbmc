@@ -21,7 +21,7 @@
  */
 
 #include "system.h"
-#if defined(TARGET_AMLOGIC)
+#if defined(TARGET_AMLOGIC) || defined(ANDROID)
 
 #include "DynamicDll.h"
 

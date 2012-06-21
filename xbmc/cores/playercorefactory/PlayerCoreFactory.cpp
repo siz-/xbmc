@@ -280,7 +280,7 @@ bool CPlayerCoreFactory::LoadConfiguration(TiXmlElement* pConfig, bool clear)
     paplayer->m_bPlaysAudio = true;
     s_vecCoreConfigs.push_back(paplayer);
 
-#if defined (TARGET_AMLOGIC)
+#if defined(TARGET_AMLOGIC) || defined(ANDROID)
     CPlayerCoreConfig* amlplayer = new CPlayerCoreConfig("AMLPlayer", EPC_AMLPLAYER, NULL);
     amlplayer->m_bPlaysAudio = true;
     amlplayer->m_bPlaysVideo = true;
