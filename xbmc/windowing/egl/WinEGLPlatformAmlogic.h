@@ -42,7 +42,6 @@ public:
   // amlogic specific functions
   void ProbeHDMIAudio();
   void SetCpuMinLimit(bool limit);
-  int  GetDisplayResolutionMode();
   bool SetDisplayResolution(const char* resolution);
   void EnableFreeScale();
   void DisableFreeScale();

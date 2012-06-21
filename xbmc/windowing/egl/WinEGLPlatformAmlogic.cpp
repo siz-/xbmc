@@ -31,6 +31,61 @@
 // amlogic libplayer
 #include "cores/amlplayer/DllLibamplayer.h"
 
+static int set_sysfs_str(const char *path, const char *val)
+{
+  int fd = open(path, O_CREAT | O_RDWR | O_TRUNC, 0644);
+  if (fd >= 0)
+  {
+    write(fd, val, strlen(val));
+    close(fd);
+    return 0;
+  }
+  return -1;
+}
+
+static int get_sysfs_str(const char *path, char *valstr, const int size)
+{
+  int fd = open(path, O_RDONLY);
+  if (fd >= 0)
+  {
+    read(fd, valstr, size - 1);
+    valstr[strlen(valstr)] = '\0';
+    close(fd);
+  } else {
+    sprintf(valstr, "%s", "fail");
+    return -1;
+  }
+  return 0;
+}
+
+static int set_sysfs_int(const char *path, const int val)
+{
+  char bcmd[16];
+  int fd = open(path, O_CREAT | O_RDWR | O_TRUNC, 0644);
+  if (fd >= 0)
+  {
+    sprintf(bcmd, "%d", val);
+    write(fd, bcmd, strlen(bcmd));
+    close(fd);
+    return 0;
+  }
+  return -1;
+}
+
+static int get_sysfs_int(const char *path)
+{
+  int val = 0;
+  char bcmd[16];
+  int fd = open(path, O_RDONLY);
+  if (fd >= 0)
+  {
+    read(fd, bcmd, sizeof(bcmd));
+    val = strtol(bcmd, NULL, 16);
+    close(fd);
+  }
+  return val;
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////
 CWinEGLPlatformAmlogic::CWinEGLPlatformAmlogic()
 {
@@ -144,9 +199,9 @@ bool CWinEGLPlatformAmlogic::ShowWindow(bool show)
 {
   std::string blank_framebuffer = "/sys/class/graphics/" + m_framebuffer_name + "/blank";
   if (show)
-    m_dll->set_sysfs_int(blank_framebuffer.c_str(), 0);
+    set_sysfs_int(blank_framebuffer.c_str(), 0);
   else
-    m_dll->set_sysfs_int(blank_framebuffer.c_str(), 1);
+    set_sysfs_int(blank_framebuffer.c_str(), 1);
   return true;
 }
 
@@ -159,7 +214,7 @@ void CWinEGLPlatformAmlogic::SetCpuMinLimit(bool limit)
 
   // only adjust if we are running "ondemand"
   char scaling_governor[256] = {0};
-  m_dll->get_sysfs_str("/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor", scaling_governor, 255);
+  get_sysfs_str("/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor", scaling_governor, 255);
   if (strncmp(scaling_governor, "ondemand", 255))
     return;
 
@@ -167,8 +222,8 @@ void CWinEGLPlatformAmlogic::SetCpuMinLimit(bool limit)
   if (limit)
     freq = 600000;
   else
-    freq = m_dll->get_sysfs_int("/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_min_freq");
-  m_dll->set_sysfs_int("/sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq", freq);
+    freq = get_sysfs_int("/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_min_freq");
+  set_sysfs_int("/sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq", freq);
 }
 
 void CWinEGLPlatformAmlogic::ProbeHDMIAudio()
@@ -237,39 +292,13 @@ void CWinEGLPlatformAmlogic::ProbeHDMIAudio()
   }
 }
 
-int CWinEGLPlatformAmlogic::GetDisplayResolutionMode()
-{
-  int mode = DISP_MODE_720P;
-  CStdString modestr;
-  char display_mode[256] = {0};
-
-  m_dll->get_sysfs_str("/sys/class/display/mode", display_mode, 255);
-  modestr = display_mode;
-  if (modestr.Equals("480i"))
-    mode = DISP_MODE_480I;  
-  else if (modestr.Equals("480p"))
-    mode = DISP_MODE_480P;  
-  else if (modestr.Equals("576i"))
-    mode = DISP_MODE_576I;  
-  else if (modestr.Equals("576p"))
-    mode = DISP_MODE_576P;  
-  else if (modestr.Equals("720p"))
-    mode = DISP_MODE_720P;  
-  else if (modestr.Equals("1080i"))
-    mode = DISP_MODE_1080I;  
-  else if (modestr.Equals("1080p"))
-    mode = DISP_MODE_1080P;  
-
-  return mode;
-}
-
 bool CWinEGLPlatformAmlogic::SetDisplayResolution(const char *resolution)
 {
   CStdString modestr;
   modestr = resolution;
 
   // switch display resolution
-  m_dll->set_sysfs_str("/sys/class/display/mode", modestr.c_str());
+  set_sysfs_str("/sys/class/display/mode", modestr.c_str());
   usleep(250 * 1000);
 
   // setup gui freescale depending on display resolution
@@ -283,63 +312,63 @@ bool CWinEGLPlatformAmlogic::SetDisplayResolution(const char *resolution)
 void CWinEGLPlatformAmlogic::EnableFreeScale()
 {
   // remove default OSD and video path (default_osd default)
-  m_dll->set_sysfs_str("/sys/class/vfm/map", "rm all");
+  set_sysfs_str("/sys/class/vfm/map", "rm all");
   usleep(60 * 1000);
 
   // add OSD path
-  m_dll->set_sysfs_str("/sys/class/vfm/map", "add osdpath osd amvideo");
+  set_sysfs_str("/sys/class/vfm/map", "add osdpath osd amvideo");
   // enable OSD free scale using frame buffer size of 720p
-  m_dll->set_sysfs_int("/sys/class/graphics/fb0/free_scale", 0);
-  m_dll->set_sysfs_int("/sys/class/graphics/fb1/free_scale", 0);
-  m_dll->set_sysfs_int("/sys/class/graphics/fb0/scale_width",  1280);
-  m_dll->set_sysfs_int("/sys/class/graphics/fb0/scale_height", 720);
-  m_dll->set_sysfs_int("/sys/class/graphics/fb1/scale_width",  1280);
-  m_dll->set_sysfs_int("/sys/class/graphics/fb1/scale_height", 720);
-  m_dll->set_sysfs_int("/sys/class/graphics/fb0/free_scale", 1);
-  m_dll->set_sysfs_int("/sys/class/graphics/fb1/free_scale", 1);
+  set_sysfs_int("/sys/class/graphics/fb0/free_scale", 0);
+  set_sysfs_int("/sys/class/graphics/fb1/free_scale", 0);
+  set_sysfs_int("/sys/class/graphics/fb0/scale_width",  1280);
+  set_sysfs_int("/sys/class/graphics/fb0/scale_height", 720);
+  set_sysfs_int("/sys/class/graphics/fb1/scale_width",  1280);
+  set_sysfs_int("/sys/class/graphics/fb1/scale_height", 720);
+  set_sysfs_int("/sys/class/graphics/fb0/free_scale", 1);
+  set_sysfs_int("/sys/class/graphics/fb1/free_scale", 1);
   usleep(60 * 1000);
   // remove OSD path
-  m_dll->set_sysfs_int("/sys/class/graphics/fb0/free_scale", 0);
-  m_dll->set_sysfs_int("/sys/class/graphics/fb1/free_scale", 0);
-  m_dll->set_sysfs_str("/sys/class/vfm/map", "rm osdpath");
+  set_sysfs_int("/sys/class/graphics/fb0/free_scale", 0);
+  set_sysfs_int("/sys/class/graphics/fb1/free_scale", 0);
+  set_sysfs_str("/sys/class/vfm/map", "rm osdpath");
   usleep(60 * 1000);
   // add video path
-  m_dll->set_sysfs_str("/sys/class/vfm/map", "add videopath decoder ppmgr amvideo");
+  set_sysfs_str("/sys/class/vfm/map", "add videopath decoder ppmgr amvideo");
   // enable video free scale (scaling to 1920x1080 with frame buffer size 1280x720)
-  m_dll->set_sysfs_int("/sys/class/ppmgr/ppscaler", 0);
-  m_dll->set_sysfs_int("/sys/class/video/disable_video", 1);
-  m_dll->set_sysfs_int("/sys/class/ppmgr/ppscaler", 1);
-  m_dll->set_sysfs_str("/sys/class/ppmgr/ppscaler_rect", "0 0 1919 1079 0");
-  m_dll->set_sysfs_str("/sys/class/ppmgr/disp", "1280 720");
+  set_sysfs_int("/sys/class/ppmgr/ppscaler", 0);
+  set_sysfs_int("/sys/class/video/disable_video", 1);
+  set_sysfs_int("/sys/class/ppmgr/ppscaler", 1);
+  set_sysfs_str("/sys/class/ppmgr/ppscaler_rect", "0 0 1919 1079 0");
+  set_sysfs_str("/sys/class/ppmgr/disp", "1280 720");
   usleep(60 * 1000);
   //
-  m_dll->set_sysfs_int("/sys/class/graphics/fb0/free_scale", 0);
-  m_dll->set_sysfs_int("/sys/class/graphics/fb1/free_scale", 0);
-  m_dll->set_sysfs_int("/sys/class/graphics/fb0/scale_width",  1280);
-  m_dll->set_sysfs_int("/sys/class/graphics/fb0/scale_height", 720);
-  m_dll->set_sysfs_int("/sys/class/graphics/fb1/scale_width",  1280);
-  m_dll->set_sysfs_int("/sys/class/graphics/fb1/scale_height", 720);
-  m_dll->set_sysfs_int("/sys/class/graphics/fb0/free_scale", 1);
-  m_dll->set_sysfs_int("/sys/class/graphics/fb1/free_scale", 1);
+  set_sysfs_int("/sys/class/graphics/fb0/free_scale", 0);
+  set_sysfs_int("/sys/class/graphics/fb1/free_scale", 0);
+  set_sysfs_int("/sys/class/graphics/fb0/scale_width",  1280);
+  set_sysfs_int("/sys/class/graphics/fb0/scale_height", 720);
+  set_sysfs_int("/sys/class/graphics/fb1/scale_width",  1280);
+  set_sysfs_int("/sys/class/graphics/fb1/scale_height", 720);
+  set_sysfs_int("/sys/class/graphics/fb0/free_scale", 1);
+  set_sysfs_int("/sys/class/graphics/fb1/free_scale", 1);
   usleep(60 * 1000);
   //
-  m_dll->set_sysfs_int("/sys/class/video/disable_video", 2);
-  m_dll->set_sysfs_str("/sys/class/display/axis", "0 0 1279 719 0 0 0 0");
-  m_dll->set_sysfs_str("/sys/class/ppmgr/ppscaler_rect", "0 0 1279 719 1");
+  set_sysfs_int("/sys/class/video/disable_video", 2);
+  set_sysfs_str("/sys/class/display/axis", "0 0 1279 719 0 0 0 0");
+  set_sysfs_str("/sys/class/ppmgr/ppscaler_rect", "0 0 1279 719 1");
 }
 
 void CWinEGLPlatformAmlogic::DisableFreeScale()
 {
   // turn off frame buffer freescale
-  m_dll->set_sysfs_int("/sys/class/graphics/fb0/free_scale", 0);
-  m_dll->set_sysfs_int("/sys/class/graphics/fb1/free_scale", 0);
+  set_sysfs_int("/sys/class/graphics/fb0/free_scale", 0);
+  set_sysfs_int("/sys/class/graphics/fb1/free_scale", 0);
   // revert to default video paths
-  m_dll->set_sysfs_str("/sys/class/vfm/map", "rm all");
-  m_dll->set_sysfs_str("/sys/class/vfm/map", "add default_osd osd amvideo");
-  m_dll->set_sysfs_str("/sys/class/vfm/map", "add default decoder ppmgr amvideo");
+  set_sysfs_str("/sys/class/vfm/map", "rm all");
+  set_sysfs_str("/sys/class/vfm/map", "add default_osd osd amvideo");
+  set_sysfs_str("/sys/class/vfm/map", "add default decoder ppmgr amvideo");
   // disable post processing scaler and disable_video special mode
-  m_dll->set_sysfs_int("/sys/class/ppmgr/ppscaler", 0);
-  m_dll->set_sysfs_int("/sys/class/video/disable_video", 0);
+  set_sysfs_int("/sys/class/ppmgr/ppscaler", 0);
+  set_sysfs_int("/sys/class/video/disable_video", 0);
 
   // revert display axis
   int fd0;
@@ -352,7 +381,7 @@ void CWinEGLPlatformAmlogic::DisableFreeScale()
     {
       char daxis_str[255] = {0};
       sprintf(daxis_str, "%d %d %d %d 0 0 0 0", 0, 0, vinfo.xres, vinfo.yres);
-      m_dll->set_sysfs_str("/sys/class/display/axis", daxis_str);
+      set_sysfs_str("/sys/class/display/axis", daxis_str);
     }
     close(fd0);
   }
