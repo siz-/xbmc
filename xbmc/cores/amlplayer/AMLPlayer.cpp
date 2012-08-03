@@ -310,10 +310,15 @@ static const char* AudioCodecName(int aformat)
     case AFORMAT_VORBIS:
       format = "vorbis";
       break;
+    case AFORMAT_AAC_LATM:
+      format = "aac-latm";
+      break;
+    case AFORMAT_APE:
+      format = "ape";
+      break;
     default:
       format = "unknown";
       break;
-
   }
 
   return format;
@@ -770,7 +775,21 @@ void CAMLPlayer::SeekPercentage(float fPercent)
 {
   CSingleLock lock(m_aml_csection);
 
-  // do seek here
+  // force updated to m_elapsed_ms, m_duration_ms.
+  GetStatus();
+
+  if (m_duration_ms)
+  {
+    int64_t seek_ms = fPercent * m_duration_ms / 100.0;
+    if (seek_ms <= 1000)
+      seek_ms = 1000;
+
+    // do seek here
+    g_infoManager.SetDisplayAfterSeek(100000);
+    SeekTime(seek_ms);
+    m_callback.OnPlayBackSeek((int)seek_ms, (int)(seek_ms - m_elapsed_ms));
+    g_infoManager.SetDisplayAfterSeek();
+  }
 }
 
 float CAMLPlayer::GetPercentage()
@@ -1401,6 +1420,20 @@ void CAMLPlayer::Process()
       static const char *rar_name = "rar";
       vfs_protocol.name = rar_name;
     }
+    else if (url.Left(strlen("ftp://")).Equals("ftp://"))
+    {
+      // the name string needs to persist
+      static const char *http_name = "xb-ftp";
+      vfs_protocol.name = http_name;
+      url = "xb-" + url;
+    }
+    else if (url.Left(strlen("ftps://")).Equals("ftps://"))
+    {
+      // the name string needs to persist
+      static const char *http_name = "xb-ftps";
+      vfs_protocol.name = http_name;
+      url = "xb-" + url;
+    }
     else if (url.Left(strlen("http://")).Equals("http://"))
     {
       // the name string needs to persist
@@ -1408,7 +1441,14 @@ void CAMLPlayer::Process()
       vfs_protocol.name = http_name;
       url = "xb-" + url;
     }
-    printf("CAMLPlayer::Process: URL=%s\n", url.c_str());
+    else if (url.Left(strlen("https://")).Equals("https://"))
+    {
+      // the name string needs to persist
+      static const char *http_name = "xb-https";
+      vfs_protocol.name = http_name;
+      url = "xb-" + url;
+    }
+    CLog::Log(LOGDEBUG, "CAMLPlayer::Process: URL=%s", url.c_str());
 
     if (m_dll->player_init() != PLAYER_SUCCESS)
     {
@@ -1426,14 +1466,17 @@ void CAMLPlayer::Process()
     // if we do not register a callback,
     // then the libamplayer will free run checking status.
     m_dll->player_register_update_callback(&play_control.callback_fn, &UpdatePlayerInfo, 1000);
-    // leak file_name for now.
+    // amlplayer owns file_name and will release on exit
     play_control.file_name = (char*)strdup(url.c_str());
     //play_control->nosound   = 1; // if disable audio...,must call this api
     play_control.video_index = -1; //MUST
     play_control.audio_index = -1; //MUST
     play_control.sub_index   = -1; //MUST
     play_control.hassub      =  1;
-    play_control.t_pos       = -1;
+    if (m_options.starttime > 0)   // player start position in seconds as is starttime
+      play_control.t_pos = m_options.starttime;
+    else
+      play_control.t_pos     = -1;
     play_control.need_start  =  1; // if 0,you can omit player_start_play API.
                                    // just play video/audio immediately.
                                    // if 1,then need call "player_start_play" API;
@@ -1484,13 +1527,6 @@ void CAMLPlayer::Process()
 
       // restore system volume setting.
       SetVolume(g_settings.m_nVolumeLevel);
-
-      // starttime has units of seconds
-      if (m_options.starttime > 0)
-      {
-        SeekTime(m_options.starttime * 1000);
-        WaitForPlaying(1000);
-      }
 
       // drop CGUIDialogBusy dialog and release the hold in OpenFile.
       m_ready.Set();
@@ -1924,6 +1960,8 @@ bool CAMLPlayer::WaitForFormatValid(int timeout_ms)
             info->type            = STREAM_VIDEO;
             info->width           = media_info.video_info[i]->width;
             info->height          = media_info.video_info[i]->height;
+            info->aspect_ratio_num= media_info.video_info[i]->aspect_ratio_num;
+            info->aspect_ratio_den= media_info.video_info[i]->aspect_ratio_den;
             info->frame_rate_num  = media_info.video_info[i]->frame_rate_num;
             info->frame_rate_den  = media_info.video_info[i]->frame_rate_den;
             info->bit_rate        = media_info.video_info[i]->bit_rate;
