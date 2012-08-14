@@ -94,8 +94,8 @@ public:
   virtual bool  IsRecording()                                     {return false;};
   virtual bool  Record(bool bOnOff)                               {return false;};
 
-  virtual void  SetAVDelay(float fValue = 0.0f)                   {return;}
-  virtual float GetAVDelay()                                      {return 0.0f;};
+  virtual void  SetAVDelay(float fValue = 0.0f);
+  virtual float GetAVDelay();
 
   virtual void  SetSubTitleDelay(float fValue);
   virtual float GetSubTitleDelay();

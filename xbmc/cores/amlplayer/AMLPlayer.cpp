@@ -572,7 +572,7 @@ bool CAMLPlayer::OpenFile(const CFileItem &file, const CPlayerOptions &options)
     m_duration_ms =  0;
 
     m_audio_info  = "none";
-    m_audio_delay = g_settings.m_currentVideoSettings.m_AudioDelay;
+    m_audio_delay = 0;
     m_audio_passthrough_ac3 = g_guiSettings.GetBool("audiooutput.ac3passthrough");
     m_audio_passthrough_dts = g_guiSettings.GetBool("audiooutput.dtspassthrough");
 
@@ -884,6 +884,23 @@ void CAMLPlayer::SetAudioStream(int SetAudioStream)
   {
     m_dll->player_aid(m_pid, m_audio_streams[m_audio_index]->id);
   }
+}
+
+void CAMLPlayer::SetAVDelay(float fValue)
+{
+  CLog::Log(LOGDEBUG, "CAMLPlayer::SetAVDelay (%f)", fValue);
+  m_audio_delay = fValue * 1000.0;
+
+  if (m_audio_streams.size() && m_dll->check_pid_valid(m_pid))
+  {
+    CSingleLock lock(m_aml_csection);
+    m_dll->audio_set_delay(m_pid, m_audio_delay);
+  }
+}
+
+float CAMLPlayer::GetAVDelay()
+{
+  return (float)m_audio_delay / 1000.0;
 }
 
 void CAMLPlayer::SetSubTitleDelay(float fValue = 0.0f)
@@ -1535,6 +1552,8 @@ void CAMLPlayer::Process()
       // check for video in media content
       if (GetVideoStreamCount() > 0)
       {
+        SetAVDelay(g_settings.m_currentVideoSettings.m_AudioDelay);
+
         // turn on/off subs
         SetSubtitleVisible(g_settings.m_currentVideoSettings.m_SubtitleOn);
         SetSubTitleDelay(g_settings.m_currentVideoSettings.m_SubtitleDelay);
@@ -1692,6 +1711,7 @@ void CAMLPlayer::GetScalingMethods(Features* scalingMethods)
 
 void CAMLPlayer::GetAudioCapabilities(Features* audioCaps)
 {
+  audioCaps->push_back(IPC_AUD_OFFSET);
   audioCaps->push_back(IPC_AUD_SELECT_STREAM);
   return;
 }
