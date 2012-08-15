@@ -583,18 +583,23 @@ bool CPosixConnection::DoConnection(const CIPConfig &ipconfig, std::string passp
         // fill in the wifi details if needed
         if (m_type == NETWORK_CONNECTION_TYPE_WIFI)
         {
+          // quote the essid, spaces are legal characters
+          tmp = "  wpa-ssid \"" + m_essid + "\"\n";
+          new_interfaces_lines.push_back(tmp);
+
+          tmp = "  wpa-ap-scan 1\n";
+          new_interfaces_lines.push_back(tmp);
+
+          tmp = "  wpa-scan-ssid 1\n";
+          new_interfaces_lines.push_back(tmp);
+
           if (m_encryption == NETWORK_CONNECTION_ENCRYPTION_NONE)
           {
-            tmp = "  wpa-ssid \"" + m_essid + "\"\n";
-            new_interfaces_lines.push_back(tmp);
             tmp = "  wpa-key-mgmt NONE\n";
             new_interfaces_lines.push_back(tmp);
           }
           else if (m_encryption == NETWORK_CONNECTION_ENCRYPTION_WEP)
           {
-            // quote the essid, spaces are legal characters
-            tmp = "  wpa-ssid \"" + m_essid + "\"\n";
-            new_interfaces_lines.push_back(tmp);
             tmp = "  wpa-key-mgmt NONE\n";
             new_interfaces_lines.push_back(tmp);
 
@@ -610,9 +615,6 @@ bool CPosixConnection::DoConnection(const CIPConfig &ipconfig, std::string passp
           else if (m_encryption == NETWORK_CONNECTION_ENCRYPTION_WPA ||
             m_encryption == NETWORK_CONNECTION_ENCRYPTION_WPA2)
           {
-            // quote the essid, spaces are legal characters
-            tmp = "  wpa-ssid \"" + m_essid + "\"\n";
-            new_interfaces_lines.push_back(tmp);
             // if ascii, then quote it, if hex, no quotes
             if (PosixGuessIsHexPassPhrase(passphrase, m_encryption))
               tmp = "  wpa-psk " + passphrase + "\n";
