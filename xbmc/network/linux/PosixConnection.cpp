@@ -431,6 +431,8 @@ bool CPosixConnection::Connect(IPassphraseStorage *storage, const CIPConfig &ipc
     {
       if (!storage->GetPassphrase(m_essid, passphrase))
         return false;
+      if (passphrase.size() <= 0)
+        return false;
     }
   }
   else
@@ -448,6 +450,8 @@ bool CPosixConnection::Connect(IPassphraseStorage *storage, const CIPConfig &ipc
 
   if (DoConnection(ipconfig, passphrase) && GetState() == NETWORK_CONNECTION_STATE_CONNECTED)
   {
+    // if we connect, save out the essid
+    g_guiSettings.SetString("network.essid", m_essid.c_str());
     // quick update of some internal vars
     m_method  = ipconfig.m_method;
     m_address = ipconfig.m_address;

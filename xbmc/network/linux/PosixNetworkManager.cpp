@@ -161,7 +161,7 @@ void CPosixNetworkManager::RestoreSavedConnection()
 {
   CLog::Log(LOGDEBUG, "NetworkManager: Restoring saved connection");
 
-  std::string saved_name       = g_guiSettings.GetString("network.connection");
+  std::string saved_name       = g_guiSettings.GetString("network.essid");
 
   CIPConfig saved_ipconfig;
   saved_ipconfig.m_method      = (IPConfigMethod)g_guiSettings.GetInt("network.method");
