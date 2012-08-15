@@ -724,6 +724,7 @@ void CGUISettings::Initialize()
   AddString(net,    "network.nameserver",            722, "0.0.0.0",        EDIT_CONTROL_IP_INPUT);
   AddString(net,    "network.apply",                 779, "",               BUTTON_CONTROL_STANDARD);
   // add hidden essid/passphrase so we can save/restore it
+  AddString(NULL,   "network.essid",                 776, "",               EDIT_CONTROL_INPUT);
   AddString(NULL,   "network.passphrase",            777, "",               EDIT_CONTROL_INPUT);
   //
   CSettingsCategory* srv = AddCategory(6, "services", 14036);
