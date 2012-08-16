@@ -21,6 +21,7 @@
 
 #include "PosixConnection.h"
 #include "Util.h"
+#include "linux/XTimeUtils.h"
 #include "utils/StdString.h"
 #include "utils/log.h"
 
@@ -680,6 +681,17 @@ bool CPosixConnection::DoConnection(const CIPConfig &ipconfig, std::string passp
     CLog::Log(LOGERROR, "NetworkManager: Unable to start interface %s, %s", m_interface.c_str(), strerror(errno));
   else
     CLog::Log(LOGDEBUG, "NetworkManager: Started interface %s", m_interface.c_str());
+
+  // wait for wap to connect to the AP and udhcp to fetch an IP
+  if (m_type == NETWORK_CONNECTION_TYPE_WIFI)
+  {
+    for (int i = 0; i < 30; ++i)
+    {
+      if (GetState() == NETWORK_CONNECTION_STATE_CONNECTED)
+        break;
+      Sleep(1000);
+    }
+  }
 
   return true;
 }
