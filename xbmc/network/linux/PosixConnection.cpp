@@ -576,6 +576,12 @@ bool CPosixConnection::DoConnection(const CIPConfig &ipconfig, std::string passp
         else
         {
           std::string method("dhcp");
+          if (m_type == NETWORK_CONNECTION_TYPE_WIFI)
+          {
+            // the wpa_action script will take care of
+            // launching udhcpc after the AP connects.
+            method = "manual";
+          }
           tmp = "iface " + m_interface + " inet " + method + "\n";
           new_interfaces_lines.push_back(tmp);
         }
