@@ -21,11 +21,15 @@
 
 #include "PeripheralBusUSBLibUdev.h"
 #include "peripherals/Peripherals.h"
+#if defined(HAS_LINUX_EVENTS)
+#include "windowing/WinEventsLinux.h"
+#endif
+#include "utils/log.h"
+
 extern "C" {
 #include <libudev.h>
 }
 #include <poll.h>
-#include "utils/log.h"
 
 #ifndef USB_CLASS_PER_INTERFACE
 #define USB_CLASS_PER_INTERFACE         0
@@ -110,6 +114,7 @@ CPeripheralBusUSB::~CPeripheralBusUSB(void)
 
 bool CPeripheralBusUSB::PerformDeviceScan(PeripheralScanResults &results)
 {
+  bool rtn = false;
   struct udev_enumerate *enumerate;
   struct udev_list_entry *devices, *dev_list_entry;
   struct udev_device *dev(NULL), *parent(NULL);
@@ -175,6 +180,31 @@ bool CPeripheralBusUSB::PerformDeviceScan(PeripheralScanResults &results)
   }
   /* Free the enumerator object */
   udev_enumerate_unref(enumerate);
+
+  // quick check if number of entries changed.
+  if (m_results.m_results.size() != results.m_results.size())
+  {
+    m_results = results;
+    rtn = true;
+  }
+  else
+  {
+    // number of entried are the same, so we have to compare each one.
+    for (unsigned int iDevicePtr = 0; iDevicePtr < m_results.m_results.size(); iDevicePtr++)
+    {
+      if (!results.ContainsResult(m_results.m_results.at(iDevicePtr)))
+      {
+        // if anything changes, we flag a new PeripheralScanResults
+        m_results = results;
+        rtn = true;
+        break;
+      }
+    }
+  }
+#if defined(HAS_LINUX_EVENTS)
+  if (rtn)
+    CWinEvents::RefreshDevices();
+#endif
 
   return true;
 }
