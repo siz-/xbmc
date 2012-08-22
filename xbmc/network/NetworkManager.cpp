@@ -216,6 +216,9 @@ void CNetworkManager::StartServices()
 {
   CLog::Log(LOGDEBUG, "NetworkManager: Starting network services");
 
+  // TODO: fix properly
+  system("/etc/init.d/S49ntp restart");
+
 #ifdef HAS_TIME_SERVER
   g_application.StartTimeServer();
 #endif
