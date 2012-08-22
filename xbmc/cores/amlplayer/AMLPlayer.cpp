@@ -1360,6 +1360,13 @@ void CAMLPlayer::Process()
       vfs_protocol.name = http_name;
       url = "xb-" + url;
     }
+    else if (url.Left(strlen("hdhomerun://")).Equals("hdhomerun://"))
+    {
+      // the name string needs to persist
+      static const char *http_name = "xb-hdhomerun";
+      vfs_protocol.name = http_name;
+      url = "xb-" + url;
+    }
     CLog::Log(LOGDEBUG, "CAMLPlayer::Process: URL=%s", url.c_str());
 
     if (m_dll->player_init() != PLAYER_SUCCESS)
