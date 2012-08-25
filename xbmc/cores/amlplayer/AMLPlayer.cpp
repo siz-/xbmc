@@ -1033,7 +1033,6 @@ void CAMLPlayer::SetVideoRect(const CRect &SrcRect, const CRect &DestRect)
   float zoom = g_settings.m_currentVideoSettings.m_CustomZoomAmount;
   if ((int)(zoom * 1000) != (int)(m_zoom * 1000))
   {
-    SetVideoZoom(zoom);
     m_zoom = zoom;
   }
   // video contrast adjustment.
@@ -1082,11 +1081,6 @@ void CAMLPlayer::SetVideoRect(const CRect &SrcRect, const CRect &DestRect)
     dst_rect.y1 *= yscale;
     dst_rect.y2 *= yscale;
   }
-  // destination rectangle cannot be outside display bounds
-  if (!display.PtInRect(CPoint(dst_rect.x1, dst_rect.y1)))
-    return;
-  if (!display.PtInRect(CPoint(dst_rect.x2, dst_rect.y2)))
-    return;
 
   ShowMainVideo(false);
 
