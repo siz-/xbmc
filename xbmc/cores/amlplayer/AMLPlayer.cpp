@@ -535,7 +535,7 @@ CAMLPlayer::CAMLPlayer(IPlayerCallback &callback)
 #else
   m_log_level = 3;
 #endif
-  m_StopPlaying = false;
+  m_bAbortRequest = false;
 
   // for external subtitles
   m_dvdOverlayContainer = new CDVDOverlayContainer;
@@ -560,6 +560,8 @@ bool CAMLPlayer::OpenFile(const CFileItem &file, const CPlayerOptions &options)
     // this has to be changed so we won't have to close it.
     if (IsRunning())
       CloseFile();
+
+    m_bAbortRequest = false;
 
     m_item = file;
     m_options = options;
@@ -592,7 +594,6 @@ bool CAMLPlayer::OpenFile(const CFileItem &file, const CPlayerOptions &options)
 
     ClearStreamInfos();
 
-    m_StopPlaying = false;
     // setup to spin the busy dialog until we are playing
     m_ready.Reset();
 
@@ -604,13 +605,13 @@ bool CAMLPlayer::OpenFile(const CFileItem &file, const CPlayerOptions &options)
     {
       CGUIDialogBusy *dialog = (CGUIDialogBusy*)g_windowManager.GetWindow(WINDOW_DIALOG_BUSY);
       dialog->Show();
-      while (!m_StopPlaying && !m_ready.WaitMSec(1))
+      while (!m_ready.WaitMSec(1))
         g_windowManager.ProcessRenderLoop(false);
       dialog->Close();
     }
 
     // Playback might have been stopped due to some error.
-    if (m_bStop || m_StopPlaying)
+    if (m_bStop || m_bAbortRequest)
       return false;
 
     return true;
@@ -627,7 +628,7 @@ bool CAMLPlayer::CloseFile()
   CLog::Log(LOGDEBUG, "CAMLPlayer::CloseFile");
 
   // set the abort request so that other threads can finish up
-  m_StopPlaying = true;
+  m_bAbortRequest = true;
 
   CLog::Log(LOGDEBUG, "CAMLPlayer: waiting for threads to exit");
   // wait for the main thread to finish up
@@ -652,7 +653,7 @@ void CAMLPlayer::Pause()
   CLog::Log(LOGDEBUG, "CAMLPlayer::Pause");
   CSingleLock lock(m_aml_csection);
 
-  if ((m_pid < 0) && m_StopPlaying)
+  if ((m_pid < 0) && m_bAbortRequest)
     return;
 
   if (m_paused)
@@ -1199,7 +1200,7 @@ void CAMLPlayer::ToFFRW(int iSpeed)
   CLog::Log(LOGDEBUG, "CAMLPlayer::ToFFRW: iSpeed(%d), m_speed(%d)", iSpeed, m_speed);
   CSingleLock lock(m_aml_csection);
 
-  if (!m_dll->check_pid_valid(m_pid) && m_StopPlaying)
+  if (!m_dll->check_pid_valid(m_pid) && m_bAbortRequest)
     return;
 
   if (m_speed != iSpeed)
@@ -1264,13 +1265,13 @@ void CAMLPlayer::OnStartup()
 void CAMLPlayer::OnExit()
 {
   //CLog::Log(LOGNOTICE, "CAMLPlayer::OnExit()");
-  usleep(500 * 1000);
+  Sleep(1000);
 
   m_bStop = true;
   // if we didn't stop playing, advance to the next item in xbmc's playlist
   if (m_options.identify == false)
   {
-    if (m_StopPlaying)
+    if (m_bAbortRequest)
       m_callback.OnPlayBackStopped();
     else
       m_callback.OnPlayBackEnded();
@@ -1481,7 +1482,8 @@ void CAMLPlayer::Process()
       if (m_options.identify == false)
         m_callback.OnPlayBackStarted();
 
-      while (!m_StopPlaying)
+      bool stopPlaying = false;
+      while (!m_bAbortRequest && !stopPlaying)
       {
         player_status pstatus = (player_status)GetPlayerSerializedState();
         switch(pstatus)
@@ -1527,6 +1529,14 @@ void CAMLPlayer::Process()
             break;
 
           case PLAYER_ERROR:
+            if (m_log_level > 5)
+            {
+              printf("CAMLPlayer::Process PLAYER_ERROR\n");
+              printf("CAMLPlayer::Process: %s\n", m_dll->player_status2str(pstatus));
+            }
+            m_bAbortRequest = true;
+            break;
+
           case PLAYER_STOPED:
           case PLAYER_EXIT:
             if (m_log_level > 5)
@@ -1534,7 +1544,7 @@ void CAMLPlayer::Process()
               CLog::Log(LOGDEBUG, "CAMLPlayer::Process PLAYER_STOPED");
               CLog::Log(LOGDEBUG, "CAMLPlayer::Process: %s", m_dll->player_status2str(pstatus));
             }
-            m_StopPlaying = true;
+            stopPlaying = true;
             break;
         }
         usleep(250 * 1000);
@@ -1739,7 +1749,7 @@ bool CAMLPlayer::CheckPlaying()
 
 bool CAMLPlayer::WaitForStopped(int timeout_ms)
 {
-  while (!m_StopPlaying && (timeout_ms > 0))
+  while (!m_bAbortRequest && (timeout_ms > 0))
   {
     player_status pstatus = (player_status)GetPlayerSerializedState();
     if (m_log_level > 5)
@@ -1754,7 +1764,7 @@ bool CAMLPlayer::WaitForStopped(int timeout_ms)
       case PLAYER_STOPED:
       case PLAYER_ERROR:
       case PLAYER_EXIT:
-        m_StopPlaying = true;
+        m_bAbortRequest = true;
         return true;
         break;
     }
@@ -1765,7 +1775,7 @@ bool CAMLPlayer::WaitForStopped(int timeout_ms)
 
 bool CAMLPlayer::WaitForSearchOK(int timeout_ms)
 {
-  while (!m_StopPlaying && (timeout_ms > 0))
+  while (!m_bAbortRequest && (timeout_ms > 0))
   {
     player_status pstatus = (player_status)GetPlayerSerializedState();
     if (m_log_level > 5)
@@ -1780,7 +1790,7 @@ bool CAMLPlayer::WaitForSearchOK(int timeout_ms)
         return false;
       case PLAYER_ERROR:
       case PLAYER_EXIT:
-        m_StopPlaying = true;
+        m_bAbortRequest = true;
         return false;
         break;
       case PLAYER_SEARCHOK:
@@ -1794,7 +1804,7 @@ bool CAMLPlayer::WaitForSearchOK(int timeout_ms)
 
 bool CAMLPlayer::WaitForPlaying(int timeout_ms)
 {
-  while (!m_StopPlaying && (timeout_ms > 0))
+  while (!m_bAbortRequest && (timeout_ms > 0))
   {
     player_status pstatus = (player_status)GetPlayerSerializedState();
     if (m_log_level > 5)
@@ -1807,7 +1817,7 @@ bool CAMLPlayer::WaitForPlaying(int timeout_ms)
         break;
       case PLAYER_ERROR:
       case PLAYER_EXIT:
-        m_StopPlaying = true;
+        m_bAbortRequest = true;
         return false;
         break;
       case PLAYER_RUNNING:
@@ -1834,7 +1844,7 @@ bool CAMLPlayer::WaitForFormatValid(int timeout_ms)
         break;
       case PLAYER_ERROR:
       case PLAYER_EXIT:
-        m_StopPlaying = true;
+        m_bAbortRequest = true;
         return false;
         break;
       case PLAYER_INITOK:
