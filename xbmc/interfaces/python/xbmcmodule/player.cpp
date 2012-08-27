@@ -48,12 +48,13 @@ namespace PYXBMC
   PyObject* Player_New(PyTypeObject *type, PyObject *args, PyObject *kwds)
   {
     Player *self;
-    int playerCore=EPC_NONE;
+    int playerCore=0;
 
     self = (Player*)type->tp_alloc(type, 0);
     if (!self) return NULL;
 
-    if (!PyArg_ParseTuple(args, (char*)"|i", &playerCore)) return NULL;
+    if (PyArg_ParseTuple(args, (char*)"|i", &playerCore))
+      CLog::Log(LOGERROR, "Player_New requested player: %i. This behavior is deprecated, plugins may no longer specify a player", playerCore);
 
     self->iPlayList = PLAYLIST_MUSIC;
 
@@ -62,14 +63,6 @@ namespace PYXBMC
     pyState.Restore();
 
     self->pPlayer->SetCallback(PyThreadState_Get(), (PyObject*)self);
-    self->playerCore = EPC_NONE;
-
-    if (playerCore == EPC_DVDPLAYER ||
-        playerCore == EPC_MPLAYER ||
-        playerCore == EPC_PAPLAYER)
-    {
-      self->playerCore = (EPLAYERCORES)playerCore;
-    }
 
     return (PyObject*)self;
   }
@@ -102,7 +95,7 @@ namespace PYXBMC
     "example:\n"
     "  - listitem = xbmcgui.ListItem('Ironman')\n"
     "  - listitem.setInfo('video', {'Title': 'Ironman', 'Genre': 'Science Fiction'})\n"
-    "  - xbmc.Player( xbmc.PLAYER_CORE_MPLAYER ).play(url, listitem, windowed)\n");
+    "  - xbmc.Player().play(url, listitem, windowed)\n");
 
   // play a file or python playlist
   PyObject* Player_Play(Player *self, PyObject *args, PyObject *kwds)
@@ -126,9 +119,6 @@ namespace PYXBMC
 
     // set fullscreen or windowed
     g_settings.m_bStartVideoWindowed = (0 != bWindowed);
-
-    // force a playercore before playing
-    g_application.m_eForcedNextPlayer = self->playerCore;
 
     if (pObject == NULL)
     {
@@ -209,9 +199,6 @@ namespace PYXBMC
 
   PyObject* Player_PlayNext(Player *self, PyObject *args)
   {
-    // force a playercore before playing
-    g_application.m_eForcedNextPlayer = self->playerCore;
-
     CPyThreadState pyState;
     g_application.getApplicationMessenger().PlayListPlayerNext();
     pyState.Restore();
@@ -226,9 +213,6 @@ namespace PYXBMC
 
   PyObject* Player_PlayPrevious(Player *self, PyObject *args)
   {
-    // force a playercore before playing
-    g_application.m_eForcedNextPlayer = self->playerCore;
-
     CPyThreadState pyState;
     g_application.getApplicationMessenger().PlayListPlayerPrevious();
     pyState.Restore();
@@ -245,9 +229,6 @@ namespace PYXBMC
   {
     int iItem;
     if (!PyArg_ParseTuple(args, (char*)"i", &iItem)) return NULL;
-
-    // force a playercore before playing
-    g_application.m_eForcedNextPlayer = self->playerCore;
 
     if (g_playlistPlayer.GetCurrentPlaylist() != self->iPlayList)
     {
@@ -784,11 +765,7 @@ namespace PYXBMC
     "\n"
     "Player([core]) -- Creates a new Player with as default the xbmc music playlist.\n"
     "\n"
-    "core     : (optional) Use a specified playcore instead of letting xbmc decide the playercore to use.\n"
-    "         : - xbmc.PLAYER_CORE_AUTO\n"
-    "         : - xbmc.PLAYER_CORE_DVDPLAYER\n"
-    "         : - xbmc.PLAYER_CORE_MPLAYER\n"
-    "         : - xbmc.PLAYER_CORE_PAPLAYER\n");
+    "core     : (deprecated)\n");
 
 // Restore code and data sections to normal.
 
