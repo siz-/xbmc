@@ -1088,11 +1088,11 @@ namespace PYXBMC
     PyModule_AddIntConstant(pXbmcModule, (char*)"PLAYLIST_VIDEO", PLAYLIST_VIDEO);
     //PyModule_AddIntConstant(pXbmcModule, (char*)"PLAYLIST_VIDEO_TEMP", PLAYLIST_VIDEO_TEMP);
 
-    // player constants
-    PyModule_AddIntConstant(pXbmcModule, (char*)"PLAYER_CORE_AUTO", EPC_NONE);
-    PyModule_AddIntConstant(pXbmcModule, (char*)"PLAYER_CORE_DVDPLAYER", EPC_DVDPLAYER);
-    PyModule_AddIntConstant(pXbmcModule, (char*)"PLAYER_CORE_MPLAYER", EPC_MPLAYER);
-    PyModule_AddIntConstant(pXbmcModule, (char*)"PLAYER_CORE_PAPLAYER", EPC_PAPLAYER);
+    // player constants - deprecated. Remove post-Frodo.
+    PyModule_AddIntConstant(pXbmcModule, (char*)"PLAYER_CORE_AUTO", 0);
+    PyModule_AddIntConstant(pXbmcModule, (char*)"PLAYER_CORE_DVDPLAYER", 0);
+    PyModule_AddIntConstant(pXbmcModule, (char*)"PLAYER_CORE_MPLAYER", 0);
+    PyModule_AddIntConstant(pXbmcModule, (char*)"PLAYER_CORE_PAPLAYER", 0);
 
     // dvd state constants
     PyModule_AddIntConstant(pXbmcModule, (char*)"TRAY_OPEN", TRAY_OPEN);

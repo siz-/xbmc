@@ -22,7 +22,6 @@
 #include <Python.h>
 
 #include "PythonPlayer.h"
-#include "cores/playercorefactory/PlayerCoreFactory.h"
 #pragma once
 
 #ifdef __cplusplus
@@ -35,7 +34,6 @@ namespace PYXBMC
     PyObject_HEAD
     int iPlayList;
     CPythonPlayer* pPlayer;
-    EPLAYERCORES playerCore;
   } Player;
 
   extern PyTypeObject Player_Type;
