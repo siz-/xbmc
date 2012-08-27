@@ -10,8 +10,8 @@
   </players>
 
   <rules name="system rules">
-    <rule name="rtv" protocols="rtv" player="DVDPlayer" />
-    <rule name="myth/rtmp/mms/udp" protocols="myth|cmyth|mms|mmsh|udp" player="DVDPlayer" />
+    <rule name="rtv" protocols="rtv" player="videodefaultplayer" />
+    <rule name="myth/rtmp/mms/udp" protocols="myth|cmyth|mms|mmsh|udp" player="videodefaultplayer" />
     <rule name="lastfm/shout" protocols="lastfm|shout" player="PAPlayer" />
 
     <!-- dvdplayer can play standard rtsp streams -->
@@ -19,7 +19,7 @@
 
     <!-- Internet streams -->
     <rule name="streams" internetstream="true">
-      <rule name="flv/aacp/sdp" mimetypes="video/x-flv|video-flv|audio/aacp|application/sdp" player="DVDPlayer" />
+      <rule name="flv/aacp/sdp" mimetypes="video/x-flv|video-flv|audio/aacp|application/sdp" player="videodefaultplayer" />
       <rule name="mp2" mimetypes="application/octet-stream" filetypes="mp2" player="PAPlayer" />
     </rule>
 
