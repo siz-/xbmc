@@ -2343,4 +2343,3 @@ void CAMLPlayer::GetSubtitleCapabilities(Features* subCaps)
   return;
 }
 
-#endif
