@@ -45,7 +45,6 @@ bool SoLoader::Load()
 
   CStdString strFileName= _P(GetFileName());
   int flags = RTLD_LAZY;
-  if (m_bGlobal) flags |= RTLD_GLOBAL;
   if (strFileName == "xbmc.so")
   {
     CLog::Log(LOGDEBUG, "Loading Internal Library\n");
