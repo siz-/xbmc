@@ -24,6 +24,7 @@
   #include "config.h"
 #endif
 #include "DynamicDll.h"
+#include "DllAvCore.h"
 #include "DllAvCodec.h"
 #include "utils/log.h"
 
@@ -62,7 +63,6 @@ extern "C" {
   #endif
 #else
   #include "libavfilter/avfiltergraph.h"
-#define HAVE_AVFILTERBUFFERREFVIDEOPROPS_SAMPLE_ASPECT_RATIO
 #endif
 }
 

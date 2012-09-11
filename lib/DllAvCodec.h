@@ -24,7 +24,7 @@
   #include "config.h"
 #endif
 #include "DynamicDll.h"
-#include "DllAvUtil.h"
+#include "DllAvCore.h"
 #include "utils/log.h"
 
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
@@ -341,7 +341,7 @@ class DllAvCodec : public DllDynamic, DllAvCodecInterface
   END_METHOD_RESOLVE()
 
   /* dependencies of libavcodec */
-  DllAvUtil m_dllAvUtil;
+  DllAvCore m_dllAvCore;
   // DllAvUtil loaded implicitely by m_dllAvCore
 
 public:
@@ -363,7 +363,7 @@ public:
     }
     virtual bool Load()
     {
-      if (!m_dllAvUtil.Load())
+      if (!m_dllAvCore.Load())
 	return false;
       return DllDynamic::Load();
     }
