@@ -128,7 +128,7 @@ protected:
   #define MAX_STREAMS 100
   CDemuxStream* m_streams[MAX_STREAMS]; // maximum number of streams that ffmpeg can handle
 
-  AVIOContext* m_ioContext;
+  ByteIOContext* m_ioContext;
 
   DllAvFormat m_dllAvFormat;
   DllAvCodec  m_dllAvCodec;
