@@ -24,8 +24,15 @@
 #include "utils/log.h"
 #include "FileItem.h"
 
+#define URL_RDONLY 1  /**< read-only */
+#define URL_WRONLY 2  /**< write-only */
+#define URL_RDWR   (URL_RDONLY|URL_WRONLY)  /**< read-write */
+
+#define AVSEEK_SIZE  0x10000
+#define AVSEEK_FORCE 0x20000
+
 //========================================================================
-int CFileURLProtocol::Open(URLContext *h, const char *filename, int flags)
+int CFileURLProtocol::Open(AML_URLContext *h, const char *filename, int flags)
 {
   if (flags != URL_RDONLY)
   {
@@ -75,7 +82,7 @@ int CFileURLProtocol::Open(URLContext *h, const char *filename, int flags)
 }
 
 //========================================================================
-int CFileURLProtocol::Read(URLContext *h, unsigned char *buf, int size)
+int CFileURLProtocol::Read(AML_URLContext *h, unsigned char *buf, int size)
 {
   XFILE::CFile *cfile = (XFILE::CFile*)h->priv_data;
 
@@ -86,14 +93,14 @@ int CFileURLProtocol::Read(URLContext *h, unsigned char *buf, int size)
 }
 
 //========================================================================
-int CFileURLProtocol::Write(URLContext *h, unsigned char *buf, int size)
+int CFileURLProtocol::Write(AML_URLContext *h, unsigned char *buf, int size)
 {
   //CLog::Log(LOGDEBUG, "CFileURLProtocol::Write size(%d)", size);
   return 0;
 }
 
 //========================================================================
-int64_t CFileURLProtocol::Seek(URLContext *h, int64_t pos, int whence)
+int64_t CFileURLProtocol::Seek(AML_URLContext *h, int64_t pos, int whence)
 {
   XFILE::CFile *cfile = (XFILE::CFile*)h->priv_data;
 
@@ -109,7 +116,7 @@ int64_t CFileURLProtocol::Seek(URLContext *h, int64_t pos, int whence)
 }
 
 //========================================================================
-int64_t CFileURLProtocol::SeekEx(URLContext *h, int64_t pos, int whence)
+int64_t CFileURLProtocol::SeekEx(AML_URLContext *h, int64_t pos, int whence)
 {
   XFILE::CFile *cfile = (XFILE::CFile*)h->priv_data;
 
@@ -125,7 +132,7 @@ int64_t CFileURLProtocol::SeekEx(URLContext *h, int64_t pos, int whence)
 }
 
 //========================================================================
-int CFileURLProtocol::Close(URLContext *h)
+int CFileURLProtocol::Close(AML_URLContext *h)
 {
   //CLog::Log(LOGDEBUG, "CFileURLProtocol::Close");
   XFILE::CFile *cfile = (XFILE::CFile*)h->priv_data;

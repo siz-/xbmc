@@ -1397,7 +1397,7 @@ void CAMLPlayer::Process()
       }
     }
 
-    static URLProtocol vfs_protocol = {
+    static AML_URLProtocol vfs_protocol = {
       "vfs",
       CFileURLProtocol::Open,
       CFileURLProtocol::Read,
@@ -1478,7 +1478,7 @@ void CAMLPlayer::Process()
     usleep(250 * 1000);
 
     // must be after player_init
-    av_register_protocol2(&vfs_protocol, sizeof(vfs_protocol));
+    m_dll->av_register_protocol2(&vfs_protocol, sizeof(vfs_protocol));
 
     static play_control_t  play_control;
     memset(&play_control, 0, sizeof(play_control_t));
