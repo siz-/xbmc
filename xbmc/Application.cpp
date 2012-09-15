@@ -139,7 +139,6 @@
 #include "music/karaoke/GUIDialogKaraokeSongSelector.h"
 #include "music/karaoke/GUIWindowKaraokeLyrics.h"
 #endif
-#include "network/Network.h"
 #include "network/Zeroconf.h"
 #include "network/ZeroconfBrowser.h"
 #ifndef _LINUX
@@ -249,9 +248,7 @@
 #include "pictures/GUIDialogPictureInfo.h"
 #include "addons/GUIDialogAddonSettings.h"
 #include "addons/GUIDialogAddonInfo.h"
-#ifdef HAS_LINUX_NETWORK
 #include "network/GUIDialogAccessPoints.h"
-#endif
 
 /* PVR related include Files */
 #include "pvr/PVRManager.h"
@@ -637,7 +634,7 @@ bool CApplication::Create()
 
   CStdString executable = CUtil::ResolveExecutablePath();
   CLog::Log(LOGNOTICE, "The executable running is: %s", executable.c_str());
-  CLog::Log(LOGNOTICE, "Local hostname: %s", m_network.GetHostName().c_str());
+  CLog::Log(LOGNOTICE, "Local hostname: %s", m_network.GetDefaultConnectionName().c_str());
   CLog::Log(LOGNOTICE, "Log File is located: %sxbmc.log", g_settings.m_logFolder.c_str());
   CLog::Log(LOGNOTICE, "-----------------------------------------------------------------------");
 
@@ -734,6 +731,8 @@ bool CApplication::Create()
   SetHardwareVolume(g_settings.m_fVolumeLevel);
   CAEFactory::SetMute     (g_settings.m_bMute);
   CAEFactory::SetSoundMode(g_guiSettings.GetInt("audiooutput.guisoundmode"));
+
+  m_network.Initialize();
 
   // initialize the addon database (must be before the addon manager is init'd)
   CDatabaseManager::Get().Initialize(true);
@@ -1271,10 +1270,8 @@ bool CApplication::Initialize()
     g_windowManager.Add(new CGUIDialogBusy);
     g_windowManager.Add(new CGUIDialogPictureInfo);
     g_windowManager.Add(new CGUIDialogAddonInfo);
-    g_windowManager.Add(new CGUIDialogAddonSettings);
-#ifdef HAS_LINUX_NETWORK
-    g_windowManager.Add(new CGUIDialogAccessPoints);
-#endif
+    g_windowManager.Add(new CGUIDialogAddonSettings);      // window id = 140
+    g_windowManager.Add(new CGUIDialogAccessPoints);      // window id = 141
 
     g_windowManager.Add(new CGUIDialogLockSettings);
 
@@ -1394,6 +1391,7 @@ bool CApplication::Initialize()
 
   // reset our screensaver (starts timers etc.)
   ResetScreenSaver();
+  m_keyringManager.Initialize();
 
 #ifdef HAS_SDL_JOYSTICK
   g_Joystick.SetEnabled(g_guiSettings.GetBool("input.enablejoystick") &&
@@ -1566,15 +1564,9 @@ bool CApplication::StartAirplayServer()
     {
       CAirPlayServer::SetCredentials(usePassword, password);
       std::map<std::string, std::string> txt;
-      CNetworkInterface* iface = g_application.getNetwork().GetFirstConnectedInterface();
-      if (iface)
-      {
-        txt["deviceid"] = iface->GetMacAddress();
-      }
-      else
-      {
+      txt["deviceid"] = m_network.GetDefaultConnectionMacAddress();
+      if (txt["deviceid"].empty())
         txt["deviceid"] = "FF:FF:FF:FF:FF:F2";
-      }
       txt["features"] = "0x77";
       txt["model"] = "AppleTV2,1";
       txt["srcvers"] = AIRPLAY_SERVER_VERSION_STR;
@@ -1849,8 +1841,6 @@ void CApplication::StartServices()
 
 void CApplication::StopServices()
 {
-  m_network.NetworkMessage(CNetwork::SERVICES_DOWN, 0);
-
 #if !defined(_WIN32) && defined(HAS_DVD_DRIVE)
   CLog::Log(LOGNOTICE, "stop dvd detect media");
   m_DetectDVDType.StopThread();
@@ -3598,12 +3588,14 @@ void CApplication::Stop(int exitCode)
     }
 #endif
 
+    // shutdown the AudioEngine
+    CAEFactory::Shutdown();
+
+    m_network.StopServices();
+
     g_Windowing.DestroyRenderSystem();
     g_Windowing.DestroyWindow();
     g_Windowing.DestroyWindowSystem();
-
-    // shutdown the AudioEngine
-    CAEFactory::Shutdown();
 
     CLog::Log(LOGNOTICE, "stopped");
   }
@@ -5071,6 +5063,7 @@ void CApplication::Process()
 void CApplication::ProcessSlow()
 {
   g_powerManager.ProcessEvents();
+  m_network.PumpNetworkEvents();
 
 #if defined(TARGET_DARWIN_OSX)
   // There is an issue on OS X that several system services ask the cursor to become visible
@@ -5835,27 +5828,19 @@ void CApplication::SetRenderGUI(bool renderGUI)
   m_renderGUI = renderGUI;
 }
 
-#if defined(HAS_LINUX_NETWORK)
-CNetworkLinux& CApplication::getNetwork()
-{
-  return m_network;
-}
-#elif defined(HAS_WIN32_NETWORK)
-CNetworkWin32& CApplication::getNetwork()
-{
-  return m_network;
-}
-#else
-CNetwork& CApplication::getNetwork()
+CNetworkManager& CApplication::getNetworkManager()
 {
   return m_network;
 }
 
-#endif
+CKeyringManager& CApplication::getKeyringManager()
+{
+  return m_keyringManager;
+}
+
 #ifdef HAS_PERFORMANCE_SAMPLE
 CPerformanceStats &CApplication::GetPerformanceStats()
 {
   return m_perfStats;
 }
 #endif
-
