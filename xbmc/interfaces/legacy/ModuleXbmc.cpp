@@ -224,13 +224,7 @@ namespace XBMCAddon
     String getIPAddress()
     {
       TRACE;
-      char cTitleIP[32];
-      sprintf(cTitleIP, "127.0.0.1");
-      CNetworkInterface* iface = g_application.getNetwork().GetFirstConnectedInterface();
-      if (iface)
-        return iface->GetCurrentIPAddress();
-
-      return cTitleIP;
+      return g_application.getNetworkManager().GetDefaultConnectionAddress().c_str();
     }
 
     long getDVDState()

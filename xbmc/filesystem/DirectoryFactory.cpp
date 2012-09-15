@@ -166,7 +166,7 @@ IDirectory* CDirectoryFactory::Create(const CStdString& strPath)
   if (strProtocol == "filereader")
     return CDirectoryFactory::Create(url.GetFileName());
 
-  if( g_application.getNetwork().IsAvailable(true) )  // true to wait for the network (if possible)
+  if( g_application.getNetworkManager().IsAvailable(true) )  // true to wait for the network (if possible)
   {
     if (strProtocol == "lastfm") return new CLastFMDirectory();
     if (strProtocol == "tuxbox") return new CTuxBoxDirectory();
