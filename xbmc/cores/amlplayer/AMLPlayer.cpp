@@ -312,6 +312,12 @@ static const char* AudioCodecName(int aformat)
     case AFORMAT_VORBIS:
       format = "vorbis";
       break;
+    case AFORMAT_AAC_LATM:
+      format = "aac-latm";
+      break;
+    case AFORMAT_APE:
+      format = "ape";
+      break;
     default:
       format = "unknown";
       break;
@@ -570,7 +576,7 @@ bool CAMLPlayer::OpenFile(const CFileItem &file, const CPlayerOptions &options)
     m_duration_ms =  0;
 
     m_audio_info  = "none";
-    m_audio_delay = g_settings.m_currentVideoSettings.m_AudioDelay;
+    m_audio_delay = 0;
     m_audio_passthrough_ac3 = g_guiSettings.GetBool("audiooutput.ac3passthrough");
     m_audio_passthrough_dts = g_guiSettings.GetBool("audiooutput.dtspassthrough");
 
@@ -880,6 +886,23 @@ void CAMLPlayer::SetAudioStream(int SetAudioStream)
   }
 }
 
+void CAMLPlayer::SetAVDelay(float fValue)
+{
+  CLog::Log(LOGDEBUG, "CAMLPlayer::SetAVDelay (%f)", fValue);
+  m_audio_delay = fValue * 1000.0;
+
+  if (m_audio_streams.size() && m_dll->check_pid_valid(m_pid))
+  {
+    CSingleLock lock(m_aml_csection);
+    m_dll->audio_set_delay(m_pid, m_audio_delay);
+  }
+}
+
+float CAMLPlayer::GetAVDelay()
+{
+  return (float)m_audio_delay / 1000.0;
+}
+
 void CAMLPlayer::SetSubTitleDelay(float fValue = 0.0f)
 {
   if (GetSubtitleCount())
@@ -1112,7 +1135,7 @@ int CAMLPlayer::GetAudioBitrate()
   CSingleLock lock(m_aml_csection);
   if (m_audio_streams.size() == 0 || m_audio_index > (int)(m_audio_streams.size() - 1))
     return 0;
-  
+
   return m_audio_streams[m_audio_index]->bit_rate;
 }
 
@@ -1121,7 +1144,7 @@ int CAMLPlayer::GetVideoBitrate()
   CSingleLock lock(m_aml_csection);
   if (m_video_streams.size() == 0 || m_video_index > (int)(m_video_streams.size() - 1))
     return 0;
-  
+
   return m_video_streams[m_video_index]->bit_rate;
 }
 
@@ -1387,7 +1410,7 @@ void CAMLPlayer::Process()
     m_dll->player_register_update_callback(&play_control.callback_fn, &UpdatePlayerInfo, 1000);
     // amlplayer owns file_name and will release on exit
     play_control.file_name = (char*)strdup(url.c_str());
-    //play_control.nosound   = 1; // if disable audio...,must call this api
+    //play_control->nosound   = 1; // if disable audio...,must call this api
     play_control.video_index = -1; //MUST
     play_control.audio_index = -1; //MUST
     play_control.sub_index   = -1; //MUST
@@ -1454,6 +1477,8 @@ void CAMLPlayer::Process()
       // check for video in media content
       if (GetVideoStreamCount() > 0)
       {
+        SetAVDelay(g_settings.m_currentVideoSettings.m_AudioDelay);
+
         // turn on/off subs
         SetSubtitleVisible(g_settings.m_currentVideoSettings.m_SubtitleOn);
         SetSubTitleDelay(g_settings.m_currentVideoSettings.m_SubtitleDelay);
@@ -1621,6 +1646,7 @@ void CAMLPlayer::GetScalingMethods(Features* scalingMethods)
 
 void CAMLPlayer::GetAudioCapabilities(Features* audioCaps)
 {
+  audioCaps->push_back(IPC_AUD_OFFSET);
   audioCaps->push_back(IPC_AUD_SELECT_STREAM);
   return;
 }
@@ -1895,6 +1921,8 @@ bool CAMLPlayer::WaitForFormatValid(int timeout_ms)
             info->type            = STREAM_VIDEO;
             info->width           = media_info.video_info[i]->width;
             info->height          = media_info.video_info[i]->height;
+            info->aspect_ratio_num= media_info.video_info[i]->aspect_ratio_num;
+            info->aspect_ratio_den= media_info.video_info[i]->aspect_ratio_den;
             info->frame_rate_num  = media_info.video_info[i]->frame_rate_num;
             info->frame_rate_den  = media_info.video_info[i]->frame_rate_den;
             info->bit_rate        = media_info.video_info[i]->bit_rate;
@@ -2207,7 +2235,6 @@ void CAMLPlayer::SetVideoRect(const CRect &SrcRect, const CRect &DestRect)
   float zoom = g_settings.m_currentVideoSettings.m_CustomZoomAmount;
   if ((int)(zoom * 1000) != (int)(m_zoom * 1000))
   {
-    SetVideoZoom(zoom);
     m_zoom = zoom;
   }
   // video contrast adjustment.
@@ -2256,24 +2283,19 @@ void CAMLPlayer::SetVideoRect(const CRect &SrcRect, const CRect &DestRect)
     dst_rect.y1 *= yscale;
     dst_rect.y2 *= yscale;
   }
-  // destination rectangle cannot be outside display bounds
-  if (!display.PtInRect(CPoint(dst_rect.x1, dst_rect.y1)))
-    return;
-  if (!display.PtInRect(CPoint(dst_rect.x2, dst_rect.y2)))
-    return;
 
   ShowMainVideo(false);
 
   char video_axis[256] = {0};
   sprintf(video_axis, "%d %d %d %d", (int)dst_rect.x1, (int)dst_rect.y1, (int)dst_rect.x2, (int)dst_rect.y2);
   set_sysfs_str("/sys/class/video/axis", video_axis);
-
+/*
   CStdString rectangle;
   rectangle.Format("%i,%i,%i,%i",
     (int)dst_rect.x1, (int)dst_rect.y1,
     (int)dst_rect.Width(), (int)dst_rect.Height());
   CLog::Log(LOGDEBUG, "CAMLPlayer::SetVideoRect:dst_rect(%s)", rectangle.c_str());
-
+*/
   // we only get called once gui has changed to something
   // that would show video playback, so show it.
   ShowMainVideo(true);
