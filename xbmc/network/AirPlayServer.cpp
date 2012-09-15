@@ -959,7 +959,7 @@ int CAirPlayServer::CTCPClient::ProcessRequest( CStdString& responseHeader,
   else if (uri == "/server-info")
   {
     CLog::Log(LOGDEBUG, "AIRPLAY: got request %s", uri.c_str());
-    responseBody.Format(SERVER_INFO, g_application.getNetwork().GetFirstConnectedInterface()->GetMacAddress());
+    responseBody.Format(SERVER_INFO, g_application.getNetworkManager().GetDefaultConnectionMacAddress());
     responseHeader = "Content-Type: text/x-apple-plist+xml\r\n";
   }
 

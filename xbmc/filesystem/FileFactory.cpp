@@ -142,7 +142,7 @@ IFile* CFileFactory::CreateLoader(const CURL& url)
 #endif
   else if(strProtocol == "udf") return new CUDFFile();
 
-  if( g_application.getNetwork().IsAvailable() )
+  if( g_application.getNetworkManager().IsAvailable() )
   {
     if (strProtocol == "http"
     ||  strProtocol == "https"

@@ -292,10 +292,7 @@ CUPnPRenderer::GetMetadata(NPT_String& meta)
         // fetch the path to the thumbnail
         CStdString thumb = g_infoManager.GetImage(MUSICPLAYER_COVER, -1); //TODO: Only audio for now
 
-        NPT_String ip;
-        if (g_application.getNetwork().GetFirstConnectedInterface()) {
-            ip = g_application.getNetwork().GetFirstConnectedInterface()->GetCurrentIPAddress().c_str();
-        }
+        NPT_String ip = g_application.getNetworkManager().GetDefaultConnectionAddress().c_str();
         // build url, use the internal device http server to serv the image
         NPT_HttpUrlQuery query;
         query.AddField("path", thumb.c_str());

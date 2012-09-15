@@ -67,6 +67,8 @@ SRCS=AlarmClock.cpp \
      XBMCTinyXML.cpp \
      XMLUtils.cpp \
      BitstreamConverter.cpp \
+     XMLVariantParser.cpp \
+     XMLVariantWriter.cpp \
 
 LIB=utils.a
 
