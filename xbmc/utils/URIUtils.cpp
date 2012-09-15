@@ -483,6 +483,7 @@ bool URIUtils::IsOnLAN(const CStdString& strPath)
       address = ntohl(inet_addr(ip.c_str()));
   }
 
+/*
   if(address != INADDR_NONE)
   {
     // check if we are on the local subnet
@@ -492,6 +493,7 @@ bool URIUtils::IsOnLAN(const CStdString& strPath)
     if (g_application.getNetwork().HasInterfaceForIP(address))
       return true;
   }
+*/
 
   return false;
 }
