@@ -886,23 +886,6 @@ void CAMLPlayer::SetAudioStream(int SetAudioStream)
   }
 }
 
-void CAMLPlayer::SetAVDelay(float fValue)
-{
-  CLog::Log(LOGDEBUG, "CAMLPlayer::SetAVDelay (%f)", fValue);
-  m_audio_delay = fValue * 1000.0;
-
-  if (m_audio_streams.size() && m_dll->check_pid_valid(m_pid))
-  {
-    CSingleLock lock(m_aml_csection);
-    m_dll->audio_set_delay(m_pid, m_audio_delay);
-  }
-}
-
-float CAMLPlayer::GetAVDelay()
-{
-  return (float)m_audio_delay / 1000.0;
-}
-
 void CAMLPlayer::SetSubTitleDelay(float fValue = 0.0f)
 {
   if (GetSubtitleCount())
