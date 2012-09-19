@@ -44,8 +44,8 @@ CWinEGLPlatformGeneric::CWinEGLPlatformGeneric()
   m_desktopRes.iScreen = 0;
   m_desktopRes.iWidth  = 1280;
   m_desktopRes.iHeight = 720;
-  //m_desktopRes.iScreenWidth  = 1280;
-  //m_desktopRes.iScreenHeight = 720;
+  m_desktopRes.iScreenWidth  = 1280;
+  m_desktopRes.iScreenHeight = 720;
   m_desktopRes.fRefreshRate = 60.0f;
   m_desktopRes.bFullScreen = true;
   m_desktopRes.iSubtitles = (int)(0.965 * 720);
@@ -102,12 +102,9 @@ bool CWinEGLPlatformGeneric::ProbeDisplayResolutions(std::vector<RESOLUTION_INFO
   res.fPixelRatio   = 1.0f;
   res.iWidth        = gui_width;
   res.iHeight       = gui_height;
-  //res.iScreenWidth  = gui_width;
-  //res.iScreenHeight = gui_height;
+  res.iScreenWidth  = gui_width;
+  res.iScreenHeight = gui_height;
   res.dwFlags       = D3DPRESENTFLAG_PROGRESSIVE | D3DPRESENTFLAG_WIDESCREEN;
-  // temp until split gui/display res comes in
-  //res.iScreenWidth  = width;
-  //res.iScreenHeight = height;
   res.strMode.Format("%dx%d @ %.2f - Full Screen", gui_width, gui_height, gui_refresh);
 
   resolutions.push_back(res);
@@ -339,6 +336,20 @@ bool CWinEGLPlatformGeneric::ReleaseSurface()
 {
   EGLBoolean eglStatus;
   
+  // For EGL backend, it needs to clear all the back buffers of the window
+  // surface before quiting or we might leave screen bits showing.
+  // The default eglWindowSurface has 3 gdl surfaces as the back
+  // buffer, that's why glClear should be called 3 times.
+  glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+  glClear(GL_COLOR_BUFFER_BIT);
+  eglSwapBuffers(m_display, m_surface);
+
+  glClear(GL_COLOR_BUFFER_BIT);
+  eglSwapBuffers(m_display, m_surface);
+
+  glClear(GL_COLOR_BUFFER_BIT);
+  eglSwapBuffers(m_display, m_surface);
+
   if (m_context != EGL_NO_CONTEXT)
   {
     eglStatus = eglDestroyContext(m_display, m_context);
