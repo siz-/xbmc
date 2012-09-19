@@ -69,6 +69,8 @@ CWinEGLPlatformRaspberryPI::CWinEGLPlatformRaspberryPI()
   m_desktopRes.iScreen      = 0;
   m_desktopRes.iWidth       = 1280;
   m_desktopRes.iHeight      = 720;
+  m_desktopRes.iScreenWidth = 1280;
+  m_desktopRes.iScreenHeight= 720;
   m_desktopRes.fRefreshRate = 60.0f;
   m_desktopRes.bFullScreen  = true;
   m_desktopRes.iSubtitles   = (int)(0.965 * 720);
@@ -271,8 +273,8 @@ bool CWinEGLPlatformRaspberryPI::ProbeDisplayResolutions(std::vector<RESOLUTION_
     res.fPixelRatio   = 1.0f;
     res.iWidth        = tv.width;
     res.iHeight       = tv.height;
-    //res.iScreenWidth  = tv.width;
-    //res.iScreenHeight = tv.height;
+    res.iScreenWidth  = tv.width;
+    res.iScreenHeight = tv.height;
     res.strMode.Format("%dx%d", tv.width, tv.height);
     if((float)tv.frame_rate > 1)
     {
@@ -687,8 +689,8 @@ void CWinEGLPlatformRaspberryPI::GetSupportedModes(HDMI_RES_GROUP_T group, std::
       res.fPixelRatio   = 1.0f;
       res.iWidth        = width;
       res.iHeight       = tv->height;
-      //res.iScreenWidth  = width;
-      //res.iScreenHeight = tv->height;
+      res.iScreenWidth  = width;
+      res.iScreenHeight = tv->height;
       res.strMode.Format("%dx%d", width, tv->height);
       if((float)tv->frame_rate > 1)
       {
