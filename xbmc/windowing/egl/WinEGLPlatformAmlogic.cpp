@@ -124,6 +124,8 @@ EGLNativeWindowType CWinEGLPlatformAmlogic::InitWindowSystem(EGLNativeDisplayTyp
 
 void CWinEGLPlatformAmlogic::DestroyWindowSystem(EGLNativeWindowType native_window)
 {
+  UninitializeDisplay();
+
   SetCpuMinLimit(false);
 
   free(native_window);
