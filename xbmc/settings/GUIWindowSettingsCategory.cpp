@@ -2306,7 +2306,7 @@ void CGUIWindowSettingsCategory::FillInResolutions(CStdString strSetting, Displa
 
   pControl->Clear();
 
-  RESOLUTION spinres = RES_INVALID; // index of the resolution in the spinner that has same screen/width/height as res
+  RESOLUTION spinres = RES_INVALID; // index of the resolution in the spinner that has same screen/width/height/interlace as res
 
   if (mode == DM_WINDOWED)
   {
@@ -2320,13 +2320,16 @@ void CGUIWindowSettingsCategory::FillInResolutions(CStdString strSetting, Displa
     for (unsigned int idx = 0; idx < resolutions.size(); idx++)
     {
       CStdString strRes;
-      strRes.Format("%dx%d", resolutions[idx].width, resolutions[idx].height);
+      strRes.Format("%dx%d%s", resolutions[idx].width, resolutions[idx].height,
+        (resolutions[idx].interlaced == D3DPRESENTFLAG_INTERLACED) ? "i" : "p");
       pControl->AddLabel(strRes, resolutions[idx].ResInfo_Index);
 
       RESOLUTION_INFO res1 = g_settings.m_ResInfo[res];
       RESOLUTION_INFO res2 = g_settings.m_ResInfo[resolutions[idx].ResInfo_Index];
-      if (res1.iScreen == res2.iScreen && 
-          res1.iScreenWidth == res2.iScreenWidth && res1.iScreenHeight == res2.iScreenHeight)
+      if (   res1.iScreen == res2.iScreen
+          && res1.iScreenWidth == res2.iScreenWidth
+          && res1.iScreenHeight == res2.iScreenHeight
+          && (res1.dwFlags & D3DPRESENTFLAG_INTERLACED) == (res2.dwFlags & D3DPRESENTFLAG_INTERLACED))
         spinres = (RESOLUTION) resolutions[idx].ResInfo_Index;
     }
   }
@@ -2366,7 +2369,10 @@ void CGUIWindowSettingsCategory::FillInRefreshRates(CStdString strSetting, RESOL
 
   vector<REFRESHRATE> refreshrates;
   if (res > RES_WINDOW)
-    refreshrates = g_Windowing.RefreshRates(g_settings.m_ResInfo[res].iScreen, g_settings.m_ResInfo[res].iScreenWidth, g_settings.m_ResInfo[res].iScreenHeight);
+    refreshrates = g_Windowing.RefreshRates(g_settings.m_ResInfo[res].iScreen,
+      g_settings.m_ResInfo[res].iScreenWidth,
+      g_settings.m_ResInfo[res].iScreenHeight,
+      g_settings.m_ResInfo[res].dwFlags);
 
   // The control setting doesn't exist when not in standalone mode, don't manipulate it
   CBaseSettingControl *control = GetSetting(strSetting);
@@ -2388,7 +2394,7 @@ void CGUIWindowSettingsCategory::FillInRefreshRates(CStdString strSetting, RESOL
       for (unsigned int idx = 0; idx < refreshrates.size(); idx++)
       {
         CStdString strRR;
-        strRR.Format("%.02f%s", refreshrates[idx].RefreshRate, refreshrates[idx].Interlaced ? "i" : "");
+        strRR.Format("%.02f", refreshrates[idx].RefreshRate);
         pControl->AddLabel(strRR, refreshrates[idx].ResInfo_Index);
       }
     }
