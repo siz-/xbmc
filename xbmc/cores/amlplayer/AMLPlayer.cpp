@@ -2319,6 +2319,9 @@ void CAMLPlayer::RenderUpdateCallBack(const void *ctx, const CRect &SrcRect, con
 }
 void CAMLPlayer::GetRenderFeatures(Features* renderFeatures)
 {
+  renderFeatures->push_back(RENDERFEATURE_ZOOM);
+  renderFeatures->push_back(RENDERFEATURE_CONTRAST);
+  renderFeatures->push_back(RENDERFEATURE_BRIGHTNESS);
   renderFeatures->push_back(RENDERFEATURE_STRETCH);
   return;
 }
@@ -2344,6 +2347,9 @@ void CAMLPlayer::GetAudioCapabilities(Features* audioCaps)
 {
   audioCaps->push_back(IPC_AUD_SELECT_STREAM);
   audioCaps->push_back(IPC_AUD_SELECT_OUTPUT);
+#if !defined(TARGET_ANDROID)
+  audioCaps->push_back(IPC_AUD_OFFSET);
+#endif
   return;
 }
 
@@ -2351,6 +2357,7 @@ void CAMLPlayer::GetSubtitleCapabilities(Features* subCaps)
 {
   subCaps->push_back(IPC_SUBS_EXTERNAL);
   subCaps->push_back(IPC_SUBS_SELECT);
+  subCaps->push_back(IPC_SUBS_OFFSET);
   return;
 }
 
