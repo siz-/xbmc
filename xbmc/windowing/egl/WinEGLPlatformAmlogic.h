@@ -34,6 +34,7 @@ public:
   virtual bool SetDisplayResolution(RESOLUTION_INFO &res);
   virtual bool ClampToGUIDisplayLimits(int &width, int &height);
   virtual bool ProbeDisplayResolutions(std::vector<RESOLUTION_INFO> &resolutions);
+  virtual bool ReleaseSurface();
   virtual bool ShowWindow(bool show);
 
   // amlogic specific functions

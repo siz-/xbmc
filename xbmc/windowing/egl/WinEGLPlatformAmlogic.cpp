@@ -110,14 +110,13 @@ EGLNativeWindowType CWinEGLPlatformAmlogic::InitWindowSystem(EGLNativeDisplayTyp
 
   fbdev_window *native_window;
   native_window = (fbdev_window*)calloc(1, sizeof(fbdev_window));
-  if (width == 1920 && height == 1080)
-  {
-    width  = 1280;
-    height = 720;
-  }
+  ClampToGUIDisplayLimits(width, height);
+
   native_window->width  = width;
   native_window->height = height;
 
+  m_width  = width;
+  m_height = height;
   m_nativeDisplay = nativeDisplay;
   m_nativeWindow = native_window;
   return (EGLNativeWindowType)native_window;
@@ -125,6 +124,8 @@ EGLNativeWindowType CWinEGLPlatformAmlogic::InitWindowSystem(EGLNativeDisplayTyp
 
 void CWinEGLPlatformAmlogic::DestroyWindowSystem(EGLNativeWindowType native_window)
 {
+  UninitializeDisplay();
+
   SetCpuMinLimit(false);
 
   free(native_window);
@@ -133,14 +134,34 @@ void CWinEGLPlatformAmlogic::DestroyWindowSystem(EGLNativeWindowType native_wind
 
 bool CWinEGLPlatformAmlogic::SetDisplayResolution(RESOLUTION_INFO &res)
 {
-  if (res.iWidth == 1920 && res.iWidth == 1080 && !(res.dwFlags & D3DPRESENTFLAG_INTERLACED))
-    SetDisplayResolution("1080p");
-  else if (res.iWidth == 1920 && res.iHeight == 1080)
-    SetDisplayResolution("1080i");
-  else if (res.iWidth == 1280 && res.iHeight == 720)
-    SetDisplayResolution("720p");
-  else if (res.iWidth == 720  && res.iHeight == 480)
+  if (res.iScreenWidth == 1920 && res.iScreenHeight == 1080)
+  {
+    if (res.dwFlags & D3DPRESENTFLAG_INTERLACED)
+    {
+      if ((int)res.fRefreshRate == 60)
+        SetDisplayResolution("1080i");
+      else
+        SetDisplayResolution("1080i50hz");
+    }
+    else
+    {
+      if ((int)res.fRefreshRate == 60)
+        SetDisplayResolution("1080p");
+      else
+        SetDisplayResolution("1080p50hz");
+    }
+  }
+  else if (res.iScreenWidth == 1280 && res.iScreenHeight == 720)
+  {
+    if ((int)res.fRefreshRate == 60)
+      SetDisplayResolution("720p");
+    else
+      SetDisplayResolution("720p50hz");
+  }
+  else if (res.iScreenWidth == 720  && res.iScreenHeight == 480)
+  {
     SetDisplayResolution("480p");
+  }
 
   return true;
 }
@@ -177,48 +198,91 @@ bool CWinEGLPlatformAmlogic::ProbeDisplayResolutions(std::vector<RESOLUTION_INFO
     RESOLUTION_INFO res;
     for (size_t i = 0; i < probe_str.size(); i++)
     {
-      res.iWidth=0; res.iHeight = 0; res.fRefreshRate = 60; res.dwFlags = 0;
+      res.iWidth = 0;
+      res.iHeight= 0;
       // strips, for example, 720p* to 720p
       if (probe_str[i].Right(1) == "*")
         probe_str[i] = probe_str[i].Left(std::max(0, (int)probe_str[i].size() - 1));
-      if (probe_str[i].Equals("720p"))
+
+      if (probe_str[i].Equals("480p"))
       {
-        res.iWidth = 1280; res.iHeight=720;
-        resolutions.push_back(res);
+        res.iWidth = 720;
+        res.iHeight= 480;
+        res.fRefreshRate = 60;
+        res.dwFlags = D3DPRESENTFLAG_PROGRESSIVE;
+      }
+      else if (probe_str[i].Equals("720p"))
+      {
+        res.iWidth = 1280;
+        res.iHeight= 720;
+        res.fRefreshRate = 60;
+        res.dwFlags = D3DPRESENTFLAG_PROGRESSIVE;
       }
       else if (probe_str[i].Equals("720p50hz"))
       {
-        res.iWidth = 1280; res.iHeight=720; res.fRefreshRate = 50;
-        resolutions.push_back(res);
-      }
-      else if (probe_str[i].Equals("1080i"))
-      {
-        res.iWidth = 1920; res.iHeight=1080; res.dwFlags |= D3DPRESENTFLAG_INTERLACED;
-        resolutions.push_back(res);
-      }
-      else if (probe_str[i].Equals("1080i50hz"))
-      {
-        res.iWidth = 1920; res.iHeight=1080; res.dwFlags |= D3DPRESENTFLAG_INTERLACED; res.fRefreshRate = 50;
-        resolutions.push_back(res);
+        res.iWidth = 1280;
+        res.iHeight= 720;
+        res.fRefreshRate = 50;
+        res.dwFlags = D3DPRESENTFLAG_PROGRESSIVE;
       }
       else if (probe_str[i].Equals("1080p"))
       {
-        res.iWidth = 1920; res.iHeight=1080;
-        resolutions.push_back(res);
+        res.iWidth = 1920;
+        res.iHeight= 1080;
+        res.fRefreshRate = 60;
+        res.dwFlags = D3DPRESENTFLAG_PROGRESSIVE;
       }
       else if (probe_str[i].Equals("1080p50hz"))
       {
-        res.iWidth = 1920; res.iHeight=1080; res.fRefreshRate = 50;
+        res.iWidth = 1920;
+        res.iHeight= 1080;
+        res.fRefreshRate = 50;
+        res.dwFlags = D3DPRESENTFLAG_PROGRESSIVE;
+      }
+      else if (probe_str[i].Equals("1080i"))
+      {
+        res.iWidth = 1920;
+        res.iHeight= 1080;
+        res.fRefreshRate = 60;
+        res.dwFlags = D3DPRESENTFLAG_INTERLACED;
+      }
+      else if (probe_str[i].Equals("1080i50hz"))
+      {
+        res.iWidth = 1920;
+        res.iHeight= 1080;
+        res.fRefreshRate = 50;
+        res.dwFlags = D3DPRESENTFLAG_INTERLACED;
+      }
+
+      if (res.iWidth > 0 && res.iHeight > 0)
+      {
+        res.iScreen       = 0;
+        res.bFullScreen   = true;
+        res.iSubtitles    = (int)(0.965 * res.iHeight);
+        res.fPixelRatio   = 1.0f;
+        res.iScreenWidth  = res.iWidth;
+        res.iScreenHeight = res.iHeight;
+        res.strMode.Format("%dx%d @ %.2f%s - Full Screen", res.iScreenWidth, res.iScreenHeight, res.fRefreshRate, 
+          res.dwFlags & D3DPRESENTFLAG_INTERLACED ? "i" : "");
         resolutions.push_back(res);
       }
     }
+
     if (resolutions.size() == 0)
-    {
-      res.iWidth=1280; res.iHeight = 720; res.fRefreshRate = 60; res.dwFlags = 0;
-      resolutions.push_back(res);
-    }
+      resolutions.push_back(m_desktopRes);
   }
   return false;
+}
+
+bool CWinEGLPlatformAmlogic::ReleaseSurface()
+{
+  // Recreate a new rendering context fails on amlogic.
+  // We have to keep the first created context alive until we exit.
+
+  if (m_display != EGL_NO_DISPLAY)
+    eglMakeCurrent(m_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+
+  return true;
 }
 
 bool CWinEGLPlatformAmlogic::ShowWindow(bool show)
