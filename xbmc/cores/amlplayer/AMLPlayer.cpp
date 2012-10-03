@@ -506,6 +506,7 @@ CAMLPlayer::CAMLPlayer(IPlayerCallback &callback)
   m_ready(true)
 {
   m_dll = new DllLibAmplayer;
+  m_dll->audio_set_delay = NULL;
   m_dll->Load();
   m_pid = -1;
   m_speed = 0;
@@ -866,7 +867,9 @@ void CAMLPlayer::SetAudioStream(int SetAudioStream)
 void CAMLPlayer::SetAVDelay(float fValue)
 {
   CLog::Log(LOGDEBUG, "CAMLPlayer::SetAVDelay (%f)", fValue);
-#if !defined(TARGET_ANDROID)
+  if(!m_dll->audio_set_delay)
+    return;
+
   m_audio_delay = fValue * 1000.0;
 
   if (m_audio_streams.size() && m_dll->check_pid_valid(m_pid))
@@ -874,7 +877,6 @@ void CAMLPlayer::SetAVDelay(float fValue)
     CSingleLock lock(m_aml_csection);
     m_dll->audio_set_delay(m_pid, m_audio_delay);
   }
-#endif
 }
 
 float CAMLPlayer::GetAVDelay()
@@ -2325,9 +2327,8 @@ void CAMLPlayer::GetAudioCapabilities(Features* audioCaps)
 {
   audioCaps->push_back(IPC_AUD_SELECT_STREAM);
   audioCaps->push_back(IPC_AUD_SELECT_OUTPUT);
-#if !defined(TARGET_ANDROID)
-  audioCaps->push_back(IPC_AUD_OFFSET);
-#endif
+  if (m_dll->audio_set_delay)
+    audioCaps->push_back(IPC_AUD_OFFSET);
   return;
 }
 
