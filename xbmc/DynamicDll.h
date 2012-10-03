@@ -1,5 +1,4 @@
 #pragma once
-
 /*
  *      Copyright (C) 2005-2012 Team XBMC
  *      http://www.xbmc.org
@@ -378,6 +377,26 @@ public: \
 
 #define RESOLVE_METHOD_FP(method) \
   m_dll->ResolveExport( #method , & method##_ptr ) &&
+
+
+///////////////////////////////////////////////////////////
+//
+//  RESOLVE_METHOD_OPTIONAL
+//
+//  Resolves a method from a dll. does not abort if the
+//  method is missing
+//
+//  method: Name of the method defined with DEFINE_METHOD
+//          or DEFINE_METHOD_LINKAGE
+//
+
+#define RESOLVE_METHOD_OPTIONAL(method) \
+  ( m_dll->ResolveExport( #method , & m_##method##_ptr ) || 1 ) &&\
+
+#define RESOLVE_METHOD_OPTIONAL_FP(method) \
+  ( m_dll->ResolveExport( #method , & method##_ptr ) || 1 ) &&
+
+
 
 ///////////////////////////////////////////////////////////
 //
