@@ -36,6 +36,10 @@
 #include <linux/wireless.h>
 #include <net/if_arp.h>
 
+#if defined(TARGET_ANDROID)
+#include "android/bionic_supplement/bionic_supplement.h"
+#endif
+
 // CPosixNetworkManager and CPosixConnection rely on the debian/ubuntu method of using
 // /etc/network/interfaces and pre-up/post-down scripts to handle bringing connection
 // to wired/wireless networks. The pre-up/post-down scripts handle wireless/wpa though

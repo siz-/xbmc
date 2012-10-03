@@ -111,7 +111,7 @@ void CNetworkManager::Initialize()
 //    m_instance = new CConnmanNetworkManager();
 #endif
 
-#if defined(TARGET_POSIX) && !defined(TARGET_ANDROID)
+#if defined(TARGET_POSIX)
   if (m_instance == NULL)
     m_instance = new CPosixNetworkManager();
 #endif
