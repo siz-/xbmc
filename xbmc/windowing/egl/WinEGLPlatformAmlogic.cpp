@@ -150,14 +150,7 @@ bool CWinEGLPlatformAmlogic::ProbeDisplayResolutions(std::vector<RESOLUTION_INFO
       if (probe_str[i].Right(1) == "*")
         probe_str[i] = probe_str[i].Left(std::max(0, (int)probe_str[i].size() - 1));
 
-      if (probe_str[i].Equals("480p"))
-      {
-        res.iWidth = 720;
-        res.iHeight= 480;
-        res.fRefreshRate = 60;
-        res.dwFlags = D3DPRESENTFLAG_PROGRESSIVE;
-      }
-      else if (probe_str[i].Equals("720p"))
+      if (probe_str[i].Equals("720p"))
       {
         res.iWidth = 1280;
         res.iHeight= 720;
