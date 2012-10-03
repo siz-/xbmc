@@ -866,6 +866,7 @@ void CAMLPlayer::SetAudioStream(int SetAudioStream)
 void CAMLPlayer::SetAVDelay(float fValue)
 {
   CLog::Log(LOGDEBUG, "CAMLPlayer::SetAVDelay (%f)", fValue);
+#if !defined(TARGET_ANDROID)
   m_audio_delay = fValue * 1000.0;
 
   if (m_audio_streams.size() && m_dll->check_pid_valid(m_pid))
@@ -873,6 +874,7 @@ void CAMLPlayer::SetAVDelay(float fValue)
     CSingleLock lock(m_aml_csection);
     m_dll->audio_set_delay(m_pid, m_audio_delay);
   }
+#endif
 }
 
 float CAMLPlayer::GetAVDelay()
