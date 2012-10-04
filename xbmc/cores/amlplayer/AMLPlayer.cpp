@@ -506,7 +506,6 @@ CAMLPlayer::CAMLPlayer(IPlayerCallback &callback)
   m_ready(true)
 {
   m_dll = new DllLibAmplayer;
-  m_dll->audio_set_delay = NULL;
   m_dll->Load();
   m_pid = -1;
   m_speed = 0;
