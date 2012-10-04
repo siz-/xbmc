@@ -355,12 +355,10 @@ public: \
 #define BEGIN_METHOD_RESOLVE() \
   protected: \
   virtual bool ResolveExports() \
-  { \
-    return (
+  {
 
 #define END_METHOD_RESOLVE() \
-              1 \
-              ); \
+    return true; \
   }
 
 ///////////////////////////////////////////////////////////
@@ -373,10 +371,12 @@ public: \
 //          or DEFINE_METHOD_LINKAGE
 //
 #define RESOLVE_METHOD(method) \
-  m_dll->ResolveExport( #method , & m_##method##_ptr ) &&
+  if (!m_dll->ResolveExport( #method , & m_##method##_ptr )) \
+    return false;
 
 #define RESOLVE_METHOD_FP(method) \
-  m_dll->ResolveExport( #method , & method##_ptr ) &&
+  if (!m_dll->ResolveExport( #method , & method##_ptr )) \
+    return false;
 
 
 ///////////////////////////////////////////////////////////
@@ -391,10 +391,11 @@ public: \
 //
 
 #define RESOLVE_METHOD_OPTIONAL(method) \
-  ( m_dll->ResolveExport( #method , & m_##method##_ptr ) || 1 ) &&\
+   m_dll->ResolveExport( #method , & m_##method##_ptr );
 
 #define RESOLVE_METHOD_OPTIONAL_FP(method) \
-  ( m_dll->ResolveExport( #method , & method##_ptr ) || 1 ) &&
+   method##_ptr = NULL; \
+   m_dll->ResolveExport( #method , & method##_ptr );
 
 
 
@@ -409,10 +410,12 @@ public: \
 //          or DEFINE_METHOD_LINKAGE
 //
 #define RESOLVE_METHOD_RENAME(dllmethod, method) \
-  m_dll->ResolveExport( #dllmethod , & m_##method##_ptr ) &&
+  if (!m_dll->ResolveExport( #dllmethod , & m_##method##_ptr )) \
+    return false;
 
 #define RESOLVE_METHOD_RENAME_FP(dllmethod, method) \
-  m_dll->ResolveExport( #dllmethod , & method##_ptr ) &&
+  if (!m_dll->ResolveExport( #dllmethod , & method##_ptr )) \
+    return false;
 
 
 ////////////////////////////////////////////////////////////////////
