@@ -38,9 +38,9 @@ EGLNativeWindowType CWinEGLPlatformAndroid::InitWindowSystem(EGLNativeDisplayTyp
   if (CXBMCApp::GetNativeWindow() == NULL)
     return 0;
 
-  CWinEGLPlatformGeneric::InitWindowSystem(nativeDisplay, width, height, bpp);
+  m_nativeWindow = CWinEGLPlatformGeneric::InitWindowSystem(nativeDisplay, width, height, bpp);
   
-  return getNativeWindow();
+  return m_nativeWindow;
 }
 
 void CWinEGLPlatformAndroid::DestroyWindowSystem(EGLNativeWindowType native_window)
