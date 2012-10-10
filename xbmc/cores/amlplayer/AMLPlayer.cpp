@@ -1937,7 +1937,8 @@ bool CAMLPlayer::WaitForFormatValid(int timeout_ms)
         // video info
         if (media_info.stream_info.has_video && media_info.stream_info.total_video_num > 0)
         {
-          for (int i = 0; i < media_info.stream_info.total_video_num; i++)
+          for (int i = 0; i < media_info.stream_info.total_video_num &&
+              media_info.stream_info.total_video_num < MAX_VIDEO_STREAMS; i++)
           {
             AMLPlayerStreamInfo *info = new AMLPlayerStreamInfo;
             info->Clear();
@@ -1974,7 +1975,8 @@ bool CAMLPlayer::WaitForFormatValid(int timeout_ms)
         // audio info
         if (media_info.stream_info.has_audio && media_info.stream_info.total_audio_num > 0)
         {
-          for (int i = 0; i < media_info.stream_info.total_audio_num; i++)
+          for (int i = 0; i < media_info.stream_info.total_audio_num &&
+              media_info.stream_info.total_audio_num < MAX_AUDIO_STREAMS; i++)
           {
             AMLPlayerStreamInfo *info = new AMLPlayerStreamInfo;
             info->Clear();
@@ -2029,7 +2031,7 @@ bool CAMLPlayer::WaitForFormatValid(int timeout_ms)
         if (media_info.stream_info.total_chapter_num > 0)
         {
           m_chapter_count = media_info.stream_info.total_chapter_num;
-          for (int i = 0; i < m_chapter_count; i++)
+          for (int i = 0; i < m_chapter_count && m_chapter_count < MAX_CHAPTERS; i++)
           {
             if (media_info.chapter_info[i] != NULL)
             {
