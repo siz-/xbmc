@@ -58,6 +58,16 @@ void CPullupCorrection::Add(double pts)
     return;
   }
 
+  if (m_haspattern)
+  {
+    // if we have a pattern, check for a pts discontinuity.
+    // no sense dumping our pullup correction if we have
+    // a clean pts discontinuity.
+    double jmp_factor = pts / m_frameduration;
+    if (fabs(pts - (m_prevpts * jmp_factor)) < (MAXERR * jmp_factor))
+      pts = pts / jmp_factor;
+  }
+
   //increase the ringbuffer position
   m_ringpos = (m_ringpos + 1) % DIFFRINGSIZE;
   //add the current diff to the ringbuffer
