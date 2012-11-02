@@ -318,12 +318,10 @@ void CAMLSubTitleThread::Flush()
   CSingleLock lock(m_subtitle_csection);
   if (m_subtitle_strings.size())
   {
-    AMLSubtitle *amlsubtitle;
     // remove any expired subtitles
     std::deque<AMLSubtitle*>::iterator it = m_subtitle_strings.begin();
     while (it != m_subtitle_strings.end())
     {
-      amlsubtitle = *it;
       it = m_subtitle_strings.erase(it);
     }
   }
