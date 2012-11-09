@@ -576,7 +576,6 @@ bool CAMLPlayer::OpenFile(const CFileItem &file, const CPlayerOptions &options)
     m_subtitle_delay =  0;
     m_subtitle_thread = NULL;
 
-    m_chapter_index  =  0;
     m_chapter_count  =  0;
 
     m_show_mainvideo = -1;
@@ -797,12 +796,10 @@ float CAMLPlayer::GetPercentage()
 void CAMLPlayer::SetVolume(float volume)
 {
   CLog::Log(LOGDEBUG, "CAMLPlayer::SetVolume(%f)", volume);
-#if !defined(TARGET_ANDROID)
   CSingleLock lock(m_aml_csection);
   // volume is a float percent from 0.0 to 1.0
   if (m_dll->check_pid_valid(m_pid))
     m_dll->audio_set_volume(m_pid, volume);
-#endif
 }
 
 void CAMLPlayer::GetAudioInfo(CStdString &strAudioInfo)
@@ -1047,14 +1044,16 @@ int CAMLPlayer::GetChapterCount()
 
 int CAMLPlayer::GetChapter()
 {
+  // returns a one based value or zero if no chapters
   GetStatus();
 
-  for (int i = 0; i < m_chapter_count - 1; i++)
+  int chapter_index = -1;
+  for (int i = 0; i < m_chapter_count; i++)
   {
-    if (m_elapsed_ms >= m_chapters[i]->seekto_ms && m_elapsed_ms < m_chapters[i + 1]->seekto_ms)
-      return i + 1;
+    if (m_elapsed_ms >= m_chapters[i]->seekto_ms)
+      chapter_index = i;
   }
-  return 0;
+  return chapter_index + 1;
 }
 
 void CAMLPlayer::GetChapterName(CStdString& strChapterName)
@@ -1923,11 +1922,7 @@ bool CAMLPlayer::WaitForFormatValid(int timeout_ms)
             media_info.stream_info.cur_video_index,
             media_info.stream_info.cur_audio_index,
             media_info.stream_info.cur_sub_index,
-#if !defined(TARGET_ANDROID)
             media_info.stream_info.total_chapter_num);
-#else
-            0);
-#endif
         }
 
         // video info
@@ -1984,10 +1979,9 @@ bool CAMLPlayer::WaitForFormatValid(int timeout_ms)
             info->bit_rate        = media_info.audio_info[i]->bit_rate;
             info->duration        = media_info.audio_info[i]->duration;
             info->format          = media_info.audio_info[i]->aformat;
-#if !defined(TARGET_ANDROID)
             if (media_info.audio_info[i]->audio_language[0] != 0)
               info->language = std::string(media_info.audio_info[i]->audio_language, 3);
-#endif
+
             m_audio_streams.push_back(info);
           }
 
@@ -2022,7 +2016,6 @@ bool CAMLPlayer::WaitForFormatValid(int timeout_ms)
         if (m_subtitle_count && m_subtitle_index != 0)
           m_subtitle_index = 0;
 
-#if !defined(TARGET_ANDROID)
         // chapter info
         if (media_info.stream_info.total_chapter_num > 0)
         {
@@ -2039,7 +2032,7 @@ bool CAMLPlayer::WaitForFormatValid(int timeout_ms)
             }
           }
         }
-#endif
+
         return true;
         break;
     }
