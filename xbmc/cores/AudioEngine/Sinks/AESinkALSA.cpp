@@ -333,7 +333,7 @@ bool CAESinkALSA::InitializeHW(AEAudioFormat &format)
   snd_pcm_uframes_t periodSize, bufferSize;
   snd_pcm_hw_params_get_buffer_size_max(hw_params, &bufferSize);
 
-  bufferSize  = std::min(bufferSize, (snd_pcm_uframes_t)8192);
+  bufferSize  = std::max(bufferSize, (snd_pcm_uframes_t)8192);
   periodSize  = bufferSize / ALSA_PERIODS;
   periods     = ALSA_PERIODS;
 
@@ -489,9 +489,6 @@ unsigned int CAESinkALSA::AddPackets(uint8_t *data, unsigned int frames, bool ha
   if (!m_pcm)
     return 0;
 
-  if (snd_pcm_state(m_pcm) == SND_PCM_STATE_PREPARED)
-    snd_pcm_start(m_pcm);
-
   int ret;
 
   ret = snd_pcm_avail(m_pcm);
@@ -519,6 +516,9 @@ unsigned int CAESinkALSA::AddPackets(uint8_t *data, unsigned int frames, bool ha
       ret = 0;
     }
   }
+
+  if ( ret > 0 && snd_pcm_state(m_pcm) == SND_PCM_STATE_PREPARED)
+    snd_pcm_start(m_pcm);
 
   return ret;
 }
