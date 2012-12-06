@@ -644,10 +644,8 @@ bool CAddonMgr::PlatformSupportsAddon(const cp_plugin_info_t *plugin) const
         return true;
 #if defined(TARGET_ANDROID)
       if (platforms[i] == "android")
-#elif defined(_LINUX) && !defined(TARGET_DARWIN) && !defined(HAS_GLES)
-      if (platforms[i] == "linuxgl")
-#elif defined(_LINUX) && !defined(TARGET_DARWIN) && defined(HAS_GLES)
-      if (platforms[i] == "linuxgles")
+#elif defined(_LINUX) && !defined(TARGET_DARWIN)
+      if (platforms[i] == "linux")
 #elif defined(_WIN32) && defined(HAS_SDL_OPENGL)
       if (platforms[i] == "wingl")
 #elif defined(_WIN32) && defined(HAS_DX)
