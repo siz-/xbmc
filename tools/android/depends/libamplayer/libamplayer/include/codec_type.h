@@ -56,10 +56,10 @@ typedef struct {
     CODEC_HANDLE cntl_handle;   ///< video control device handler
     CODEC_HANDLE sub_handle;    ///< subtile device handler
     stream_type_t stream_type;  ///< stream type(es, ps, rm, ts)
-    unsigned int has_video;     ///< stream has video(1) or not(0)
-    unsigned int has_audio;     ///< stream has audio(1) or not(0)
-    unsigned int has_sub;       ///< stream has subtitle(1) or not(0)
-    unsigned int noblock;       ///< codec device is NONBLOCK(1) or not(0)
+    unsigned int has_video:1;   ///< stream has video(1) or not(0)
+    unsigned int has_audio:1;   ///< stream has audio(1) or not(0)
+    unsigned int has_sub:1;     ///< stream has subtitle(1) or not(0)
+    unsigned int noblock:1;     ///< codec device is NONBLOCK(1) or not(0)
     int video_type;             ///< stream video type(H264, VC1...)
     int audio_type;             ///< stream audio type(PCM, WMA...)
     int sub_type;               ///< stream subtitle type(TXT, SSA...)
