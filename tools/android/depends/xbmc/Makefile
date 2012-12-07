@@ -10,6 +10,8 @@ export PYTHON_NOVERSIONCHECK=no-check
 export USE_TEXTUREPACKER_NATIVE_ROOT=$(NATIVEPREFIX)
 export MYSQL_CONFIG=$(PREFIX)/bin/mysql_config
 export LIBS+=-lcrystax
+export CFLAGS+=-O3
+export CXXFLAGS+=-O3
 
 # configuration settings
 CONFIGURE=cp -f $(CONFIG_SUB) $(CONFIG_GUESS) build-aux/ ;\
@@ -17,7 +19,8 @@ CONFIGURE=cp -f $(CONFIG_SUB) $(CONFIG_GUESS) build-aux/ ;\
   --enable-neon --enable-gles --enable-debug \
   --disable-sdl --disable-x11 --disable-xrandr \
   --disable-optical-drive --disable-joystick \
-  --enable-shared-lib --disable-alsa --enable-player=amlplayer
+  --enable-shared-lib --disable-alsa \
+  --enable-codec=amcodec --enable-player=amlplayer
 
 
 all: $(SOURCE)/libxbmc.so
