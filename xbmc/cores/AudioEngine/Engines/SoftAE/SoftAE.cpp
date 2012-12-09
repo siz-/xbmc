@@ -1018,7 +1018,8 @@ void CSoftAE::Run()
     }
 
     /* Handle idle or forced suspend */
-    ProcessSuspend();
+    // comment out for pivos, high cpu under android at idle, borks a long pause under linux
+    //ProcessSuspend();
 
     /* if we are told to restart */
     if (m_reOpen || restart || !m_sink)
