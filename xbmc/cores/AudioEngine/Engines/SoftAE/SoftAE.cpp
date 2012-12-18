@@ -1018,8 +1018,7 @@ void CSoftAE::Run()
     }
 
     /* Handle idle or forced suspend */
-    // comment out for pivos, high cpu under android at idle, borks a long pause under linux
-    //ProcessSuspend();
+    ProcessSuspend();
 
     /* if we are told to restart */
     if (m_reOpen || restart || !m_sink)
@@ -1028,6 +1027,15 @@ void CSoftAE::Run()
       InternalOpenSink();
       m_isSuspended = false; // exit Suspend state
     }
+#if defined(TARGET_ANDROID)
+    else if (m_playingStreams.empty() && m_playing_sounds.empty())
+    {
+      // if we have nothing to do, take a dirt nap.
+      // we do not have to take a lock just to check empty.
+      // this keeps AE from sucking CPU if nothing is going on.
+      m_wake.WaitMSec(100);
+    }
+#endif
   }
 }
 
