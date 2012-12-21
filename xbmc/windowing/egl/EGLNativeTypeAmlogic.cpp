@@ -50,7 +50,7 @@ CEGLNativeTypeAmlogic::~CEGLNativeTypeAmlogic()
 bool CEGLNativeTypeAmlogic::CheckCompatibility()
 {
   char name[256] = {0};
-  std::string modalias = "/sys/class/graphics/" + m_framebuffer_name + "/modalias";
+  std::string modalias = "/sys/class/graphics/" + m_framebuffer_name + "/device/modalias";
 
   aml_get_sysfs_str(modalias.c_str(), name, 255);
   CStdString strName = name;
