@@ -45,6 +45,7 @@
 #include "linux/ConsoleDeviceKitPowerSyscall.h"
 #include "linux/SystemdUPowerSyscall.h"
 #include "linux/UPowerSyscall.h"
+#include "linux/PivosPowerSyscall.h"
 #ifdef HAS_HAL
 #include "linux/HALPowerSyscall.h"
 #endif
@@ -82,6 +83,8 @@ void CPowerManager::Initialize()
     m_instance = new CSystemdUPowerSyscall();
   else if (CUPowerSyscall::HasUPower())
     m_instance = new CUPowerSyscall();
+  else if (CPivosPowerSyscall::HasPivosPowerSyscall())
+    m_instance = new CPivosPowerSyscall();
 #ifdef HAS_HAL
   else
     m_instance = new CHALPowerSyscall();
