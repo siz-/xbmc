@@ -1418,7 +1418,7 @@ void CAMLPlayer::Process()
       vfs_protocol.name = http_name;
       url = "xb-" + url;
     }
-    else if (url.Left(strlen("upd://")).Equals("udp://"))
+    else if (url.Left(strlen("udp://")).Equals("udp://"))
     {
       std::string udp_params;
       // bump up the default udp params for ffmpeg.
