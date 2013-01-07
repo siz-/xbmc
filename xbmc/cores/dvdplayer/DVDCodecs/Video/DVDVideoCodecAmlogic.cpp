@@ -89,13 +89,7 @@ bool CDVDVideoCodecAmlogic::Open(CDVDStreamInfo &hints, CDVDCodecOptions &option
     return false;
   }
   m_opened = false;
-/*
-  if (m_Codec && !m_Codec->OpenDecoder(m_hints))
-  {
-    CLog::Log(LOGERROR, "%s: Failed to open Amlogic Codec", __MODULE_NAME__);
-    return false;
-  }
-*/
+
   // allocate a dummy DVDVideoPicture buffer.
   // first make sure all properties are reset.
   memset(&m_videobuffer, 0, sizeof(DVDVideoPicture));
