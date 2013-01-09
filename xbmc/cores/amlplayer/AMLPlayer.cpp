@@ -814,8 +814,9 @@ void CAMLPlayer::SetVolume(float volume)
   CLog::Log(LOGDEBUG, "CAMLPlayer::SetVolume(%f)", volume);
   CSingleLock lock(m_aml_csection);
   // volume is a float percent from 0.0 to 1.0
+  m_audio_volume = volume;
   if (m_dll->check_pid_valid(m_pid))
-    m_dll->audio_set_volume(m_pid, volume);
+    m_dll->audio_set_volume(m_pid, m_audio_volume);
 }
 
 void CAMLPlayer::GetAudioInfo(CStdString &strAudioInfo)
@@ -1140,6 +1141,8 @@ void CAMLPlayer::SeekTime(int64_t seek_ms)
     m_dll->player_timesearch(m_pid, (float)seek_ms/1000.0);
     WaitForSearchOK(5000);
     WaitForPlaying(5000);
+    // restore system volume setting.
+    SetVolume(m_audio_volume);
   }
 }
 
