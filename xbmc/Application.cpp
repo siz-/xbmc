@@ -5371,9 +5371,8 @@ void CApplication::SetHardwareVolume(float hardwareVolume)
 
   CAEFactory::SetVolume(value);
 
-  // for platforms where we do not have AE or
-  // when AE is suspended because player does not use AE and suspends it.
-  if (m_pPlayer && (!CAEFactory::GetEngine() || CAEFactory::IsSuspended()))
+  // if player has volume control, set it.
+  if (m_pPlayer && m_pPlayer->ControlsVolume())
     m_pPlayer->SetVolume(g_settings.m_fVolumeLevel);
 }
 
