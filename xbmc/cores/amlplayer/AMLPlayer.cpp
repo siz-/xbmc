@@ -1542,7 +1542,7 @@ void CAMLPlayer::Process()
       // restore system volume setting.
       SetVolume(g_settings.m_fVolumeLevel);
 
-      // the default staturation is to high, drop it
+      // the default staturation is too high, drop it
       SetVideoSaturation(110);
 
       // drop CGUIDialogBusy dialog and release the hold in OpenFile.
@@ -1876,8 +1876,8 @@ bool CAMLPlayer::WaitForStopped(int timeout_ms)
     switch(pstatus)
     {
       default:
-        usleep(100 * 1000);
-        timeout_ms -= 100;
+        usleep(20 * 1000);
+        timeout_ms -= 20;
         break;
       case PLAYER_PLAYEND:
       case PLAYER_STOPED:
@@ -1902,8 +1902,8 @@ bool CAMLPlayer::WaitForSearchOK(int timeout_ms)
     switch(pstatus)
     {
       default:
-        usleep(100 * 1000);
-        timeout_ms -= 100;
+        usleep(20 * 1000);
+        timeout_ms -= 20;
         break;
       case PLAYER_STOPED:
         return false;
@@ -1923,16 +1923,21 @@ bool CAMLPlayer::WaitForSearchOK(int timeout_ms)
 
 bool CAMLPlayer::WaitForPlaying(int timeout_ms)
 {
+  // force the volume off in case we are starting muted
+  m_audio_mute = true;
   while (!m_bAbortRequest && (timeout_ms > 0))
   {
+    // anoying that we have to hammer audio_set_volume
+    // but have to catch it before any audio comes out.
+    m_dll->audio_set_volume(m_pid, 0.0);
     player_status pstatus = (player_status)GetPlayerSerializedState();
     if (m_log_level > 5)
       CLog::Log(LOGDEBUG, "CAMLPlayer::WaitForPlaying: %s", m_dll->player_status2str(pstatus));
     switch(pstatus)
     {
       default:
-        usleep(100 * 1000);
-        timeout_ms -= 100;
+        usleep(20 * 1000);
+        timeout_ms -= 20;
         break;
       case PLAYER_ERROR:
       case PLAYER_EXIT:
@@ -1958,8 +1963,8 @@ bool CAMLPlayer::WaitForFormatValid(int timeout_ms)
     switch(pstatus)
     {
       default:
-        usleep(100 * 1000);
-        timeout_ms -= 100;
+        usleep(20 * 1000);
+        timeout_ms -= 20;
         break;
       case PLAYER_ERROR:
       case PLAYER_EXIT:
