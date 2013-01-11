@@ -28,6 +28,7 @@
 #include "video/VideoThumbLoader.h"
 #include "Util.h"
 #include "cores/AudioEngine/AEFactory.h"
+#include "cores/AudioEngine/Utils/AEUtil.h"
 #include "cores/VideoRenderers/RenderFlags.h"
 #include "cores/VideoRenderers/RenderFormats.h"
 #include "cores/VideoRenderers/RenderManager.h"
@@ -814,8 +815,16 @@ void CAMLPlayer::SetVolume(float volume)
   CLog::Log(LOGDEBUG, "CAMLPlayer::SetVolume(%f)", volume);
   CSingleLock lock(m_aml_csection);
   // volume is a float percent from 0.0 to 1.0
-  m_audio_volume = volume;
-  if (m_dll->check_pid_valid(m_pid))
+  m_audio_volume = 0.0f;
+  if (volume > VOLUME_MINIMUM)
+  {
+    float dB = CAEUtil::PercentToGain(volume);
+    m_audio_volume = CAEUtil::GainToScale(dB);
+  }
+  if (m_audio_volume >= 0.99f)
+    m_audio_volume = 1.0f;
+
+  if (!m_audio_mute && m_dll->check_pid_valid(m_pid))
     m_dll->audio_set_volume(m_pid, m_audio_volume);
 }
 
@@ -1525,6 +1534,11 @@ void CAMLPlayer::Process()
       // get our initial status.
       GetStatus();
 
+      // restore mute setting.
+      m_audio_mute = g_settings.m_bMute;
+      if (m_audio_mute)
+        m_dll->audio_set_volume(m_pid, 0.0);
+
       // restore system volume setting.
       SetVolume(g_settings.m_fVolumeLevel);
 
@@ -1578,6 +1592,19 @@ void CAMLPlayer::Process()
       bool stopPlaying = false;
       while (!m_bAbortRequest && !stopPlaying)
       {
+        // check for mute toggle.
+        if (m_audio_mute != g_settings.m_bMute)
+        {
+          m_audio_mute = g_settings.m_bMute;
+          if (m_dll->check_pid_valid(m_pid))
+          {
+            if (m_audio_mute)
+              m_dll->audio_set_volume(m_pid, 0.0);
+            else
+              m_dll->audio_set_volume(m_pid, m_audio_volume);
+          }
+        }
+
         player_status pstatus = (player_status)GetPlayerSerializedState();
         switch(pstatus)
         {
