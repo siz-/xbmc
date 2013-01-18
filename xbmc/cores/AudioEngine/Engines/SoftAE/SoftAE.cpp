@@ -1398,6 +1398,8 @@ void CSoftAE::ProcessSuspend()
   bool sinkIsSuspended = false;
   unsigned int curSystemClock = 0;
 
+// disable auto sink suspend/resume
+#if 0
   if (!m_softSuspend && m_playingStreams.empty() && m_playing_sounds.empty() &&
       !g_advancedSettings.m_streamSilence)
   {
@@ -1408,6 +1410,7 @@ void CSoftAE::ProcessSuspend()
 
   if (m_softSuspend)
     curSystemClock = XbmcThreads::SystemClockMillis();
+#endif
 
   /* idle while in Suspend() state until Resume() called */
   /* idle if nothing to play and user hasn't enabled     */
