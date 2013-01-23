@@ -332,7 +332,7 @@ bool CAdvancedSettings::Load()
   //       it should instead use the versions of GetString/Integer/Float that
   //       don't take defaults in.  Defaults are set in the constructor above
   Initialize(); // In case of profile switch.
-  CSpecialProtocol::SetProfilePath(g_settings.GetUserDataFolder());
+  CSpecialProtocol::SetProfilePath(g_settings.GetProfileUserDataFolder());
   ParseSettingsFile("special://xbmc/system/advancedsettings.xml");
   for (unsigned int i = 0; i < m_settingsFiles.size(); i++)
     ParseSettingsFile(m_settingsFiles[i]);
