@@ -41,12 +41,14 @@
 #include "commons/Exception.h"
 #include "settings/AdvancedSettings.h"
 #include "settings/GUISettings.h"
+#include "settings/Settings.h"
 #include "filesystem/File.h"
 #include "filesystem/Directory.h"
 #include "utils/log.h"
 #include "threads/Thread.h"
 #include "threads/SystemClock.h"
 #include "utils/TimeUtils.h"
+#include "URL.h"
 
 void CDemuxStreamAudioFFmpeg::GetStreamInfo(std::string& strInfo)
 {
@@ -283,25 +285,32 @@ bool CDVDDemuxFFmpeg::Open(CDVDInputStream* pInput)
   {
     // special stream type that makes avformat handle file opening
     // allows internal ffmpeg protocols to be used
+    CURL url = m_pInput->GetURL();
+    CStdString protocol = url.GetProtocol();
+
+    AVDictionary *options = GetFFMpegOptionsFromURL(url);
+
     int result=-1;
-    if (strFile.substr(0,6) == "mms://")
+    if (protocol.Equals("mms"))
     {
       // try mmsh, then mmst
-      CStdString strFile2;
-      strFile2.Format("mmsh://%s",strFile.substr(6,strFile.size()-6).c_str());
-      result = m_dllAvFormat.avformat_open_input(&m_pFormatContext, strFile2.c_str(), iformat, NULL);
+      url.SetProtocol("mmsh");
+      url.SetProtocolOptions("");
+      result = m_dllAvFormat.avformat_open_input(&m_pFormatContext, url.Get().c_str(), iformat, &options);
       if (result < 0)
       {
-        strFile = "mmst://";
-        strFile += strFile2.Mid(7).c_str();
+        url.SetProtocol("mmst");
+        strFile = url.Get();
       } 
     }
-    if (result < 0 && m_dllAvFormat.avformat_open_input(&m_pFormatContext, strFile.c_str(), iformat, NULL) < 0 )
+    if (result < 0 && m_dllAvFormat.avformat_open_input(&m_pFormatContext, strFile.c_str(), iformat, &options) < 0 )
     {
       CLog::Log(LOGDEBUG, "Error, could not open file %s", strFile.c_str());
       Dispose();
+      m_dllAvUtil.av_dict_free(&options);
       return false;
     }
+    m_dllAvUtil.av_dict_free(&options);
   }
   else
   {
@@ -433,6 +442,12 @@ bool CDVDDemuxFFmpeg::Open(CDVDInputStream* pInput)
   // analyse very short to speed up mjpeg playback start
   if (iformat && (strcmp(iformat->name, "mjpeg") == 0) && m_ioContext->seekable == 0)
     m_pFormatContext->max_analyze_duration = 500000;
+
+  if (strncmp(m_pFormatContext->iformat->name, "mpegts", 6) == 0)
+  {
+    m_pFormatContext->max_analyze_duration = 1000000;
+    m_pFormatContext->probesize = 1000000;
+  }
 
   // we need to know if this is matroska or avi later
   m_bMatroska = strncmp(m_pFormatContext->iformat->name, "matroska", 8) == 0;	// for "matroska.webm"
@@ -596,6 +611,87 @@ void CDVDDemuxFFmpeg::SetSpeed(int iSpeed)
         m_pFormatContext->streams[i]->discard = discard;
     }
   }
+}
+
+AVDictionary *CDVDDemuxFFmpeg::GetFFMpegOptionsFromURL(const CURL &url)
+{
+  CStdString protocol = url.GetProtocol();
+
+  AVDictionary *options = NULL;
+
+  if (protocol.Equals("http") || protocol.Equals("https"))
+  {
+    std::map<CStdString, CStdString> protocolOptions;
+    url.GetProtocolOptions(protocolOptions);
+    std::string headers;
+    bool hasUserAgent = false;
+    for(std::map<CStdString, CStdString>::const_iterator it = protocolOptions.begin(); it != protocolOptions.end(); ++it)
+    {
+      const CStdString &name = it->first;
+      const CStdString &value = it->second;
+
+      if (name.Equals("seekable"))
+        m_dllAvUtil.av_dict_set(&options, "seekable", value.c_str(), 0);
+      else if (name.Equals("User-Agent"))
+      {
+        m_dllAvUtil.av_dict_set(&options, "user-agent", value.c_str(), 0);
+        hasUserAgent = true;
+      }
+      else if (!name.Equals("auth") && !name.Equals("Encoding"))
+        // all other protocol options can be added as http header.
+        headers.append(name).append(": ").append(value).append("\r\n");
+    }
+    if (!hasUserAgent)
+      // set default xbmc user-agent.
+      m_dllAvUtil.av_dict_set(&options, "user-agent", g_settings.m_userAgent.c_str(), 0);
+
+    if (!headers.empty())
+      m_dllAvUtil.av_dict_set(&options, "headers", headers.c_str(), 0);
+  }
+  else if (protocol.Equals("udp"))
+  {
+    std::map<CStdString, CStdString> protocolOptions;
+    url.GetProtocolOptions(protocolOptions);
+
+    CStdString pkt_size = "5264";
+    CStdString fifo_size = "28672";
+    CStdString buffer_size = "5390336";
+    for(std::map<CStdString, CStdString>::const_iterator it = protocolOptions.begin(); it != protocolOptions.end(); ++it)
+    {
+      const CStdString &name = it->first;
+      const CStdString &value = it->second;
+
+      if (name.Equals("pkt_size"))
+      {
+        // Set the size in bytes of UDP packets
+        pkt_size = value;
+      }
+      else if (!name.Equals("buf_size"))
+      {
+        // Set the UDP receiving circular buffer size,
+        // expressed as a number of packets with size of 188 bytes
+        fifo_size = value;
+      }
+      else if (!name.Equals("fifo_size"))
+      {
+        // Set the UDP receiving circular buffer size,
+        // expressed as a number of packets with size of 188 bytes
+        fifo_size = value;
+      }
+      else if (name.Equals("buffer_size"))
+      {
+        // Set the UDP socket buffer size in bytes
+        buffer_size = value;
+      }
+    }
+
+    m_dllAvUtil.av_dict_set(&options, "pkt_size",    pkt_size.c_str(), 0);
+    m_dllAvUtil.av_dict_set(&options, "fifo_size",   fifo_size.c_str(), 0);
+    m_dllAvUtil.av_dict_set(&options, "buffer_size", buffer_size.c_str(), 0);
+
+  }
+
+  return options;
 }
 
 double CDVDDemuxFFmpeg::ConvertTimestamp(int64_t pts, int den, int num)

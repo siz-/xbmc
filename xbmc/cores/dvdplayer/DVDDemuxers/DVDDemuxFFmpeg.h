@@ -28,6 +28,7 @@
 #include "threads/CriticalSection.h"
 #include "threads/SystemClock.h"
 
+class CURL;
 class CDVDDemuxFFmpeg;
 
 class CDemuxStreamVideoFFmpeg
@@ -121,6 +122,7 @@ protected:
   int ReadFrame(AVPacket *packet);
   void AddStream(int iId);
 
+  AVDictionary *GetFFMpegOptionsFromURL(const CURL &url);
   double ConvertTimestamp(int64_t pts, int den, int num);
   void UpdateCurrentPTS();
 
