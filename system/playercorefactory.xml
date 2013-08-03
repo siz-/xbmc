@@ -38,8 +38,5 @@
     <!-- pvr radio channels should be played by dvdplayer because they need buffering -->
     <rule name="radio" filetypes="pvr" filename=".*/radio/.*" player="DVDPlayer" />
 
-    <rule name="rm/rmvb" filetypes="rm|rmvb" player="AMLPlayer" />
-    <rule name="udp" protocols="udp"  player="AMLPlayer" />
-
   </rules>
 </playercorefactory>
