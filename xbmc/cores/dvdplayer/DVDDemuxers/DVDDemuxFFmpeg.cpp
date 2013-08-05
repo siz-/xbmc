@@ -445,8 +445,8 @@ bool CDVDDemuxFFmpeg::Open(CDVDInputStream* pInput)
 
   if (strncmp(m_pFormatContext->iformat->name, "mpegts", 6) == 0)
   {
-    m_pFormatContext->max_analyze_duration = 1000000;
-    m_pFormatContext->probesize = 1000000;
+    m_pFormatContext->max_analyze_duration = 1500000;
+    m_pFormatContext->probesize = 1500000;
   }
 
   // we need to know if this is matroska or avi later
@@ -654,8 +654,8 @@ AVDictionary *CDVDDemuxFFmpeg::GetFFMpegOptionsFromURL(const CURL &url)
     url.GetProtocolOptions(protocolOptions);
 
     CStdString pkt_size = "5264";
-    CStdString fifo_size = "28672";
-    CStdString buffer_size = "5390336";
+    CStdString fifo_size = "286720";
+    CStdString buffer_size = "53903360";
     for(std::map<CStdString, CStdString>::const_iterator it = protocolOptions.begin(); it != protocolOptions.end(); ++it)
     {
       const CStdString &name = it->first;
